@@ -3,7 +3,7 @@
   <model name='Box_0_5_0_5_0_5'>
     <link name='Box_0_5_0_5_0_5'>
       <inertial>
-        <pose>5 -0.25 4 0 0 0</pose>
+        <pose>5.25 0 4.25 0 0 0</pose>
         <mass>12.5</mass>
         <inertia>
           <ixx>5208333333333336.0</ixx>

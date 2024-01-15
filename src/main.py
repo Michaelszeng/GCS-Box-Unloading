@@ -26,11 +26,8 @@ import time
 import argparse
 import yaml
 
-from utils import (
-    diagram_visualize_connections,
-)
-
-from scenario import scenario_yaml, filterCollisionGeometry
+from utils import diagram_visualize_connections
+from scenario import scenario_yaml
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
@@ -43,9 +40,9 @@ seed = int(args.randomization)
 close_button_str = "Close"
 this_drake_module_name = "cwd"
 point_cloud_cameras_center = [0, 0, 100]
-box_randomization_runtime = 1
+box_randomization_runtime = 5
 sim_runtime = box_randomization_runtime + 1
-NUM_BOXES = 1
+NUM_BOXES = 10
 
 np.random.seed(seed)
 
@@ -72,9 +69,6 @@ for i in range(NUM_BOXES):
     box_pos = np.random.uniform(0, 1, 3)
     box_rot = np.random.uniform(0, 90, 3)
 
-    print(f"box_pos: {box_pos}")
-    print(f"box_rot: {box_rot}")
-
     box_directives += f"""
 - add_model: 
     name: Box_{i}
@@ -82,10 +76,9 @@ for i in range(NUM_BOXES):
     default_free_body_pose:
         Box_0_5_0_5_0_5:
             translation: [{box_pos[0]}, {box_pos[1]}, {box_pos[2]}]
-            rotation: !Rpy {{ deg: [{box_rot[0]}, {box_rot[1]}, {box_rot[2]}] }}
 """
     
-    scenario = add_directives(scenario, data=box_directives)
+scenario = add_directives(scenario, data=box_directives)
 
 
 ### Hardware station setup
@@ -100,10 +93,8 @@ station = builder.AddSystem(MakeHardwareStation(
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
 
-filterCollisionGeometry(scene_graph)
 
-i=0
-AddMultibodyTriad(plant.GetFrameByName("Box_0_5_0_5_0_5"), scene_graph)
+# AddMultibodyTriad(plant.GetFrameByName("Box_0_5_0_5_0_5"), scene_graph)
 
 
 ### Finalizing diagram setup
