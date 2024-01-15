@@ -1,0 +1,45 @@
+<?xml version='1.0'?>
+<sdf xmlns:drake="http://drake.mit.edu" version="1.8">
+  <model name='Truck_Trailer_Back'>
+    <link name='Truck_Trailer_Back'>
+      <inertial>
+        <pose>-3 -1.2954 0 1.57079632679 0 1.57079632679</pose>
+        <mass>183.86568451587152</mass>
+        <inertia>
+          <ixx>1.1962118796191482e+17</ixx>
+          <ixy>-11344.53490299777</ixy>
+          <ixz>-4452.194829855728</ixz>
+          <iyy>1.0285584402486662e+17</iyy>
+          <iyz>-34590.129062725275</iyz>
+          <izz>2.2245726091443702e+17</izz>
+        </inertia>
+      </inertial>
+      <visual name='visual'>
+        <pose>-3 -1.2954 0 1.57079632679 0 1.57079632679</pose>
+        <geometry>
+          <mesh>
+            <uri>Truck_Trailer_Back.obj</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name='collision'>
+        <pose>-3 -1.2954 0 1.57079632679 0 1.57079632679</pose>
+        <geometry>
+          <mesh>
+            <uri>Truck_Trailer_Back.obj</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <!-- The proximity properties immediately below enable the hydroelastic
+             contact model for this body. To use point contact instead, delete
+             or comment out the <drake:rigid_hydroelastic> element. -->
+        <drake:proximity_properties>
+          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_static>0.5</drake:mu_static>
+          <drake:rigid_hydroelastic/>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+  </model>
+</sdf>
