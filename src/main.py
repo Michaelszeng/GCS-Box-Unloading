@@ -9,7 +9,8 @@ from pydrake.all import (
     MultibodyPlant,
     RotationMatrix,
     ConstantVectorSource,
-    AbstractValue
+    AbstractValue,
+    ContactModel
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -39,10 +40,9 @@ seed = int(args.randomization)
 ##### Settings #####
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-point_cloud_cameras_center = [0, 0, 100]
 box_randomization_runtime = 5
 sim_runtime = box_randomization_runtime + 1
-NUM_BOXES = 10
+NUM_BOXES = 50
 
 np.random.seed(seed)
 
@@ -66,8 +66,9 @@ for i in range(NUM_BOXES):
     relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
     absolute_path_to_box = os.path.abspath(relative_path_to_box)
 
-    box_pos = np.random.uniform(0, 1, 3)
-    box_rot = np.random.uniform(0, 90, 3)
+    box_pos_x = np.random.uniform(-1.5, 1.5, 1)
+    box_pos_y = np.random.uniform(-1, 1, 1)
+    box_pos_z = np.random.uniform(0, 5, 1)
 
     box_directives += f"""
 - add_model: 
@@ -75,7 +76,7 @@ for i in range(NUM_BOXES):
     file: file://{absolute_path_to_box}
     default_free_body_pose:
         Box_0_5_0_5_0_5:
-            translation: [{box_pos[0]}, {box_pos[1]}, {box_pos[2]}]
+            translation: [{box_pos_x[0]}, {box_pos_y[0]}, {box_pos_z[0]}]
 """
     
 scenario = add_directives(scenario, data=box_directives)
@@ -92,6 +93,8 @@ station = builder.AddSystem(MakeHardwareStation(
 ))
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
+
+# plant.set_contact_model(ContactModel.kHydroelastic)
 
 
 # AddMultibodyTriad(plant.GetFrameByName("Box_0_5_0_5_0_5"), scene_graph)

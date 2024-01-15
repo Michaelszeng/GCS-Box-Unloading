@@ -811,6 +811,9 @@ def MakeHardwareStation(
         builder=builder,
     )
 
+    from pydrake.all import ContactModel
+    sim_plant.set_contact_model(ContactModel.kHydroelastic)
+
     sim_plant.Finalize()
 
     # Add drivers.
