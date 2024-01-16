@@ -3,7 +3,7 @@
   <model name='Truck_Trailer_Roof'>
     <link name='Truck_Trailer_Roof'>
       <inertial>
-        <pose>4.5 0 2.79 1.57079632679 0 1.57079632679</pose>
+        <pose>1.5 0 2.79 1.57079632679 0 1.57079632679</pose>
         <mass>422.1303764881761</mass>
         <inertia>
           <ixx>8.38284973698533e+17</ixx>
@@ -15,7 +15,7 @@
         </inertia>
       </inertial>
       <visual name='visual'>
-        <pose>-3 -1.2954 0 1.57079632679 0 1.57079632679</pose>
+        <pose>-6 -1.2954 0 1.57079632679 0 1.57079632679</pose>
         <geometry>
           <mesh>
             <uri>Truck_Trailer_Roof.obj</uri>
@@ -24,7 +24,7 @@
         </geometry>
       </visual>
       <collision name='collision'>
-        <pose>-3 -1.2954 0 1.57079632679 0 1.57079632679</pose>
+        <pose>-6 -1.2954 0 1.57079632679 0 1.57079632679</pose>
         <geometry>
           <mesh>
             <uri>Truck_Trailer_Roof.obj</uri>

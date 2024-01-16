@@ -42,13 +42,9 @@ directives:
         arm_a6: [0.0]
         arm_a5: [0.0]
         arm_a4: [0.0]
-        arm_a3: [1.0]
-        arm_a2: [-1.0]
+        arm_a3: [1.5]
+        arm_a2: [-1.8]
         arm_a1: [0.0]
-
-- add_weld:
-    parent: world
-    child: kuka::base_link
 
     
 

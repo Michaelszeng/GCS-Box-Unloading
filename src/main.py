@@ -40,9 +40,9 @@ seed = int(args.randomization)
 ##### Settings #####
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_randomization_runtime = 5
-sim_runtime = box_randomization_runtime + 1
-NUM_BOXES = 50
+box_randomization_runtime = 0.5
+sim_runtime = box_randomization_runtime + 0.5
+NUM_BOXES = 1
 
 np.random.seed(seed)
 
@@ -94,11 +94,6 @@ station = builder.AddSystem(MakeHardwareStation(
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
 
-# plant.set_contact_model(ContactModel.kHydroelastic)
-
-
-# AddMultibodyTriad(plant.GetFrameByName("Box_0_5_0_5_0_5"), scene_graph)
-
 
 ### Finalizing diagram setup
 diagram = builder.Build()
@@ -135,13 +130,21 @@ trailer_roof_model_idx = plant.GetModelInstanceByName("Truck_Trailer_Roof")  # M
 trailer_roof_body_idx = plant.GetBodyIndices(trailer_roof_model_idx)[0]  # BodyIndex
 plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
 
+# Move Robot back
+robot_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+robot_body_idx = plant.GetBodyIndices(robot_model_idx)[0]  # BodyIndex
+plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), RigidTransform([-2,0,0.59]))
+robot_joint_idx = plant.GetJointIndices(robot_model_idx)[0]  # JointIndex object
+robot_joint = plant.get_joint(robot_joint_idx)  # Joint object
+robot_joint.Lock(plant_context)
+
 simulator.AdvanceTo(box_randomization_runtime)
 
 # Put Top of truck trailer back and lock it
-plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
-trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # JointIndex object
-trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
-trailer_roof_joint.Lock(plant_context)
+# plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
+# trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # JointIndex object
+# trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
+# trailer_roof_joint.Lock(plant_context)
 
 simulator.AdvanceTo(sim_runtime)
 
