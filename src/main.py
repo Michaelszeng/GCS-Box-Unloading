@@ -42,9 +42,9 @@ seed = int(args.randomization)
 ##### Settings #####
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_randomization_runtime = 3
-sim_runtime = box_randomization_runtime + 1
-NUM_BOXES = 5
+box_randomization_runtime = 2
+sim_runtime = box_randomization_runtime + 4
+NUM_BOXES = 20
 
 np.random.seed(seed)
 
@@ -145,11 +145,19 @@ for i in range(NUM_BOXES):
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 
     box_pos_x = np.random.uniform(-1.5, 1.5, 1)
-    box_pos_y = np.random.uniform(-1, 1, 1)
+    box_pos_y = np.random.uniform(-0.95, 0.95, 1)
     box_pos_z = np.random.uniform(2, 5, 1)
+
     plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
 
+
 simulator.AdvanceTo(box_randomization_runtime)
+
+# Put Top of truck trailer back and lock it
+plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
+trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # JointIndex object
+trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
+trailer_roof_joint.Lock(plant_context)
 
 # Set a pos-x velocity for all boxes to shove them against the back of the truck trailer
 for i in range(NUM_BOXES):
@@ -157,20 +165,16 @@ for i in range(NUM_BOXES):
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_rigid_body = plant.GetRigidBodyByName("Box_0_5_0_5_0_5", box_model_idx)  # RigidBody
 
-    box_current_pose = plant.GetFreeBodyPose(plant_context, box_rigid_body)
-    print(box_current_pose)
+    W_X_O = plant.GetFreeBodyPose(plant_context, box_rigid_body)  # transform from box frame to world frame
 
-    print(f"velocity: {plant.GetVelocities(plant_context, box_model_idx)}")
-    box_velocity = plant.GetVelocities(plant_context, box_model_idx)
-    box_velocity_desired = box_velocity + np.array([0,0,-1,0,0,0])
+    O_V_B = plant.GetVelocities(plant_context, box_model_idx)  # spatial vel of box relative to box frame
+    O_v_B_vel = O_V_B[3:]  # positional velocity is the last 3 elements of O_V_B
+    O_v_B_rot = O_V_B[:3]
+    W_v_B_vel = W_X_O @ O_v_B_vel
+    W_v_B_rot = W_X_O @ O_v_B_rot
+    W_v_B_vel_desired = W_v_B_vel + np.array([10,0,0])
 
-    plant.SetFreeBodySpatialVelocity(plant.get_body(box_body_idx), SpatialVelocity(box_velocity_desired[:3], box_velocity_desired[3:]), plant_context)
-
-# Put Top of truck trailer back and lock it
-# plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
-# trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # JointIndex object
-# trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
-# trailer_roof_joint.Lock(plant_context)
+    plant.SetFreeBodySpatialVelocity(plant.get_body(box_body_idx), SpatialVelocity([0,0,0], W_v_B_vel_desired), plant_context)
 
 simulator.AdvanceTo(sim_runtime)
 
