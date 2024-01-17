@@ -37,8 +37,8 @@
              contact model for this body. To use point contact instead, delete
              or comment out the <drake:rigid_hydroelastic> element. -->
         <drake:proximity_properties>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
-          <drake:mu_static>0.5</drake:mu_static>
+          <drake:mu_dynamic>0.75</drake:mu_dynamic>
+          <drake:mu_static>0.75</drake:mu_static>
           <drake:compliant_hydroelastic/>
           <drake:mesh_resolution_hint>0.1</drake:mesh_resolution_hint>
           <drake:hydroelastic_modulus>5e6</drake:hydroelastic_modulus>
