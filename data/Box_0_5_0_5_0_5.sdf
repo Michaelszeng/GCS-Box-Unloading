@@ -4,14 +4,14 @@
     <link name='Box_0_5_0_5_0_5'>
       <inertial>
         <pose>2.25 0 3.75 0 0 0</pose>
-        <mass>12.5</mass>
+        <mass>25</mass>
         <inertia>
-          <ixx>1.0</ixx>
+          <ixx>0.5</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>1.0</iyy>
+          <iyy>0.5</iyy>
           <iyz>0</iyz>
-          <izz>1.0</izz>
+          <izz>0.5</izz>
         </inertia>
       </inertial>
       <visual name='visual'>
@@ -39,10 +39,10 @@
         <drake:proximity_properties>
           <drake:mu_dynamic>0.75</drake:mu_dynamic>
           <drake:mu_static>0.75</drake:mu_static>
-          <drake:compliant_hydroelastic/>
+          <!-- <drake:compliant_hydroelastic/>
           <drake:mesh_resolution_hint>0.1</drake:mesh_resolution_hint>
           <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>
-          <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
+          <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation> -->
         </drake:proximity_properties>
       </collision>
     </link>

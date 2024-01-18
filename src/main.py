@@ -10,6 +10,8 @@ from pydrake.all import (
     RotationMatrix,
     RollPitchYaw,
     SpatialVelocity,
+    SpatialForce,
+    ExternallyAppliedSpatialForce,
     ConstantVectorSource,
     AbstractValue,
     ContactModel
@@ -42,9 +44,9 @@ seed = int(args.randomization)
 ##### Settings #####
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_randomization_runtime = 2
+box_randomization_runtime = 4
 sim_runtime = box_randomization_runtime + 4
-NUM_BOXES = 20
+NUM_BOXES = 50
 
 np.random.seed(seed)
 
@@ -73,13 +75,6 @@ for i in range(NUM_BOXES):
     name: Box_{i}
     file: file://{absolute_path_to_box}
 """
-    
-    """
-        default_free_body_pose:
-        Box_0_5_0_5_0_5:
-            translation: [{box_pos_x[0]}, {box_pos_y[0]}, {box_pos_z[0]}]
-            rotation: !Rpy {{ deg: [0, 0, 0] }}"""
-    
 scenario = add_directives(scenario, data=box_directives)
 
 
@@ -144,9 +139,9 @@ for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 
-    box_pos_x = np.random.uniform(-1.5, 1.5, 1)
+    box_pos_x = np.random.uniform(-1, 1.5, 1)
     box_pos_y = np.random.uniform(-0.95, 0.95, 1)
-    box_pos_z = np.random.uniform(2, 5, 1)
+    box_pos_z = np.random.uniform(2, 8, 1)
 
     plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
 
@@ -159,26 +154,52 @@ trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # Joi
 trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
 trailer_roof_joint.Lock(plant_context)
 
-# Set a pos-x velocity for all boxes to shove them against the back of the truck trailer
+simulator.AdvanceTo(box_randomization_runtime+0.5)
+
+# # Set a pos-x velocity for all boxes to shove them against the back of the truck trailer
+# for i in range(NUM_BOXES):
+#     box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
+#     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+#     box_rigid_body = plant.GetRigidBodyByName("Box_0_5_0_5_0_5", box_model_idx)  # RigidBody
+
+#     W_X_O = plant.GetFreeBodyPose(plant_context, box_rigid_body)  # transform from box frame to world frame
+
+#     O_V_B = plant.GetVelocities(plant_context, box_model_idx)  # spatial vel of box relative to box frame
+#     O_v_B_vel = O_V_B[3:]  # positional velocity is the last 3 elements of O_V_B
+#     O_v_B_rot = O_V_B[:3]
+#     W_v_B_vel = W_X_O @ O_v_B_vel
+#     W_v_B_rot = W_X_O @ O_v_B_rot
+#     W_v_B_vel_desired = W_v_B_vel + np.array([10,0,0])
+
+#     plant.SetFreeBodySpatialVelocity(plant.get_body(box_body_idx), SpatialVelocity([0,0,0], W_v_B_vel_desired), plant_context)
+
+box_forces = []
+zero_box_forces = []
 for i in range(NUM_BOXES):
+    force = ExternallyAppliedSpatialForce()
+    zero_force = ExternallyAppliedSpatialForce()
+
     box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-    box_rigid_body = plant.GetRigidBodyByName("Box_0_5_0_5_0_5", box_model_idx)  # RigidBody
 
-    W_X_O = plant.GetFreeBodyPose(plant_context, box_rigid_body)  # transform from box frame to world frame
+    force.body_index = box_body_idx
+    force.p_BoBq_B = [0,0,0]
+    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,100])
+    box_forces.append(force)
 
-    O_V_B = plant.GetVelocities(plant_context, box_model_idx)  # spatial vel of box relative to box frame
-    O_v_B_vel = O_V_B[3:]  # positional velocity is the last 3 elements of O_V_B
-    O_v_B_rot = O_V_B[:3]
-    W_v_B_vel = W_X_O @ O_v_B_vel
-    W_v_B_rot = W_X_O @ O_v_B_rot
-    W_v_B_vel_desired = W_v_B_vel + np.array([10,0,0])
+    zero_force.body_index = box_body_idx
+    zero_force.p_BoBq_B = [0,0,0]
+    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
+    zero_box_forces.append(zero_force)
 
-    plant.SetFreeBodySpatialVelocity(plant.get_body(box_body_idx), SpatialVelocity([0,0,0], W_v_B_vel_desired), plant_context)
+station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
+simulator.AdvanceTo(box_randomization_runtime+2.0)
 
+station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
 simulator.AdvanceTo(sim_runtime)
 
 meshcat.PublishRecording()
+print(f"{meshcat.web_url()}/download")
 
 while not meshcat.GetButtonClicks(close_button_str):
     pass
