@@ -44,9 +44,9 @@ seed = int(args.randomization)
 ##### Settings #####
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_randomization_runtime = 4
+box_randomization_runtime = 1.5
 sim_runtime = box_randomization_runtime + 4
-NUM_BOXES = 50
+NUM_BOXES = 40
 
 np.random.seed(seed)
 
@@ -107,11 +107,6 @@ station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 
 
-### Testing hardware
-# station.GetInputPort("iiwa.actuation").FixValue(station_context, np.zeros(7)) # TESTING
-# station.GetInputPort("wsg.position").FixValue(station_context, [1]) # TESTING
-
-
 ####################################
 ### Running Simulation & Meshcat ###
 ####################################
@@ -139,9 +134,9 @@ for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 
-    box_pos_x = np.random.uniform(-1, 1.5, 1)
+    box_pos_x = np.random.uniform(-1, 1.3, 1)
     box_pos_y = np.random.uniform(-0.95, 0.95, 1)
-    box_pos_z = np.random.uniform(2, 8, 1)
+    box_pos_z = np.random.uniform(0, 8, 1)
 
     plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
 
@@ -154,25 +149,7 @@ trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # Joi
 trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
 trailer_roof_joint.Lock(plant_context)
 
-simulator.AdvanceTo(box_randomization_runtime+0.5)
-
-# # Set a pos-x velocity for all boxes to shove them against the back of the truck trailer
-# for i in range(NUM_BOXES):
-#     box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
-#     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-#     box_rigid_body = plant.GetRigidBodyByName("Box_0_5_0_5_0_5", box_model_idx)  # RigidBody
-
-#     W_X_O = plant.GetFreeBodyPose(plant_context, box_rigid_body)  # transform from box frame to world frame
-
-#     O_V_B = plant.GetVelocities(plant_context, box_model_idx)  # spatial vel of box relative to box frame
-#     O_v_B_vel = O_V_B[3:]  # positional velocity is the last 3 elements of O_V_B
-#     O_v_B_rot = O_V_B[:3]
-#     W_v_B_vel = W_X_O @ O_v_B_vel
-#     W_v_B_rot = W_X_O @ O_v_B_rot
-#     W_v_B_vel_desired = W_v_B_vel + np.array([10,0,0])
-
-#     plant.SetFreeBodySpatialVelocity(plant.get_body(box_body_idx), SpatialVelocity([0,0,0], W_v_B_vel_desired), plant_context)
-
+# Applied external forces on the box to shove them to the back of the truck trailer
 box_forces = []
 zero_box_forces = []
 for i in range(NUM_BOXES):
@@ -184,18 +161,19 @@ for i in range(NUM_BOXES):
 
     force.body_index = box_body_idx
     force.p_BoBq_B = [0,0,0]
-    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,100])
+    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,-500])
     box_forces.append(force)
 
     zero_force.body_index = box_body_idx
     zero_force.p_BoBq_B = [0,0,0]
-    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
+    zero_force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
     zero_box_forces.append(zero_force)
 
-station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
+station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)  # FixedInputPortValue object
 simulator.AdvanceTo(box_randomization_runtime+2.0)
 
-station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
+station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)  # FixedInputPortValue object
+
 simulator.AdvanceTo(sim_runtime)
 
 meshcat.PublishRecording()
