@@ -140,7 +140,6 @@ for i in range(NUM_BOXES):
 
     plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
 
-
 simulator.AdvanceTo(box_randomization_runtime)
 
 # Put Top of truck trailer back and lock it
@@ -169,10 +168,12 @@ for i in range(NUM_BOXES):
     zero_force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
     zero_box_forces.append(zero_force)
 
-station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)  # FixedInputPortValue object
+# Apply pushing force to back of truck trailer
+station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
 simulator.AdvanceTo(box_randomization_runtime+2.0)
 
-station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)  # FixedInputPortValue object
+# Remove pushing force to back of truck trailer
+station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
 
 simulator.AdvanceTo(sim_runtime)
 

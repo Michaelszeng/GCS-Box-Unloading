@@ -1,4 +1,5 @@
 """ Miscellaneous Utility functions """
+
 from enum import Enum
 from typing import BinaryIO, Optional, Union, Tuple
 from pydrake.all import (
@@ -16,12 +17,6 @@ import numpy as np
 import numpy.typing as npt
 import pydot
 import matplotlib.pyplot as plt
-
-
-def diagram_update_meshcat(diagram, context=None) -> None:
-    if context is None:
-        context = diagram.CreateDefaultContext()
-    diagram.ForcedPublish(context)
 
 
 def diagram_visualize_connections(diagram: Diagram, file: Union[BinaryIO, str]) -> None:

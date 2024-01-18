@@ -1,6 +1,4 @@
-###############
-# Robot Setup #
-###############
+"""Simulation scenario YAML definitions."""
 
 from pydrake.all import (
     GeometrySet,
