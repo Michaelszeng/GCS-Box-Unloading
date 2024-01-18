@@ -44,8 +44,8 @@ seed = int(args.randomization)
 ##### Settings #####
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_randomization_runtime = 1.5
-sim_runtime = box_randomization_runtime + 4
+box_randomization_runtime = 1.15
+sim_runtime = box_randomization_runtime + 4.0
 NUM_BOXES = 40
 
 np.random.seed(seed)
@@ -161,7 +161,7 @@ for i in range(NUM_BOXES):
 
     force.body_index = box_body_idx
     force.p_BoBq_B = [0,0,0]
-    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,-500])
+    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,0])
     box_forces.append(force)
 
     zero_force.body_index = box_body_idx
