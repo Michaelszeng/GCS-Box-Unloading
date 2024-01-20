@@ -5,6 +5,7 @@ from pydrake.all import (
     Box,
     ModelInstanceIndex,
     InverseDynamicsController,
+    PidController,
     RigidTransform,
     MultibodyPlant,
     RotationMatrix,
@@ -14,13 +15,15 @@ from pydrake.all import (
     ExternallyAppliedSpatialForce,
     ConstantVectorSource,
     AbstractValue,
-    ContactModel
+    ContactModel,
+    Parser
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
 from station import MakeHardwareStation, load_scenario, add_directives  # local version allows ForceDriver
 from manipulation.scenarios import AddMultibodyTriad, AddShape
 from manipulation.meshcat_utils import AddMeshcatTriad
+from manipulation.utils import ConfigureParser
 
 import matplotlib.pyplot as plt
 import matplotlib
@@ -32,7 +35,8 @@ import argparse
 import yaml
 
 from utils import diagram_visualize_connections
-from scenario import scenario_yaml
+from scenario import scenario_yaml, robot_yaml
+from iris import generate_source_iris_regions
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
@@ -91,6 +95,29 @@ scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
 
 
+# controller_plant = MultibodyPlant(time_step=0.001)
+# parser = Parser(plant)
+# ConfigureParser(parser)
+# Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
+# controller_plant.Finalize()
+# num_robot_positions = controller_plant.num_positions()
+# print(f"num_robot_positions: {num_robot_positions}")
+# controller = builder.AddSystem(InverseDynamicsController(controller_plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
+# builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
+# # builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
+# # builder.Connect(motion_planner.GetOutputPort("iiwa_command"), controller.GetInputPort("desired_state"))
+# # builder.Connect(motion_planner.GetOutputPort("iiwa_acceleration"), controller.GetInputPort("desired_acceleration"))
+
+num_robot_positions = plant.num_positions()
+print(f"num_robot_positions: {num_robot_positions}")
+# controller = builder.AddSystem(InverseDynamicsController(plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
+# controller = builder.AddSystem(PidController([300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions))
+# builder.Connect(controller.GetOutputPort("control"), station.GetInputPort("kuka.actuation"))
+# builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
+# builder.Connect(motion_planner.GetOutputPort("iiwa_command"), controller.GetInputPort("desired_state"))
+# builder.Connect(motion_planner.GetOutputPort("iiwa_acceleration"), controller.GetInputPort("desired_acceleration"))
+
+
 ### Finalizing diagram setup
 diagram = builder.Build()
 context = diagram.CreateDefaultContext()
@@ -114,6 +141,12 @@ simulator.set_target_realtime_rate(1)
 simulator.set_publish_every_time_step(True)
 plt.show()
 
+
+# generate_source_iris_regions()
+
+# station.GetInputPort("desired_state").FixValue(station_context, np.zeros(6))
+
+
 meshcat.StartRecording()
 
 # 'Remove' Top of truck trailer
@@ -122,7 +155,7 @@ trailer_roof_body_idx = plant.GetBodyIndices(trailer_roof_model_idx)[0]  # BodyI
 plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
 
 # Move Robot back
-robot_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+robot_model_idx = plant.GetModelInstanceByName("robot_base")  # ModelInstanceIndex
 robot_body_idx = plant.GetBodyIndices(robot_model_idx)[0]  # BodyIndex
 plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), RigidTransform([-2,0,0.59]))
 robot_joint_idx = plant.GetJointIndices(robot_model_idx)[0]  # JointIndex object
@@ -170,7 +203,7 @@ for i in range(NUM_BOXES):
 
 # Apply pushing force to back of truck trailer
 station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
-simulator.AdvanceTo(box_randomization_runtime+2.0)
+simulator.AdvanceTo(box_randomization_runtime+1.5)
 
 # Remove pushing force to back of truck trailer
 station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)

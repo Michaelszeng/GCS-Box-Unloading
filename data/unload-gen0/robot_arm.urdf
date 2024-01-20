@@ -1,0 +1,754 @@
+<?xml version="1.0"?>
+<robot xmlns:drake="http://drake.mit.edu" xmlns:xacro="http://www.ros.org/wiki/xacro" name="kuka">
+    <link name="base_link"></link>
+    <joint name="base_link_to_base" type="fixed">
+        <parent link="base_link" />
+        <child link="arm_base" />
+        <origin rpy="0.0 0 0" xyz="0 0 0" />
+    </joint>
+    <link name="arm_base">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="krl70_a0_surface_1.obj" />
+            </geometry>
+            <material name="krl70_a0_surface_1_material">
+                <color
+                    rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="krl70_a0_surface_1.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="50" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+
+    <link name="arm_a1">
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_3.obj" />
+            </geometry>
+            <material name="krl70_a1_surface_3_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_3.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_6.obj" />
+            </geometry>
+            <material name="krl70_a1_part_6_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_6.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_4.obj" />
+            </geometry>
+            <material name="krl70_a1_surface_4_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_4.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_13.obj" />
+            </geometry>
+            <material name="krl70_a1_part_13_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_13.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_8.obj" />
+            </geometry>
+            <material name="krl70_a1_part_8_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_8.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_4.obj" />
+            </geometry>
+            <material name="krl70_a1_part_4_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_4.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_5.obj" />
+            </geometry>
+            <material name="krl70_a1_part_5_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_5.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_3.obj" />
+            </geometry>
+            <material name="krl70_a1_part_3_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_3.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_1.obj" />
+            </geometry>
+            <material name="krl70_a1_surface_1_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_1.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_7.obj" />
+            </geometry>
+            <material name="krl70_a1_part_7_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_7.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_5.obj" />
+            </geometry>
+            <material name="krl70_a1_surface_5_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_5.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_14.obj" />
+            </geometry>
+            <material name="krl70_a1_part_14_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_14.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_9.obj" />
+            </geometry>
+            <material name="krl70_a1_part_9_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_9.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_2.obj" />
+            </geometry>
+            <material name="krl70_a1_surface_2_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_surface_2.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_15.obj" />
+            </geometry>
+            <material name="krl70_a1_part_15_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_15.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_10.obj" />
+            </geometry>
+            <material name="krl70_a1_part_10_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="1.5407439555097886824e-33 0 0"
+                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
+            <geometry>
+                <mesh filename="krl70_a1_part_10.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="50" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+
+    <link name="camera_mast_top">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="camera_mast_top_frame" type="fixed">
+        <origin xyz="0.28570765256881713867 0.063423349522054167648 -1.5078871250152587891"
+            rpy="3.141592653589793116 -8.2087530419469959112e-49 -7.771561172376135226e-16" />
+        <parent link="arm_a1" />
+        <child link="camera_mast_top" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="arm_a2">
+        <visual>
+            <origin xyz="0 0 0"
+                rpy="-5.5511151231257808532e-17 5.5511151231257827021e-17 -1.1102230246251567869e-16" />
+            <geometry>
+                <mesh filename="krl70_a2_surface_1.obj" />
+            </geometry>
+            <material name="krl70_a2_surface_1_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0"
+                rpy="-5.5511151231257808532e-17 5.5511151231257827021e-17 -1.1102230246251567869e-16" />
+            <geometry>
+                <mesh filename="krl70_a2_surface_1.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0.5 0.0 -0.1"
+                rpy="0 0 0" />
+            <mass value="50" />
+            <inertia ixx="0.23" ixy="0.0"
+                ixz="0.0" iyy="2.4"
+                iyz="0.0" izz="2.4" />
+        </inertial>
+    </link>
+
+    <link name="arm_a3">
+        <visual>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_8.obj" />
+            </geometry>
+            <material name="krl70_a3_part_8_material">
+                <color
+                    rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_8.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_5.obj" />
+            </geometry>
+            <material name="krl70_a3_part_5_material">
+                <color
+                    rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_5.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_1.obj" />
+            </geometry>
+            <material name="krl70_a3_part_1_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_1.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_6.obj" />
+            </geometry>
+            <material name="krl70_a3_part_6_material">
+                <color
+                    rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_6.obj" />
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_4.obj" />
+            </geometry>
+            <material name="krl70_a3_part_4_material">
+                <color
+                    rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
+                rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
+            <geometry>
+                <mesh filename="krl70_a3_part_4.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0.030864427454271738116 -0.016399980131314512849 0.21198513183782663472"
+                rpy="0 0 0" />
+            <mass value="50" />
+            <inertia ixx="0.76628668414763190242" ixy="0.11178510733530450105"
+                ixz="0.087892839544429543497" iyy="1.3806179180784203808"
+                iyz="-0.0049170055791110060112" izz="1.0716383689018762482" />
+        </inertial>
+    </link>
+
+    <link name="arm_a4">
+        <visual>
+            <origin xyz="0 0 0"
+                rpy="1.3877783704642742877e-17 -5.5511151231257414102e-17 -5.5511136895607246942e-17" />
+            <geometry>
+                <mesh filename="krl70_a4_part_1.obj" />
+            </geometry>
+            <material name="krl70_a4_part_1_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0"
+                rpy="1.3877783704642742877e-17 -5.5511151231257414102e-17 -5.5511136895607246942e-17" />
+            <geometry>
+                <mesh filename="krl70_a4_part_1.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="-0.00011009440598539983259 0.028101444653209010915 -0.39037704408288848024"
+                rpy="0 0 0" />
+            <mass value="50" />
+            <inertia ixx="2.4684865646591473975" ixy="-0.00014431823090878446677"
+                ixz="-0.0001774880851912655059" iyy="2.4078279510668894048"
+                iyz="0.32674097923367650953" izz="0.23096980997028596083" />
+        </inertial>
+    </link>
+
+    <link name="arm_a5">
+        <visual>
+            <origin xyz="0 0 1.3877787807814456755e-17"
+                rpy="-5.3471295555735060428e-23 -2.7107531667270634148e-17 2.962284378160473545e-30" />
+            <geometry>
+                <mesh filename="krl70_a5_part_1.obj" />
+            </geometry>
+            <material name="krl70_a5_part_1_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 1.3877787807814456755e-17"
+                rpy="-5.3471295555735060428e-23 -2.7107531667270634148e-17 2.962284378160473545e-30" />
+            <geometry>
+                <mesh filename="krl70_a5_part_1.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="7.5009165057020920687e-05 0.034822251053373991236 0.065355301992343559081"
+                rpy="0 0 0" />
+            <mass value="10" />
+            <inertia ixx="0.06458845766603940608" ixy="6.2576785854245072904e-05"
+                ixz="4.0996413523482483755e-05" iyy="0.038408465954688324195"
+                iyz="0.0073209078103269311852" izz="0.062834719263130195399" />
+        </inertial>
+    </link>
+
+    <link name="arm_a6">
+        <visual>
+            <origin xyz="0.031966947383084032275 -2.63103341197057361e-15 0.18499993365743261364"
+                rpy="-1.5707963267948998887 3.9446934240444338375e-15 1.5707963267948124031" />
+            <geometry>
+                <mesh filename="krl70_a5_part_2.obj" />
+            </geometry>
+            <material name="krl70_a5_part_2_material">
+                <color
+                    rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0.031966947383084032275 -2.63103341197057361e-15 0.18499993365743261364"
+                rpy="-1.5707963267948998887 3.9446934240444338375e-15 1.5707963267948124031" />
+            <geometry>
+                <mesh filename="krl70_a5_part_2.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="20" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+
+    <link name="arm_eef">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="arm_eef_frame" type="fixed">
+        <origin xyz="1.1102230246251565404e-16 0 0"
+            rpy="3.141592653589793116 1.1102754813667270018e-16 3.141592653589793116" />
+        <parent link="arm_a6" />
+        <child link="arm_eef" />
+        <axis xyz="0 0 0" />
+    </joint>
+    <frame link="arm_eef" name="arm_eef_frame" rpy="3.141592653589793 0 1.570796326794897" xyz="0.09 0 0"/>
+
+    <joint name="arm_a6" type="revolute">
+        <origin xyz="6.6613381477509392425e-16 0.18499993365743216955 0.031966947383084538814"
+            rpy="-1.5707963267948998887 9.8985358680999997027e-14 3.1415926535897895633" />
+        <parent link="arm_a5" />
+        <child link="arm_a6" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <joint_properties friction="0.0" />
+    </joint>
+
+    <joint name="arm_a5" type="revolute">
+        <origin xyz="1.1102230246251565404e-16 0.032005644848159514604 -0.6983013064287919569"
+            rpy="-1.570796326794896558 -3.1990843465403325603e-14 -3.1415926535897877869" />
+        <parent link="arm_a4" />
+        <child link="arm_a5" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <joint_properties friction="0.0" />
+    </joint>
+
+    <joint name="arm_a4" type="revolute">
+        <origin xyz="0.33718524488469592271 -0.050654860849208116491 0.18952268439657782295"
+            rpy="-1.5707962593964615028 1.4453644142718174695e-07 1.5707963267949058839" />
+        <parent link="arm_a3" />
+        <child link="arm_a4" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <joint_properties friction="0.0" />
+    </joint>
+
+    <joint name="arm_a3" type="revolute">
+        <origin xyz="0.88999054976897606917 -2.2204460492503130808e-16 -0.082999993138187358466"
+            rpy="1.9351435932444885391e-28 3.3306690738754563092e-16 -2.0150547896202045354e-14" />
+        <parent link="arm_a2" />
+        <child link="arm_a3" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <joint_properties friction="0.0" />
+    </joint>
+
+    <joint name="arm_a2" type="revolute">
+        <origin xyz="-0.10723578937805347544 0.17450280203385484801 -0.40497676867967002945"
+            rpy="1.570796326794896558 -2.2204460492503431562e-16 1.570796326794896558" />
+        <parent link="arm_a1" />
+        <child link="arm_a2" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <joint_properties friction="0.0" />
+    </joint>
+
+    <joint name="arm_a1" type="revolute">
+        <origin xyz="6.9388939039072276073e-18 1.0408340855860842566e-17 0.16999995708465576172"
+            rpy="-3.141592653589793116 1.7783981468004833182e-49 1.570796326794896336" />
+        <parent link="arm_base" />
+        <child link="arm_a1" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <joint_properties friction="0.0" />
+    </joint>
+
+    <!-- <joint name="arm_base" type="fixed">
+        <origin xyz="0 0 0" rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="arm_base" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <joint_properties friction="0.0" />
+    </joint> -->
+
+    <transmission name="tran_a6">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a6">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a6">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <transmission name="tran_a5">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a5">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a5">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <transmission name="tran_a4">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a4">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a4">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <transmission name="tran_a3">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a3">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a3">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <transmission name="tran_a2">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a2">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a2">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <transmission name="tran_a1">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a1">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a1">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <!-- <drake:collision_filter_group name="base">
+        <drake:member link="base"/>
+        <drake:ignored_collision_filter_group name="arm_a1"/>
+    </drake:collision_filter_group>
+
+    <drake:collision_filter_group name="arm_a1">
+        <drake:member link="arm_a1"/>
+        <drake:ignored_collision_filter_group name="base"/>
+    </drake:collision_filter_group> -->
+
+    <drake:collision_filter_group name="arm_a4">
+        <drake:member link="arm_a4"/>
+        <drake:ignored_collision_filter_group name="arm_a6"/>
+    </drake:collision_filter_group>
+
+    <drake:collision_filter_group name="arm_a6">
+        <drake:member link="arm_a6"/>
+        <drake:ignored_collision_filter_group name="arm_a4"/>
+    </drake:collision_filter_group>
+
+
+</robot>

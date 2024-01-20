@@ -1,0 +1,300 @@
+<?xml version="1.0"?>
+<robot xmlns:drake="http://drake.mit.edu" xmlns:xacro="http://www.ros.org/wiki/xacro" name="unload-gen0">
+    <link name="base_link"></link>
+    <joint name="base_link_to_base" type="fixed">
+        <parent link="base_link" />
+        <child link="base" />
+        <origin rpy="0.0 0 0" xyz="0 0 0" />
+    </joint>
+    <link name="base">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="base_detailed.obj" />
+            </geometry>
+            <material name="base_material">
+                <color
+                    rgba="0.2 0.2 0.2 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-2.20211 -0.98 -0.54244" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_main.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="-1.1684908387213708281 -0.16185090715719005483 0.42155162070762342008"
+                rpy="0 0 0" />
+            <mass value="10000" />
+            <inertia ixx="453.96981268124318376" ixy="54.195915710604772642"
+                ixz="157.2928435522204893" iyy="781.50089690508013973" iyz="-52.990108637161640104"
+                izz="608.83947509978929702" />
+        </inertial>
+    </link>
+
+    <link name="base_front_left">
+        <collision>
+            <origin xyz="-2.58 -1.64 -0.5" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_mid_block.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="base_front_left_frame" type="fixed">
+        <origin xyz="0.38392859999999984222 0.66357499999999980389 -0.042799000000000003707"
+            rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="base_front_left" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="conveyor_front_right">
+        <collision>
+            <origin xyz="-2.59293 0 -0.51643" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_conveyor.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="conveyor_front_right_frame" type="fixed">
+        <origin xyz="0.38392859999999995324 -0.98107500000000025242 0.27043242000000000669"
+            rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="conveyor_front_right" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="conveyor_rear_right">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="conveyor_rear_right_frame" type="fixed">
+        <origin xyz="-2.2093714000000002073 -0.98107500000000047446 0.27043242000000000669"
+            rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="conveyor_rear_right" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="base_rear_left">
+        <collision>
+            <origin xyz="-0.13 -1.5 -0.08" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_control_box.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="base_rear_left_frame" type="fixed">
+        <origin xyz="-2.0704958077069952616 0.50494919050455144838 -0.45839299634670249706"
+            rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="base_rear_left" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="base_top">
+        <collision>
+            <origin xyz="-2.2 -0.98 -1.87" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_top.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="base_top_frame" type="fixed">
+        <origin xyz="-3.4254225040659449532e-17 0 1.6163685799999993886" rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="base_top" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="caster_center">
+        <collision>
+            <origin xyz="-0.4 -1.15 -0.075" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_light.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="caster_center_frame" type="fixed">
+        <origin xyz="-1.8061110999999998583 0.17099999999999981881 -0.46624239999999972373"
+            rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="caster_center" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="mobile_base">
+        <collision>
+            <origin xyz="-2.335 -0.8225 -0.126" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_estop.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="mobile_base_frame" type="fixed">
+        <origin xyz="0.12992859999999992193 -0.15826740000000016906 -0.41559399999999990793"
+            rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="mobile_base" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="base_footprint">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="base_footprint_frame" type="fixed">
+        <origin xyz="-1.3877787807814456755e-17 0 -0.5424423999999997692" rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="base_footprint" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="left_motor">
+        <visual>
+            <origin xyz="0.12992859999999994969 0.41559400000000012998 -0.66749269999999971681"
+                rpy="1.570796326794896558 -0 3.141592653589793116" />
+            <geometry>
+                <mesh filename="wheel.obj" />
+            </geometry>
+            <material name="wheel_material">
+                <color
+                    rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0.12992859999999994969 0.41559400000000012998 -0.66749269999999971681"
+                rpy="1.570796326794896558 -0 3.141592653589793116" />
+            <geometry>
+                <mesh filename="wheel.obj" />
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_dynamic value="0.85"/>
+                <drake:mu_static value="0.85"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+
+    <link name="wheel_width_left">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="wheel_width_left_frame" type="fixed">
+        <origin xyz="0 0 0.030994999999999994778"
+            rpy="1.3444861584195656743e-16 -4.8607020668860664401e-48 -6.5351466491296899345e-64" />
+        <parent link="left_motor" />
+        <child link="wheel_width_left" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <joint name="left_wheel" type="fixed">
+        <origin xyz="0.12992859999999992193 0.66749269999999982783 -0.41559399999999990793"
+            rpy="1.570796326794896558 -0 3.141592653589793116" />
+        <parent link="base" />
+        <child link="left_motor" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" />
+        <joint_properties friction="0.0" />
+    </joint>
+
+    <link name="right_motor">
+        <visual>
+            <origin xyz="0.12992859999999994969 0.41559400000000018549 -0.66749269999999982783"
+                rpy="1.570796326794896558 -0 -3.141592653589793116" />
+            <geometry>
+                <mesh filename="wheel.obj" />
+            </geometry>
+            <material name="wheel_material">
+                <color
+                    rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0.12992859999999994969 0.41559400000000018549 -0.66749269999999982783"
+                rpy="1.570796326794896558 -0 -3.141592653589793116" />
+            <geometry>
+                <mesh filename="wheel.obj" />
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_dynamic value="0.85"/>
+                <drake:mu_static value="0.85"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+
+    <link name="wheel_width_right">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="wheel_width_right_frame" type="fixed">
+        <origin xyz="0 1.1102230246251565404e-16 0.030994999999999772733"
+            rpy="1.3444861584195703581e-16 -8.6281661508548593175e-32 7.5277512622293788098e-47" />
+        <parent link="right_motor" />
+        <child link="wheel_width_right" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <joint name="right_wheel" type="fixed">
+        <origin xyz="0.12992859999999992193 -0.98402750000000027697 -0.41559400000000018549"
+            rpy="1.57079632679489678 -0 -6.1629758220391558245e-32" />
+        <parent link="base" />
+        <child link="right_motor" />
+        <axis xyz="0 0 1" />
+        <limit effort="1" velocity="20" />
+        <joint_properties friction="0.0" />
+    </joint>
+
+</robot>

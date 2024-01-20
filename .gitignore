@@ -1,2 +1,5 @@
 src/env
-data/unload-gen0
+/data/unload-gen0/*.stl
+/data/unload-gen0/*.part
+/data/unload-gen0/*.obj
+/data/unload-gen0/*.json
