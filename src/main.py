@@ -50,7 +50,8 @@ close_button_str = "Close"
 this_drake_module_name = "cwd"
 box_randomization_runtime = 1.15
 sim_runtime = box_randomization_runtime + 4.0
-NUM_BOXES = 40
+# NUM_BOXES = 40
+NUM_BOXES = 1
 
 np.random.seed(seed)
 
@@ -95,25 +96,16 @@ scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
 
 
-# controller_plant = MultibodyPlant(time_step=0.001)
-# parser = Parser(plant)
-# ConfigureParser(parser)
-# Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
-# controller_plant.Finalize()
-# num_robot_positions = controller_plant.num_positions()
-# print(f"num_robot_positions: {num_robot_positions}")
-# controller = builder.AddSystem(InverseDynamicsController(controller_plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
-# builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
-# # builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
-# # builder.Connect(motion_planner.GetOutputPort("iiwa_command"), controller.GetInputPort("desired_state"))
-# # builder.Connect(motion_planner.GetOutputPort("iiwa_acceleration"), controller.GetInputPort("desired_acceleration"))
-
-num_robot_positions = plant.num_positions()
+controller_plant = MultibodyPlant(time_step=0.001)
+parser = Parser(plant)
+ConfigureParser(parser)
+Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
+controller_plant.Finalize()
+num_robot_positions = controller_plant.num_positions()
 print(f"num_robot_positions: {num_robot_positions}")
-# controller = builder.AddSystem(InverseDynamicsController(plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
-# controller = builder.AddSystem(PidController([300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions))
-# builder.Connect(controller.GetOutputPort("control"), station.GetInputPort("kuka.actuation"))
-# builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
+controller = builder.AddSystem(InverseDynamicsController(controller_plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
+builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
+builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
 # builder.Connect(motion_planner.GetOutputPort("iiwa_command"), controller.GetInputPort("desired_state"))
 # builder.Connect(motion_planner.GetOutputPort("iiwa_acceleration"), controller.GetInputPort("desired_acceleration"))
 
@@ -132,6 +124,7 @@ simulator = Simulator(diagram)
 simulator_context = simulator.get_mutable_context()
 station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
+controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 
 
 ####################################
@@ -144,7 +137,8 @@ plt.show()
 
 # generate_source_iris_regions()
 
-# station.GetInputPort("desired_state").FixValue(station_context, np.zeros(6))
+controller.GetInputPort("desired_state").FixValue(controller_context, np.ones(num_robot_positions*2))
+controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(num_robot_positions))
 
 
 meshcat.StartRecording()

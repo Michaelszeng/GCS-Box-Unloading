@@ -123,7 +123,7 @@ robot_yaml = f"""
 directives:
 - add_model:
     name: kuka
-    file: file://{absolute_path_to_robot_base}
+    file: file://{absolute_path_to_robot_arm}
     default_joint_positions:
         arm_a6: [0.0]
         arm_a5: [0.0]

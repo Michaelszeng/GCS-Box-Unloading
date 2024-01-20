@@ -113,9 +113,9 @@
 
     <link name="base_top">
         <collision>
-            <origin xyz="-2.2 -0.98 -1.87" rpy="0 -0 0" />
+            <origin xyz="-2.2 -0.98 -2.165" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="Base_split_top.obj" />
+                <mesh filename="Base_split_top_mid.obj" />
             </geometry>
         </collision>
         <inertial>
@@ -128,6 +128,46 @@
         <origin xyz="-3.4254225040659449532e-17 0 1.6163685799999993886" rpy="0 -0 0" />
         <parent link="base" />
         <child link="base_top" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="base_top_right">
+        <collision>
+            <origin xyz="-2.2 -0.98 -2.165" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_top_right.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="base_top_right_frame" type="fixed">
+        <origin xyz="-3.4254225040659449532e-17 0 1.6163685799999993886" rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="base_top_right" />
+        <axis xyz="0 0 0" />
+    </joint>
+
+    <link name="base_top_left">
+        <collision>
+            <origin xyz="-2.2 -0.98 -2.165" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="Base_split_top_left.obj" />
+            </geometry>
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <mass value="1e-9" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>
+    </link>
+    <joint name="base_top_left_frame" type="fixed">
+        <origin xyz="-3.4254225040659449532e-17 0 1.6163685799999993886" rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="base_top_left" />
         <axis xyz="0 0 0" />
     </joint>
 
