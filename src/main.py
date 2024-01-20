@@ -106,8 +106,10 @@ print(f"num_robot_positions: {num_robot_positions}")
 controller = builder.AddSystem(InverseDynamicsController(controller_plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
 builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
-# builder.Connect(motion_planner.GetOutputPort("iiwa_command"), controller.GetInputPort("desired_state"))
-# builder.Connect(motion_planner.GetOutputPort("iiwa_acceleration"), controller.GetInputPort("desired_acceleration"))
+
+# TEMPORARY
+builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("desired_state"))
+# builder.Connect(motion_planner.GetOutputPort("SOMETHING"), controller.GetInputPort("desired_acceleration"))
 
 
 ### Finalizing diagram setup
@@ -137,7 +139,7 @@ plt.show()
 
 # generate_source_iris_regions()
 
-controller.GetInputPort("desired_state").FixValue(controller_context, np.ones(num_robot_positions*2))
+# TEMPORARY
 controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(num_robot_positions))
 
 
