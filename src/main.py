@@ -50,8 +50,7 @@ close_button_str = "Close"
 this_drake_module_name = "cwd"
 box_randomization_runtime = 1.15
 sim_runtime = box_randomization_runtime + 4.0
-# NUM_BOXES = 40
-NUM_BOXES = 1
+NUM_BOXES = 40
 
 np.random.seed(seed)
 
@@ -156,7 +155,7 @@ for joint_idx in plant.GetJointIndices(robot_model_idx):
     robot_joint.Lock(plant_context)
 
 
-generate_source_iris_regions()
+generate_source_iris_regions(meshcat)
 
 
 # Set poses for all boxes
