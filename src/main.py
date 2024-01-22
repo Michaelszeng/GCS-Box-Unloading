@@ -136,9 +136,6 @@ simulator.set_target_realtime_rate(1)
 simulator.set_publish_every_time_step(True)
 plt.show()
 
-
-# generate_source_iris_regions()
-
 # TEMPORARY
 controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(num_robot_positions))
 
@@ -153,10 +150,14 @@ plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), Rigi
 # Move Robot back
 robot_model_idx = plant.GetModelInstanceByName("robot_base")  # ModelInstanceIndex
 robot_body_idx = plant.GetBodyIndices(robot_model_idx)[0]  # BodyIndex
-plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), RigidTransform([-2,0,0.59]))
-robot_joint_idx = plant.GetJointIndices(robot_model_idx)[0]  # JointIndex object
-robot_joint = plant.get_joint(robot_joint_idx)  # Joint object
-robot_joint.Lock(plant_context)
+plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), RigidTransform([-2,0,0.58]))
+for joint_idx in plant.GetJointIndices(robot_model_idx):
+    robot_joint = plant.get_joint(joint_idx)  # Joint object
+    robot_joint.Lock(plant_context)
+
+
+generate_source_iris_regions()
+
 
 # Set poses for all boxes
 for i in range(NUM_BOXES):

@@ -30,7 +30,6 @@ directives:
 - add_model:
     name: robot_base
     file: file://{absolute_path_to_robot_base}
-
 - add_model:
     name: kuka
     file: file://{absolute_path_to_robot_arm}
@@ -41,58 +40,47 @@ directives:
         arm_a3: [1.5]
         arm_a2: [-1.8]
         arm_a1: [0.0]
-
 - add_weld:
     parent: robot_base::base
     child: kuka::base_link        
 
-    
 
 - add_model: 
     name: Truck_Trailer_Floor
     file: file://{absolute_path_to_truck_trailer_floor}
-
 - add_weld:
     parent: world
     child: Truck_Trailer_Floor::Truck_Trailer_Floor
 
 
-
 - add_model: 
     name: Truck_Trailer_Right_Side
     file: file://{absolute_path_to_truck_trailer_right_side}
-
 - add_weld:
     parent: world
     child: Truck_Trailer_Right_Side::Truck_Trailer_Right_Side
 
 
-
 - add_model: 
     name: Truck_Trailer_Left_Side
     file: file://{absolute_path_to_truck_trailer_left_side}
-
 - add_weld:
     parent: world
     child: Truck_Trailer_Left_Side::Truck_Trailer_Left_Side
     
     
-
 - add_model: 
     name: Truck_Trailer_Roof
     file: file://{absolute_path_to_truck_trailer_roof}
 
 
-
 - add_model: 
     name: Truck_Trailer_Back
     file: file://{absolute_path_to_truck_trailer_back}
-
 - add_weld:
     parent: world
     child: Truck_Trailer_Back::Truck_Trailer_Back
 """
-
 
 
 
@@ -101,7 +89,6 @@ f"""
 - add_model: 
     name: Truck_Trailer_Back
     file: file://{absolute_path_to_truck_trailer_back}
-
 - add_weld:
     parent: world
     child: Truck_Trailer_Back::Truck_Trailer_Back
@@ -115,6 +102,38 @@ model_drivers:
     kuka: !ForceDriver {{}}  # ForceDriver allows access to desired_state and desired_acceleration input ports for station (results in better traj following)
 """,
 ""
+)
+
+scenario_yaml_for_source_regions = scenario_yaml_for_source_regions.replace(
+f"""
+- add_model: 
+    name: Truck_Trailer_Roof
+    file: file://{absolute_path_to_truck_trailer_roof}
+""",
+f"""
+- add_model: 
+    name: Truck_Trailer_Roof
+    file: file://{absolute_path_to_truck_trailer_roof}
+- add_weld:
+    parent: world
+    child: Truck_Trailer_Roof::Truck_Trailer_Roof
+"""
+)
+
+scenario_yaml_for_source_regions = scenario_yaml_for_source_regions.replace(
+f"""
+- add_model:
+    name: robot_base
+    file: file://{absolute_path_to_robot_base}
+""",
+f"""
+- add_model:
+    name: robot_base
+    file: file://{absolute_path_to_robot_base}
+- add_weld:
+    parent: world
+    child: robot_base::base_link    
+"""
 )
 
 

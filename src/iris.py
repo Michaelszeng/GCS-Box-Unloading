@@ -34,7 +34,6 @@ def generate_source_iris_regions():
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
     parser = Parser(plant)
-    ConfigureParser(parser)
     print(scenario_yaml_for_source_regions)
     parser.AddModelsFromString(scenario_yaml_for_source_regions, ".dmd.yaml")
     plant.Finalize()
@@ -44,10 +43,9 @@ def generate_source_iris_regions():
 
     plant_context = plant.GetMyContextFromRoot(context)
 
-    print("plant made")
-
     options = IrisOptions()
     options.num_collision_infeasible_samples = 1
     options.require_sample_point_is_contained = True
     region = IrisInConfigurationSpace(plant, plant_context, options)
+    print(f"region volume: {region.CalcVolumeViaSampling()}")
     

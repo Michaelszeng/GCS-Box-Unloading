@@ -5,6 +5,7 @@
         <parent link="base_link" />
         <child link="base" />
         <origin rpy="0.0 0 0" xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
     <link name="base">
         <visual>
@@ -52,6 +53,7 @@
         <parent link="base" />
         <child link="base_front_left" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="conveyor_front_right">
@@ -73,6 +75,7 @@
         <parent link="base" />
         <child link="conveyor_front_right" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="conveyor_rear_right">
@@ -88,6 +91,7 @@
         <parent link="base" />
         <child link="conveyor_rear_right" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="base_rear_left">
@@ -109,6 +113,7 @@
         <parent link="base" />
         <child link="base_rear_left" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="base_top">
@@ -129,6 +134,7 @@
         <parent link="base" />
         <child link="base_top" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="base_top_right">
@@ -149,6 +155,7 @@
         <parent link="base" />
         <child link="base_top_right" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="base_top_left">
@@ -169,6 +176,7 @@
         <parent link="base" />
         <child link="base_top_left" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="caster_center">
@@ -190,6 +198,7 @@
         <parent link="base" />
         <child link="caster_center" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="mobile_base">
@@ -211,6 +220,7 @@
         <parent link="base" />
         <child link="mobile_base" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="base_footprint">
@@ -225,6 +235,7 @@
         <parent link="base" />
         <child link="base_footprint" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="left_motor">
@@ -270,6 +281,7 @@
         <parent link="left_motor" />
         <child link="wheel_width_left" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <joint name="left_wheel" type="fixed">
@@ -280,6 +292,7 @@
         <axis xyz="0 0 1" />
         <limit effort="1" velocity="20" />
         <joint_properties friction="0.0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <link name="right_motor">
@@ -325,6 +338,7 @@
         <parent link="right_motor" />
         <child link="wheel_width_right" />
         <axis xyz="0 0 0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
     <joint name="right_wheel" type="fixed">
@@ -335,6 +349,7 @@
         <axis xyz="0 0 1" />
         <limit effort="1" velocity="20" />
         <joint_properties friction="0.0" />
+        <limit lower="0.0" upper="0.0" />
     </joint>
 
 </robot>
