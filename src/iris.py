@@ -6,8 +6,12 @@ from pydrake.all import (
     IrisOptions,
     Hyperellipsoid,
     HPolyhedron,
+    IrisFromCliqueCoverOptions,
+    IrisInConfigurationSpaceFromCliqueCover,
+    SceneGraphCollisionChecker,
     RandomGenerator,
     PointCloud,
+    RobotDiagramBuilder,
     MathematicalProgram,
     Parser,
     PositionConstraint,
@@ -27,7 +31,7 @@ from scenario import scenario_yaml_for_source_regions
 import time
 import numpy as np
 
-def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample=1000):
+def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample=5000):
     """
     Plot small spheres in the volume of each region. (we are using forward
     kinematics to return from configuration space to task space.)
@@ -36,6 +40,14 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
     ee_frame = plant.GetFrameByName("arm_eef")
 
     rng = RandomGenerator(seed)
+
+    colors = [Rgba(0.5,0.0,0.0,0.5),
+              Rgba(0.0,0.5,0.0,0.5),
+              Rgba(0.0,0.0,0.5,0.5),
+              Rgba(0.5,0.5,0.0,0.5),
+              Rgba(0.5,0.0,0.5,0.5),
+              Rgba(0.0,0.5,0.5,0.5),
+              ]
 
     for i in range(len(regions)):
         region = regions[i]
@@ -59,7 +71,7 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
         xyzs = np.array(xyzs)
         pc = PointCloud(len(xyzs))
         pc.mutable_xyzs()[:] = xyzs.T
-        meshcat.SetObject(f"region {i}", pc, point_size=0.01, rgba=Rgba(0.5,0.0,0.0,0.5))
+        meshcat.SetObject(f"region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
 
 
@@ -70,7 +82,7 @@ def generate_source_iris_regions(meshcat, robot_pose, visualize_iris_scene=True)
     trailer (excluding the back wall).
     """
 
-    # Create new MBP containing just robot and truck trailer walls
+    # # Create new MBP containing just robot and truck trailer walls
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
     parser = Parser(plant)
@@ -93,9 +105,8 @@ def generate_source_iris_regions(meshcat, robot_pose, visualize_iris_scene=True)
     options = IrisOptions()
     options.num_collision_infeasible_samples = 1
     options.require_sample_point_is_contained = True
-    # region = IrisInConfigurationSpace(plant, plant_context, options)
-
-    region = HPolyhedron.MakeBox([-0.1,-0.1,-0.1,1.2,-2.1,-0.1], [0.1,0.1,0.1,1.8,-1.5,0.1])
+    options.iteration_limit = 1  # TEMPORARY
+    region = IrisInConfigurationSpace(plant, plant_context, options)
 
     regions.append(region)
 
@@ -105,25 +116,32 @@ def generate_source_iris_regions(meshcat, robot_pose, visualize_iris_scene=True)
 
     # params = dict(edge_step_size=0.125)
     # builder = RobotDiagramBuilder()
-    # params["robot_model_instances"] = builder.parser().AddModelsFromString(
-    #     limits_urdf, "urdf"
-    # )
-    # params["model"] = builder.Build()
+    # diagram_builder = builder.builder()
+    # params["robot_model_instances"] = builder.parser().AddModelsFromString(scenario_yaml_for_source_regions, ".dmd.yaml")
+    # plant = builder.plant()
+    # scene_graph = builder.scene_graph()
+    # plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), robot_pose)
+    # if visualize_iris_scene:
+    #     meshcat2 = StartMeshcat()
+    #     visualizer = MeshcatVisualizer.AddToBuilder(diagram_builder, scene_graph, meshcat2)
+    # diagram = builder.Build()
+    # params["model"] = diagram
+    # context = diagram.CreateDefaultContext()
+    # plant_context = plant.GetMyContextFromRoot(context)
     # checker = SceneGraphCollisionChecker(**params)
 
-    # options = mut.IrisFromCliqueCoverOptions()
-    # options.num_builders = 3  # set to 1 fewer than number of cores on computer
+    # options = IrisFromCliqueCoverOptions()
+    # options.num_builders = 7  # set to 1 fewer than number of cores on computer
     # options.num_points_per_coverage_check = 1000
     # options.num_points_per_visibility_round = 500  # 1000
     # options.coverage_termination_threshold = 0.2  # set low threshold at first for faster debugging
 
-    # # import logging
-    # # logger = logging.getLogger("drake")
-    # # logger.setLevel(logging.DEBUG)
-    # # from pydrake.common import configure_logging
-    # # configure_logging()
-
-    # sets = mut.IrisInConfigurationSpaceFromCliqueCover(
+    # sets = IrisInConfigurationSpaceFromCliqueCover(
     #     checker=checker, options=options, sets=[]
     # )
+
+    # print(f"sets: {sets}")
+    # print(type(sets))
+
+    # test_iris_region(plant, plant_context, meshcat, sets)
     
