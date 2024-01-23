@@ -101,7 +101,6 @@ ConfigureParser(parser)
 Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
 num_robot_positions = controller_plant.num_positions()
-print(f"num_robot_positions: {num_robot_positions}")
 controller = builder.AddSystem(InverseDynamicsController(controller_plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
 builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
