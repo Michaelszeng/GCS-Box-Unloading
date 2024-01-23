@@ -120,24 +120,6 @@ f"""
 """
 )
 
-scenario_yaml_for_source_regions = scenario_yaml_for_source_regions.replace(
-f"""
-- add_model:
-    name: robot_base
-    file: file://{absolute_path_to_robot_base}
-""",
-f"""
-- add_model:
-    name: robot_base
-    file: file://{absolute_path_to_robot_base}
-- add_weld:
-    parent: world
-    child: robot_base::base_link    
-"""
-)
-
-
-
 robot_yaml = f"""
 directives:
 - add_model:

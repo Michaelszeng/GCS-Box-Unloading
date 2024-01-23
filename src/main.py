@@ -16,7 +16,7 @@ from pydrake.all import (
     ConstantVectorSource,
     AbstractValue,
     ContactModel,
-    Parser
+    Parser,
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -146,16 +146,17 @@ trailer_roof_model_idx = plant.GetModelInstanceByName("Truck_Trailer_Roof")  # M
 trailer_roof_body_idx = plant.GetBodyIndices(trailer_roof_model_idx)[0]  # BodyIndex
 plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
 
-# Move Robot back
+# Move Robot to start position
 robot_model_idx = plant.GetModelInstanceByName("robot_base")  # ModelInstanceIndex
 robot_body_idx = plant.GetBodyIndices(robot_model_idx)[0]  # BodyIndex
-plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), RigidTransform([-2,0,0.58]))
+robot_pose = RigidTransform([-1.0,0.0,0.58])
+plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), robot_pose)
 for joint_idx in plant.GetJointIndices(robot_model_idx):
     robot_joint = plant.get_joint(joint_idx)  # Joint object
     robot_joint.Lock(plant_context)
 
 
-generate_source_iris_regions(meshcat)
+generate_source_iris_regions(meshcat, robot_pose)
 
 
 # Set poses for all boxes
