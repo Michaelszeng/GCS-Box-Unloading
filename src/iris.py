@@ -9,6 +9,8 @@ from pydrake.all import (
     IrisFromCliqueCoverOptions,
     IrisInConfigurationSpaceFromCliqueCover,
     SceneGraphCollisionChecker,
+    SaveIrisRegionsYamlFile,
+    LoadIrisRegionsYamlFile,
     RandomGenerator,
     PointCloud,
     RobotDiagramBuilder,
@@ -22,7 +24,7 @@ from pydrake.all import (
     InverseKinematics,
     MeshcatVisualizer,
     StartMeshcat,
-    Simulator
+    Simulator,
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
@@ -30,8 +32,9 @@ from scenario import scenario_yaml_for_source_regions
 
 import time
 import numpy as np
+from pathlib import Path
 
-def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample=5000):
+def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample=50000):
     """
     Plot small spheres in the volume of each region. (we are using forward
     kinematics to return from configuration space to task space.)
@@ -47,6 +50,13 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
               Rgba(0.5,0.5,0.0,0.5),
               Rgba(0.5,0.0,0.5,0.5),
               Rgba(0.0,0.5,0.5,0.5),
+              Rgba(0.2,0.2,0.2,0.5),
+              Rgba(0.5,0.2,0.0,0.5),
+              Rgba(0.2,0.5,0.0,0.5),
+              Rgba(0.5,0.0,0.2,0.5),
+              Rgba(0.2,0.0,0.5,0.5),
+              Rgba(0.0,0.5,0.2,0.5),
+              Rgba(0.0,0.2,0.5,0.5),
               ]
 
     for i in range(len(regions)):
@@ -75,45 +85,12 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
 
 
 
-def generate_source_iris_regions(meshcat, robot_pose, visualize_iris_scene=True):
+def generate_source_iris_regions(meshcat, robot_pose, use_previous_saved_sets=True, visualize_iris_scene=True):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck
     trailer (excluding the back wall).
     """
-
-    # # Create new MBP containing just robot and truck trailer walls
-    # builder = DiagramBuilder()
-    # plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
-    # parser = Parser(plant)
-    # model_instances = parser.AddModelsFromString(scenario_yaml_for_source_regions, ".dmd.yaml")
-    # print(f"model_instances: {model_instances}")
-    # plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), robot_pose)
-    # plant.Finalize()
-    # if visualize_iris_scene:
-    #     meshcat2 = StartMeshcat()
-    #     visualizer = MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat2)
-    # diagram = builder.Build()
-    # context = diagram.CreateDefaultContext()
-    # plant_context = plant.GetMyContextFromRoot(context)
-    # if visualize_iris_scene:
-    #     simulator = Simulator(diagram)
-    #     simulator.AdvanceTo(0.1)
-
-    # # Run IRIS
-    # regions = []
-    # options = IrisOptions()
-    # options.num_collision_infeasible_samples = 1
-    # options.require_sample_point_is_contained = True
-    # options.iteration_limit = 1  # TEMPORARY
-    # region = IrisInConfigurationSpace(plant, plant_context, options)
-
-    # regions.append(region)
-
-    # test_iris_region(plant, plant_context, meshcat, regions)
-
-
-
     params = dict(edge_step_size=0.125)
     robot_diagram_builder = RobotDiagramBuilder()
     diagram_builder = robot_diagram_builder.builder()
@@ -137,12 +114,19 @@ def generate_source_iris_regions(meshcat, robot_pose, visualize_iris_scene=True)
     options.coverage_termination_threshold = 0.2  # set low threshold at first for faster debugging
     options.minimum_clique_size = 15
 
+    if use_previous_saved_sets:
+        print("Using saved iris regions.")
+        sets = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
+        sets = [hpolytope for hpolytope in sets.values()]
+    else:
+        sets = []
+
     sets = IrisInConfigurationSpaceFromCliqueCover(
-        checker=checker, options=options, sets=[]
+        checker=checker, options=options, sets=sets
     )
 
-    print(f"sets: {sets}")
-    print(type(sets))
+    sets_dict ={f"set{i}" : sets[i] for i in range(len(sets))}
+    SaveIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"), sets_dict)
 
     test_iris_region(plant, plant_context, meshcat, sets)
     
