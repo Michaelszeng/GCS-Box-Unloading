@@ -85,7 +85,7 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
 
 
 
-def generate_source_iris_regions(meshcat, robot_pose, use_previous_saved_sets=True, visualize_iris_scene=True):
+def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=True, visualize_iris_scene=True):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck

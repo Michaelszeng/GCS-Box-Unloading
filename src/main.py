@@ -155,9 +155,6 @@ for joint_idx in plant.GetJointIndices(robot_model_idx):
     robot_joint.Lock(plant_context)
 
 
-generate_source_iris_regions(meshcat, robot_pose)
-
-
 # Set poses for all boxes
 for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
@@ -203,8 +200,15 @@ simulator.AdvanceTo(box_randomization_runtime+1.5)
 
 # Remove pushing force to back of truck trailer
 station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
-
 simulator.AdvanceTo(sim_runtime)
+
+box_poses = []
+for i in range(NUM_BOXES):
+    box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
+    box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+    box_poses.append(plant.GetFreeBodyPose(plant_context, box_body_idx))
+
+generate_source_iris_regions(meshcat, robot_pose, box_poses)
 
 meshcat.PublishRecording()
 print(f"{meshcat.web_url()}/download")
