@@ -83,20 +83,7 @@ directives:
 """
 
 
-
-scenario_yaml_for_source_regions = scenario_yaml.replace(
-f"""
-- add_model: 
-    name: Truck_Trailer_Back
-    file: file://{absolute_path_to_truck_trailer_back}
-- add_weld:
-    parent: world
-    child: Truck_Trailer_Back::Truck_Trailer_Back
-""",
-""
-)
-
-scenario_yaml_for_source_regions = scenario_yaml_for_source_regions.replace(
+scenario_yaml_for_iris = scenario_yaml.replace(
 f"""
 model_drivers:
     kuka: !ForceDriver {{}}  # ForceDriver allows access to desired_state and desired_acceleration input ports for station (results in better traj following)
@@ -104,7 +91,7 @@ model_drivers:
 ""
 )
 
-scenario_yaml_for_source_regions = scenario_yaml_for_source_regions.replace(
+scenario_yaml_for_iris = scenario_yaml_for_iris.replace(
 f"""
 - add_model: 
     name: Truck_Trailer_Roof
@@ -119,6 +106,7 @@ f"""
     child: Truck_Trailer_Roof::Truck_Trailer_Roof
 """
 )
+
 
 robot_yaml = f"""
 directives:

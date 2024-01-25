@@ -28,8 +28,9 @@ from pydrake.all import (
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
-from scenario import scenario_yaml_for_source_regions
+from scenario import scenario_yaml_for_iris
 
+import os
 import time
 import numpy as np
 from pathlib import Path
@@ -85,7 +86,7 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
 
 
 
-def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=True, visualize_iris_scene=True):
+def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=False, visualize_iris_scene=True):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck
@@ -94,8 +95,31 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
     params = dict(edge_step_size=0.125)
     robot_diagram_builder = RobotDiagramBuilder()
     diagram_builder = robot_diagram_builder.builder()
-    params["robot_model_instances"] = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_source_regions, ".dmd.yaml")
+
+    # Add boxes to scenario yaml
+    yaml = scenario_yaml_for_iris
+    for i in range(len(box_poses)):
+        relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
+        absolute_path_to_box = os.path.abspath(relative_path_to_box)
+
+        yaml += f"""
+- add_model: 
+    name: Box_{i}
+    file: file://{absolute_path_to_box}
+"""
+
+    params["robot_model_instances"] = robot_diagram_builder.parser().AddModelsFromString(yaml, ".dmd.yaml")
     plant = robot_diagram_builder.plant()
+
+    # Set Pose of each box (from simulating the box randomization) and weld
+    for i in range(len(box_poses)):
+        box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
+        box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+        box_frame = plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
+
+        # plant.SetDefaultFreeBodyPose(plant.get_body(box_body_idx), box_poses[i])
+        plant.WeldFrames(plant.world_frame(), box_frame, box_poses[i])
+
     scene_graph = robot_diagram_builder.scene_graph()
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), robot_pose)
     if visualize_iris_scene:
@@ -105,8 +129,8 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
     params["model"] = diagram
     context = diagram.CreateDefaultContext()
     plant_context = plant.GetMyContextFromRoot(context)
-    checker = SceneGraphCollisionChecker(**params)
 
+    checker = SceneGraphCollisionChecker(**params)
     options = IrisFromCliqueCoverOptions()
     options.num_builders = 7  # set to 1 fewer than number of cores on computer
     options.num_points_per_coverage_check = 1000

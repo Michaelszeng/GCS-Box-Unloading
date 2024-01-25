@@ -49,7 +49,9 @@ seed = int(args.randomization)
 close_button_str = "Close"
 this_drake_module_name = "cwd"
 box_randomization_runtime = 1.15
-sim_runtime = box_randomization_runtime + 4.0
+sim_runtime = box_randomization_runtime + 7.0
+# box_randomization_runtime = 0.1
+# sim_runtime = box_randomization_runtime + 1.5
 NUM_BOXES = 40
 
 np.random.seed(seed)
@@ -206,7 +208,7 @@ box_poses = []
 for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-    box_poses.append(plant.GetFreeBodyPose(plant_context, box_body_idx))
+    box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
 
 generate_source_iris_regions(meshcat, robot_pose, box_poses)
 
