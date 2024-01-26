@@ -86,7 +86,7 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
 
 
 
-def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=False, visualize_iris_scene=True):
+def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=True, visualize_iris_scene=True):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck
@@ -104,7 +104,7 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
 
         yaml += f"""
 - add_model: 
-    name: Box_{i}
+    name: Boxes/Box_{i}
     file: file://{absolute_path_to_box}
 """
 
@@ -113,11 +113,8 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
 
     # Set Pose of each box (from simulating the box randomization) and weld
     for i in range(len(box_poses)):
-        box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
-        box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+        box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
         box_frame = plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
-
-        # plant.SetDefaultFreeBodyPose(plant.get_body(box_body_idx), box_poses[i])
         plant.WeldFrames(plant.world_frame(), box_frame, box_poses[i])
 
     scene_graph = robot_diagram_builder.scene_graph()
@@ -134,7 +131,7 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
     options = IrisFromCliqueCoverOptions()
     options.num_builders = 7  # set to 1 fewer than number of cores on computer
     options.num_points_per_coverage_check = 1000
-    options.num_points_per_visibility_round = 100  # 1000
+    options.num_points_per_visibility_round = 250  # 1000
     options.coverage_termination_threshold = 0.2  # set low threshold at first for faster debugging
     options.minimum_clique_size = 15
 

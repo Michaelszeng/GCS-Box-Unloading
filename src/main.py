@@ -49,9 +49,7 @@ seed = int(args.randomization)
 close_button_str = "Close"
 this_drake_module_name = "cwd"
 box_randomization_runtime = 1.15
-sim_runtime = box_randomization_runtime + 7.0
-# box_randomization_runtime = 0.1
-# sim_runtime = box_randomization_runtime + 1.5
+sim_runtime = box_randomization_runtime + 7.1
 NUM_BOXES = 40
 
 np.random.seed(seed)
@@ -78,7 +76,7 @@ for i in range(NUM_BOXES):
 
     box_directives += f"""
 - add_model: 
-    name: Box_{i}
+    name: Boxes/Box_{i}
     file: file://{absolute_path_to_box}
 """
 scenario = add_directives(scenario, data=box_directives)
@@ -159,7 +157,7 @@ for joint_idx in plant.GetJointIndices(robot_model_idx):
 
 # Set poses for all boxes
 for i in range(NUM_BOXES):
-    box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
+    box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 
     box_pos_x = np.random.uniform(-1, 1.3, 1)
@@ -183,7 +181,7 @@ for i in range(NUM_BOXES):
     force = ExternallyAppliedSpatialForce()
     zero_force = ExternallyAppliedSpatialForce()
 
-    box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
+    box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 
     force.body_index = box_body_idx
@@ -206,7 +204,7 @@ simulator.AdvanceTo(sim_runtime)
 
 box_poses = []
 for i in range(NUM_BOXES):
-    box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
+    box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
 
