@@ -86,11 +86,13 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
 
 
 
-def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=True, visualize_iris_scene=True):
+def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=True, visualize_iris_scene=False):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck
     trailer (excluding the back wall).
+
+    Note: visualize_iris_scene is not working right now.
     """
     params = dict(edge_step_size=0.125)
     robot_diagram_builder = RobotDiagramBuilder()
@@ -132,8 +134,10 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
     options.num_builders = 7  # set to 1 fewer than number of cores on computer
     options.num_points_per_coverage_check = 1000
     options.num_points_per_visibility_round = 250  # 1000
-    options.coverage_termination_threshold = 0.2  # set low threshold at first for faster debugging
-    options.minimum_clique_size = 15
+    options.coverage_termination_threshold = 0.75  # set low threshold at first for faster debugging
+    options.minimum_clique_size = 7  # minimum of 7 points needed to create a shape with volume in 6D
+
+    options.iris_options.random_seed = 0
 
     if use_previous_saved_sets:
         print("Using saved iris regions.")

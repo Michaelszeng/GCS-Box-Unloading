@@ -37,6 +37,7 @@ import yaml
 from utils import diagram_visualize_connections
 from scenario import scenario_yaml, robot_yaml
 from iris import generate_source_iris_regions
+from gcs import MotionPlanner
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
