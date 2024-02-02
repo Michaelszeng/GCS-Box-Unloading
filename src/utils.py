@@ -17,6 +17,7 @@ import numpy as np
 import numpy.typing as npt
 import pydot
 import matplotlib.pyplot as plt
+import yaml
 
 
 def diagram_visualize_connections(diagram: Diagram, file: Union[BinaryIO, str]) -> None:
@@ -29,3 +30,14 @@ def diagram_visualize_connections(diagram: Diagram, file: Union[BinaryIO, str]) 
     svg_data = pydot.graph_from_dot_data(
         diagram.GetGraphvizString())[0].create_svg()
     file.write(svg_data)
+
+
+def is_yaml_empty(file_path):
+    with open(file_path, 'r') as file:
+        try:
+            content = yaml.safe_load(file)
+            # Check if the content is None or an empty collection
+            return content is None or not content
+        except yaml.YAMLError as exc:
+            print(f"Error reading YAML file: {exc}")
+            return False  # Assuming the file is not empty if there's a parsing error

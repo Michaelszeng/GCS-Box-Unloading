@@ -39,6 +39,7 @@ from scenario import scenario_yaml, robot_yaml
 from iris import generate_source_iris_regions
 from gcs import MotionPlanner
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
 args = parser.parse_args()
@@ -98,8 +99,7 @@ plant = station.GetSubsystemByName("plant")
 ### GCS Motion Planer
 motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat))
 builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("kuka_current_pose"))
-builder.Connect(station.GetOutputPort("iiwa_state"), motion_planner.GetInputPort("kuka_state"))
-builder.Connect(motion_planner.GetOutputPort("wsg_command"), station.GetInputPort("wsg.position"))
+builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort("kuka_state"))
 
 ### Controller
 controller_plant = MultibodyPlant(time_step=0.001)
@@ -214,7 +214,8 @@ for i in range(NUM_BOXES):
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
 
-generate_source_iris_regions(meshcat, robot_pose, box_poses)
+# generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=12, use_previous_saved_sets=False, visualize_connectivity=True, visualize_iris_scene=False)
+generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=8, use_previous_saved_sets=True, visualize_connectivity=True, visualize_iris_scene=False)
 
 meshcat.PublishRecording()
 print(f"{meshcat.web_url()}/download")

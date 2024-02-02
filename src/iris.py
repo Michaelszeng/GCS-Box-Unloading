@@ -35,7 +35,7 @@ import time
 import numpy as np
 from pathlib import Path
 import pydot
-from IPython.display import SVG, display, display_jpeg, display_pdf, display_png, Image
+from IPython.display import SVG, display_jpeg, display_pdf, display_png, Image
 
 
 def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample=50000):
@@ -106,12 +106,15 @@ def VisualizeConnectivity(iris_regions):
                 numEdges += 1
                 graph.add_edge(pydot.Edge(keys[i], keys[j], dir="both"))
 
-    display(SVG(graph.create_svg()))
+    svg = graph.create_svg()
+
+    with open('../data/iris_connectivity.svg', 'wb') as svg_file:
+        svg_file.write(svg)
 
     return numEdges
 
 
-def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=True, visualize_connectivity=True, visualize_iris_scene=False):
+def generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=7, use_previous_saved_sets=True, visualize_connectivity=True, visualize_iris_scene=False):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck
@@ -159,8 +162,8 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
     options.num_builders = 7  # set to 1 fewer than number of cores on computer
     options.num_points_per_coverage_check = 1000
     options.num_points_per_visibility_round = 250  # 1000
-    options.coverage_termination_threshold = 0.75  # set low threshold at first for faster debugging
-    options.minimum_clique_size = 7  # minimum of 7 points needed to create a shape with volume in 6D
+    options.coverage_termination_threshold = 0.35
+    options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
 
     options.iris_options.random_seed = 0
 
@@ -179,7 +182,7 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
     SaveIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"), sets_dict)
 
     if visualize_connectivity:
-        VisualizeConnectivity(sets)
+        VisualizeConnectivity(sets_dict)
 
     test_iris_region(plant, plant_context, meshcat, sets)
     
