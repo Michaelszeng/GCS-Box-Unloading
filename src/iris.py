@@ -34,6 +34,9 @@ import os
 import time
 import numpy as np
 from pathlib import Path
+import pydot
+from IPython.display import SVG, display, display_jpeg, display_pdf, display_png, Image
+
 
 def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample=50000):
     """
@@ -85,8 +88,30 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
         meshcat.SetObject(f"region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
 
+def VisualizeConnectivity(iris_regions):
+    """
+    Create and display SVG graph of IRIS Region connectivity
+    """
+    numEdges = 0
 
-def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=True, visualize_iris_scene=False):
+    graph = pydot.Dot("IRIS region connectivity")
+    keys = list(iris_regions.keys())
+    for k in keys:
+        graph.add_node(pydot.Node(k))
+    for i in range(len(keys)):
+        v1 = iris_regions[keys[i]]
+        for j in range(i + 1, len(keys)):
+            v2 = iris_regions[keys[j]]
+            if v1.IntersectsWith(v2):
+                numEdges += 1
+                graph.add_edge(pydot.Edge(keys[i], keys[j], dir="both"))
+
+    display(SVG(graph.create_svg()))
+
+    return numEdges
+
+
+def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_saved_sets=True, visualize_connectivity=True, visualize_iris_scene=False):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck
@@ -152,6 +177,9 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, use_previous_sa
 
     sets_dict ={f"set{i}" : sets[i] for i in range(len(sets))}
     SaveIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"), sets_dict)
+
+    if visualize_connectivity:
+        VisualizeConnectivity(sets)
 
     test_iris_region(plant, plant_context, meshcat, sets)
     

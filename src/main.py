@@ -95,7 +95,13 @@ station = builder.AddSystem(MakeHardwareStation(
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
 
+### GCS Motion Planer
+motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat))
+builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("kuka_current_pose"))
+builder.Connect(station.GetOutputPort("iiwa_state"), motion_planner.GetInputPort("kuka_state"))
+builder.Connect(motion_planner.GetOutputPort("wsg_command"), station.GetInputPort("wsg.position"))
 
+### Controller
 controller_plant = MultibodyPlant(time_step=0.001)
 parser = Parser(plant)
 ConfigureParser(parser)
@@ -105,10 +111,9 @@ num_robot_positions = controller_plant.num_positions()
 controller = builder.AddSystem(InverseDynamicsController(controller_plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
 builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
-
-# TEMPORARY
-builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("desired_state"))
-# builder.Connect(motion_planner.GetOutputPort("SOMETHING"), controller.GetInputPort("desired_acceleration"))
+# builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("desired_state"))  # TEMPORARY
+builder.Connect(motion_planner.GetOutputPort("kuka_command"), controller.GetInputPort("desired_state"))
+builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.GetInputPort("desired_acceleration"))
 
 
 ### Finalizing diagram setup

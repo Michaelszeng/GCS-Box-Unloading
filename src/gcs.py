@@ -11,7 +11,9 @@ from pydrake.all import (
     DiagramBuilder,
     AddMultibodyPlantSceneGraph,
     Parser,
-    Solve
+    Solve,
+    CompositeTrajectory,
+    PiecewisePolynomial
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
@@ -120,12 +122,14 @@ class MotionPlanner(LeafSystem):
         
         options = GraphOfConvexSetsOptions()
         options.preprocessing = True
-        options.max_rounded_paths = 5
+        options.max_rounded_paths = 5  # Max number of distinct paths to compare during random rounding; only the lowest cost path is returned.
         start_time = time.time()
         print("Running GCS")
         traj, result = gcs.SolvePath(source, target, options)
         print(f"GCS SolvePath Runtime: {time.time() - start_time}")
 
+        for edge in gcs.graph_of_convex_sets().Edges():
+            print(result.GetSolution(edge.phi()))
 
         state.get_mutable_abstract_state(int(self._traj_index)).set_value(traj)
 
