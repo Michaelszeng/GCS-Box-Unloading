@@ -29,12 +29,12 @@ from pydrake.all import (
 from manipulation.meshcat_utils import AddMeshcatTriad
 
 from scenario import scenario_yaml_for_iris
+from utils import NUM_BOXES
 
 import os
 import time
 import numpy as np
 from pathlib import Path
-import pydot
 from IPython.display import SVG, display_jpeg, display_pdf, display_png, Image
 
 
@@ -88,33 +88,7 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
         meshcat.SetObject(f"region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
 
-def VisualizeConnectivity(iris_regions):
-    """
-    Create and display SVG graph of IRIS Region connectivity
-    """
-    numEdges = 0
-
-    graph = pydot.Dot("IRIS region connectivity")
-    keys = list(iris_regions.keys())
-    for k in keys:
-        graph.add_node(pydot.Node(k))
-    for i in range(len(keys)):
-        v1 = iris_regions[keys[i]]
-        for j in range(i + 1, len(keys)):
-            v2 = iris_regions[keys[j]]
-            if v1.IntersectsWith(v2):
-                numEdges += 1
-                graph.add_edge(pydot.Edge(keys[i], keys[j], dir="both"))
-
-    svg = graph.create_svg()
-
-    with open('../data/iris_connectivity.svg', 'wb') as svg_file:
-        svg_file.write(svg)
-
-    return numEdges
-
-
-def generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=7, use_previous_saved_sets=True, visualize_connectivity=True, visualize_iris_scene=False):
+def generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=7, use_previous_saved_regions=True, visualize_connectivity=True, visualize_iris_scene=False):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck
@@ -148,6 +122,7 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_
         plant.WeldFrames(plant.world_frame(), box_frame, box_poses[i])
 
     scene_graph = robot_diagram_builder.scene_graph()
+    # Weld robot base in place
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), robot_pose)
     if visualize_iris_scene:
         meshcat2 = StartMeshcat()
@@ -167,22 +142,22 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_
 
     options.iris_options.random_seed = 0
 
-    if use_previous_saved_sets:
+    if use_previous_saved_regions:
         print("Using saved iris regions.")
-        sets = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
-        sets = [hpolytope for hpolytope in sets.values()]
+        regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
+        regions = [hpolytope for hpolytope in regions.values()]
     else:
-        sets = []
+        regions = []
 
-    sets = IrisInConfigurationSpaceFromCliqueCover(
-        checker=checker, options=options, sets=sets
-    )
+    regions = IrisInConfigurationSpaceFromCliqueCover(
+        checker=checker, options=options, regions=regions
+    )  # List of HPolyhedrons
 
-    sets_dict ={f"set{i}" : sets[i] for i in range(len(sets))}
-    SaveIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"), sets_dict)
+    regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
+    SaveIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"), regions_dict)
 
     if visualize_connectivity:
-        VisualizeConnectivity(sets_dict)
+        VisualizeConnectivity(regions_dict)
 
-    test_iris_region(plant, plant_context, meshcat, sets)
+    test_iris_region(plant, plant_context, meshcat, regions)
     

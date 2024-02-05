@@ -13,11 +13,16 @@ from pydrake.all import (
 )
 from dataclasses import dataclass, field
 from pydrake.common.yaml import yaml_load_typed
+
 import numpy as np
 import numpy.typing as npt
 import pydot
 import matplotlib.pyplot as plt
 import yaml
+import os
+import sys
+
+NUM_BOXES = 40
 
 
 def diagram_visualize_connections(diagram: Diagram, file: Union[BinaryIO, str]) -> None:
@@ -41,3 +46,37 @@ def is_yaml_empty(file_path):
         except yaml.YAMLError as exc:
             print(f"Error reading YAML file: {exc}")
             return False  # Assuming the file is not empty if there's a parsing error
+        
+
+class SuppressOutput:
+    def __enter__(self):
+        self.original_stdout_fd = sys.stdout.fileno()
+        self.original_stderr_fd = sys.stderr.fileno()
+
+        # Flush the Python stdout and stderr buffers
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        self.devnull = os.open(os.devnull, os.O_WRONLY)
+
+        # Duplicate the file descriptors to restore later
+        self.saved_stdout_fd = os.dup(self.original_stdout_fd)
+        self.saved_stderr_fd = os.dup(self.original_stderr_fd)
+
+        # Replace stdout and stderr with /dev/null
+        os.dup2(self.devnull, self.original_stdout_fd)
+        os.dup2(self.devnull, self.original_stderr_fd)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Flush any C++ buffered outputs
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        # Restore the original stdout and stderr file descriptors
+        os.dup2(self.saved_stdout_fd, self.original_stdout_fd)
+        os.dup2(self.saved_stderr_fd, self.original_stderr_fd)
+
+        # Close the temporary file descriptors and /dev/null
+        os.close(self.saved_stdout_fd)
+        os.close(self.saved_stderr_fd)
+        os.close(self.devnull)

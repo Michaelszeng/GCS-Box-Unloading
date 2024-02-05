@@ -34,7 +34,7 @@ import time
 import argparse
 import yaml
 
-from utils import diagram_visualize_connections
+from utils import NUM_BOXES, diagram_visualize_connections
 from scenario import scenario_yaml, robot_yaml
 from iris import generate_source_iris_regions
 from gcs import MotionPlanner
@@ -50,9 +50,11 @@ seed = int(args.randomization)
 ##### Settings #####
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_randomization_runtime = 1.15
-sim_runtime = box_randomization_runtime + 7.1
-NUM_BOXES = 40
+box_fall_runtime = 1.15
+box_randomization_runtime = box_fall_runtime + 7.1
+sim_runtime = box_randomization_runtime + 2
+
+robot_pose = RigidTransform([0.0,0.0,0.58])
 
 np.random.seed(seed)
 
@@ -96,8 +98,11 @@ station = builder.AddSystem(MakeHardwareStation(
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
 
+# Plot Triad at end effector
+AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
+
 ### GCS Motion Planer
-motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat))
+motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat, robot_pose, box_randomization_runtime))
 builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("kuka_current_pose"))
 builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort("kuka_state"))
 
@@ -138,11 +143,6 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 ####################################
 simulator.set_target_realtime_rate(1)
 simulator.set_publish_every_time_step(True)
-plt.show()
-
-# TEMPORARY
-controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(num_robot_positions))
-
 
 meshcat.StartRecording()
 
@@ -154,7 +154,6 @@ plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), Rigi
 # Move Robot to start position
 robot_model_idx = plant.GetModelInstanceByName("robot_base")  # ModelInstanceIndex
 robot_body_idx = plant.GetBodyIndices(robot_model_idx)[0]  # BodyIndex
-robot_pose = RigidTransform([-1.0,0.0,0.58])
 plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), robot_pose)
 for joint_idx in plant.GetJointIndices(robot_model_idx):
     robot_joint = plant.get_joint(joint_idx)  # Joint object
@@ -172,7 +171,7 @@ for i in range(NUM_BOXES):
 
     plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
 
-simulator.AdvanceTo(box_randomization_runtime)
+simulator.AdvanceTo(box_fall_runtime)
 
 # Put Top of truck trailer back and lock it
 plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
@@ -202,11 +201,11 @@ for i in range(NUM_BOXES):
 
 # Apply pushing force to back of truck trailer
 station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
-simulator.AdvanceTo(box_randomization_runtime+1.5)
+simulator.AdvanceTo(box_fall_runtime+1.5)
 
 # Remove pushing force to back of truck trailer
 station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
-simulator.AdvanceTo(sim_runtime)
+simulator.AdvanceTo(box_randomization_runtime)
 
 box_poses = []
 for i in range(NUM_BOXES):
@@ -214,8 +213,10 @@ for i in range(NUM_BOXES):
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
 
-# generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=12, use_previous_saved_sets=False, visualize_connectivity=True, visualize_iris_scene=False)
-generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=8, use_previous_saved_sets=True, visualize_connectivity=True, visualize_iris_scene=False)
+# generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=14, use_previous_saved_sets=False, visualize_connectivity=True, visualize_iris_scene=False)
+# generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=10, use_previous_saved_sets=True, visualize_connectivity=True, visualize_iris_scene=False)
+
+simulator.AdvanceTo(sim_runtime)
 
 meshcat.PublishRecording()
 print(f"{meshcat.web_url()}/download")
