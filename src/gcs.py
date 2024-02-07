@@ -13,7 +13,9 @@ from pydrake.all import (
     Parser,
     Solve,
     CompositeTrajectory,
-    PiecewisePolynomial
+    PiecewisePolynomial,
+    logical_or,
+    logical_and
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad
@@ -108,38 +110,42 @@ class MotionPlanner(LeafSystem):
         q_current = kuka_state[:6]
         q_dot_current = kuka_state[6:]
 
-        all_body_poses = kuka_state = self.get_input_port(1).Eval(context)  # List of RigidTransforms
-        # Get Box poses
-        box_poses = []
-        for i in range(NUM_BOXES):
-            box_model_idx = self.original_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-            box_body_idx = self.original_plant.GetBodyByName("Box_0_5_0_5_0_5", box_model_idx).index()  # BodyIndex
-            box_poses.append(all_body_poses[box_body_idx])
+        # all_body_poses = kuka_state = self.get_input_port(1).Eval(context)  # List of RigidTransforms
+        # # Get Box poses
+        # box_poses = []
+        # for i in range(NUM_BOXES):
+        #     box_model_idx = self.original_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
+        #     box_body_idx = self.original_plant.GetBodyByName("Box_0_5_0_5_0_5", box_model_idx).index()  # BodyIndex
+        #     box_poses.append(all_body_poses[box_body_idx])
 
         ### Create MBP for IK and Traj. Opt.
         builder = DiagramBuilder()
         plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
 
-        # Add boxes to scenario yaml
-        yaml = scenario_yaml_for_iris
-        for i in range(len(box_poses)):
-            relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
-            absolute_path_to_box = os.path.abspath(relative_path_to_box)
+#         # Add boxes to scenario yaml
+#         yaml = scenario_yaml_for_iris
+#         for i in range(len(box_poses)):
+#             relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
+#             absolute_path_to_box = os.path.abspath(relative_path_to_box)
 
-            yaml += f"""
-- add_model: 
-    name: Boxes/Box_{i}
-    file: file://{absolute_path_to_box}
-"""
+#             yaml += f"""
+# - add_model: 
+#     name: Boxes/Box_{i}
+#     file: file://{absolute_path_to_box}
+# """
+        # parser = Parser(plant)
+        # ConfigureParser(parser)
+        # parser.AddModelsFromString(yaml, ".dmd.yaml")  # ModelInstance object
+
+#         # Set Pose of each box (from simulating the box randomization) and weld
+#         for i in range(len(box_poses)):
+#             box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
+#             box_frame = plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
+#             plant.WeldFrames(plant.world_frame(), box_frame, box_poses[i])
+
         parser = Parser(plant)
         ConfigureParser(parser)
-        parser.AddModelsFromString(yaml, ".dmd.yaml")  # ModelInstance object
-
-        # Set Pose of each box (from simulating the box randomization) and weld
-        for i in range(len(box_poses)):
-            box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-            box_frame = plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
-            plant.WeldFrames(plant.world_frame(), box_frame, box_poses[i])
+        parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")  # ModelInstance object
 
         # Weld robot base in place
         plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), self.robot_pose)
@@ -172,7 +178,14 @@ class MotionPlanner(LeafSystem):
             R_BbarB=RotationMatrix(),
             theta_bound=0.05,
         )
-        ik.AddMinimumDistanceLowerBoundConstraint(0.001, 0.01)
+        # ik.AddMinimumDistanceLowerBoundConstraint(0.001, 0.01)
+
+        # Add constraint that IK result must be in an IRIS region
+        constraints = []
+        for region in list(regions.values()):
+            # q_variables must be within half-plane for every half-plane in region
+            constraints.append(logical_and(*[expr <= const for expr, const in zip(region.A() @ q_variables, region.b())]))
+        ik_prog.AddConstraint(logical_or(*constraints))
         ik_prog.SetInitialGuess(q_variables, self.q_nominal)
         ik_result = Solve(ik_prog)
         if not ik_result.is_success():
@@ -181,6 +194,8 @@ class MotionPlanner(LeafSystem):
 
         q_goal = ik_result.GetSolution(q_variables)  # (6,) np array
         print(q_goal)
+
+        print(f"list(regions.values())[0].PointInSet(q_current): {list(regions.values())[0].PointInSet(q_current)}")
 
         
 
