@@ -61,7 +61,8 @@ class MotionPlanner(LeafSystem):
         self.original_plant = plant
         self.meshcat = meshcat
         self.q_nominal = np.array([0.0, 0.0, 0.0, 1.5, -1.8, 0.0])  # nominal joint for joint-centering
-        self.q_end = None
+        self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), robot_pose.translation() + [0.0, -0.65, 0.25])
+        self.source_regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
         self.previous_compute_result = None  # BpslineTrajectory object
         self.start_planning_time = box_randomization_runtime
         self.visualize = True
@@ -110,39 +111,9 @@ class MotionPlanner(LeafSystem):
         q_current = kuka_state[:6]
         q_dot_current = kuka_state[6:]
 
-        # all_body_poses = kuka_state = self.get_input_port(1).Eval(context)  # List of RigidTransforms
-        # # Get Box poses
-        # box_poses = []
-        # for i in range(NUM_BOXES):
-        #     box_model_idx = self.original_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-        #     box_body_idx = self.original_plant.GetBodyByName("Box_0_5_0_5_0_5", box_model_idx).index()  # BodyIndex
-        #     box_poses.append(all_body_poses[box_body_idx])
-
         ### Create MBP for IK and Traj. Opt.
         builder = DiagramBuilder()
         plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
-
-#         # Add boxes to scenario yaml
-#         yaml = scenario_yaml_for_iris
-#         for i in range(len(box_poses)):
-#             relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
-#             absolute_path_to_box = os.path.abspath(relative_path_to_box)
-
-#             yaml += f"""
-# - add_model: 
-#     name: Boxes/Box_{i}
-#     file: file://{absolute_path_to_box}
-# """
-        # parser = Parser(plant)
-        # ConfigureParser(parser)
-        # parser.AddModelsFromString(yaml, ".dmd.yaml")  # ModelInstance object
-
-#         # Set Pose of each box (from simulating the box randomization) and weld
-#         for i in range(len(box_poses)):
-#             box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-#             box_frame = plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
-#             plant.WeldFrames(plant.world_frame(), box_frame, box_poses[i])
-
         parser = Parser(plant)
         ConfigureParser(parser)
         parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")  # ModelInstance object
@@ -155,66 +126,69 @@ class MotionPlanner(LeafSystem):
         context = diagram.CreateDefaultContext()
         plant_context = plant.GetMyContextFromRoot(context)
 
-        regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
+        # Solve an IK program for the box deposit position
+        # Separate IK program for each region with the constraint that the IK result must be in that region
+        ik_start = time.time()
+        solve_success = False
+        for region in list(self.source_regions.values()):
+            ik = InverseKinematics(plant, plant_context)
+            q_variables = ik.q()  # Get variables for MathematicalProgram
+            ik_prog = ik.get_mutable_prog()
 
-        # Use IK to solve for joint positions to drop the box off at
-        X_WGoal = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), self.robot_pose.translation() + [0.0, -0.65, 0.25])
-        ik = InverseKinematics(plant, plant_context)
-        q_variables = ik.q()  # Get variables for MathematicalProgram
-        ik_prog = ik.get_mutable_prog()
-        # ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_current, q_variables)
-        ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), self.q_nominal, q_variables)
-        ik.AddPositionConstraint(
-            frameA=plant.world_frame(),
-            frameB=plant.GetFrameByName("arm_eef"),
-            p_BQ=[0, 0, 0.1],
-            p_AQ_lower=X_WGoal.translation(),
-            p_AQ_upper=X_WGoal.translation(),
-        )
-        ik.AddOrientationConstraint(
-            frameAbar=plant.world_frame(),
-            R_AbarA=X_WGoal.rotation(),
-            frameBbar=plant.GetFrameByName("arm_eef"),
-            R_BbarB=RotationMatrix(),
-            theta_bound=0.05,
-        )
-        # ik.AddMinimumDistanceLowerBoundConstraint(0.001, 0.01)
+            # ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_current, q_variables)
+            ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), self.q_nominal, q_variables)
 
-        # Add constraint that IK result must be in an IRIS region
-        constraints = []
-        for region in list(regions.values()):
             # q_variables must be within half-plane for every half-plane in region
-            constraints.append(logical_and(*[expr <= const for expr, const in zip(region.A() @ q_variables, region.b())]))
-        ik_prog.AddConstraint(logical_or(*constraints))
-        ik_prog.SetInitialGuess(q_variables, self.q_nominal)
-        ik_result = Solve(ik_prog)
-        if not ik_result.is_success():
-            print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
-            print(ik_result.GetInfeasibleConstraintNames(ik_prog))
+            ik_prog.AddConstraint(logical_and(*[expr <= const for expr, const in zip(region.A() @ q_variables, region.b())]))
 
-        q_goal = ik_result.GetSolution(q_variables)  # (6,) np array
-        print(q_goal)
+            # Pose constraint
+            ik.AddPositionConstraint(
+                frameA=plant.world_frame(),
+                frameB=plant.GetFrameByName("arm_eef"),
+                p_BQ=[0, 0, 0.1],
+                p_AQ_lower=self.X_W_Deposit.translation(),
+                p_AQ_upper=self.X_W_Deposit.translation(),
+            )
+            # ik.AddOrientationConstraint(
+            #     frameAbar=plant.world_frame(),
+            #     R_AbarA=self.X_W_Deposit.rotation(),
+            #     frameBbar=plant.GetFrameByName("arm_eef"),
+            #     R_BbarB=RotationMatrix(),
+            #     theta_bound=0.05,
+            # )
 
-        print(f"list(regions.values())[0].PointInSet(q_current): {list(regions.values())[0].PointInSet(q_current)}")
+            ik_prog.SetInitialGuess(q_variables, self.q_nominal)
+            ik_result = Solve(ik_prog)
+            if ik_result.is_success():
+                q_goal = ik_result.GetSolution(q_variables)  # (6,) np array
+                print(f"IK solve succeeded. q_goal: {q_goal}")
+                solve_success = True
+            # else:
+            #     print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
+            #     print(ik_result.GetInfeasibleConstraintNames(ik_prog))
 
-        
+        print(f"IK Runtime: {time.time() - ik_start}")
 
-        regions["start"] = Point(q_current)
-        regions["goal"] = Point(q_goal)
+        if solve_success == False:
+            print("IK Solve Failed. GCS unable to work.")
+            return        
+
+        self.source_regions["start"] = Point(q_current)
+        self.source_regions["goal"] = Point(q_goal)
         if self.visualize:
-            with SuppressOutput():
-                self.visualize_connectivity(regions)
+            with SuppressOutput():  # Suppress Gurobi spam
+                self.visualize_connectivity(self.source_regions)
             print("Connectivity graph saved to ../data/iris_connectivity.svg.")
 
         edges = []
 
-        with SuppressOutput():
+        with SuppressOutput():  # Suppress Gurobi spam
             gcs = GcsTrajectoryOptimization(len(q_current))
-            regions = gcs.AddRegions(list(regions.values()), order=1)
+            self.source_regions = gcs.AddRegions(list(self.source_regions.values()), order=1)
             source = gcs.AddRegions([Point(q_current)], order=0)
             target = gcs.AddRegions([Point(q_goal)], order=0)
-            edges.append(gcs.AddEdges(source, regions))
-            edges.append(gcs.AddEdges(regions, target))
+            edges.append(gcs.AddEdges(source, self.source_regions))
+            edges.append(gcs.AddEdges(self.source_regions, target))
         
         gcs.AddTimeCost()
         gcs.AddVelocityBounds(
@@ -225,9 +199,13 @@ class MotionPlanner(LeafSystem):
         options.preprocessing = True
         options.max_rounded_paths = 5  # Max number of distinct paths to compare during random rounding; only the lowest cost path is returned.
         start_time = time.time()
-        with SuppressOutput():
+        with SuppressOutput():  # Suppress Gurobi spam
             traj, result = gcs.SolvePath(source, target, options)
         print(f"GCS SolvePath Runtime: {time.time() - start_time}")
+
+        if not result.is_success():
+            print("GCS Fail.")
+            return
 
         # for edge in gcs.graph_of_convex_sets().Edges():
             # print(edge.phi())

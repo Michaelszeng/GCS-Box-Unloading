@@ -34,12 +34,12 @@ directives:
     name: kuka
     file: file://{absolute_path_to_robot_arm}
     default_joint_positions:
-        arm_a6: [1.45694847]
-        arm_a5: [-2.69653975]
-        arm_a4: [-0.06657677]
-        arm_a3: [-2.43976932]
-        arm_a2: [0.44505299]
-        arm_a1: [1.57953578]
+        arm_a6: [0.0]
+        arm_a5: [0.0]
+        arm_a4: [0.0]
+        arm_a3: [1.5]
+        arm_a2: [-1.8]
+        arm_a1: [0.0]
 - add_weld:
     parent: robot_base::base
     child: kuka::base_link        

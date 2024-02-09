@@ -88,7 +88,7 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
         meshcat.SetObject(f"region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
 
-def generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=7, use_previous_saved_regions=True, visualize_connectivity=True, visualize_iris_scene=False):
+def generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=7, use_previous_saved_regions=True, visualize_iris_scene=False):
     """
     Source IRIS regions are defined as the regions considering only self-
     collision with the robot, and collision with the walls of the empty truck
@@ -155,9 +155,6 @@ def generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_
 
     regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
     SaveIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"), regions_dict)
-
-    if visualize_connectivity:
-        VisualizeConnectivity(regions_dict)
 
     test_iris_region(plant, plant_context, meshcat, regions)
     
