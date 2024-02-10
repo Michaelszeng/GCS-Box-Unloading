@@ -33,7 +33,7 @@ import os
 
 class MotionPlanner(LeafSystem):
 
-    def __init__(self, plant, meshcat, robot_pose, box_randomization_runtime):
+    def __init__(self, original_plant, meshcat, robot_pose, box_randomization_runtime):
         LeafSystem.__init__(self)
 
         kuka_state = self.DeclareVectorInputPort(name="kuka_state", size=12)  # 6 pos, 6 vel
@@ -56,12 +56,31 @@ class MotionPlanner(LeafSystem):
             "kuka_acceleration", 6, self.output_acceleration
         )
 
+        ### Create MBP for IK and Traj. Opt.
+        builder = DiagramBuilder()
+        plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
+        parser = Parser(plant)
+        ConfigureParser(parser)
+        kuka = parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")[1]  # ModelInstance object
+
+        # Weld robot base in place
+        plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), robot_pose)
+        
+        plant.Finalize()
+        diagram = builder.Build()
+        context = diagram.CreateDefaultContext()
+        plant_context = plant.GetMyContextFromRoot(context)
+
         # Member variables
+        self.plant = plant
+        self.plant_context = plant_context
+        self.kuka = kuka
         self.robot_pose = robot_pose
-        self.original_plant = plant
+        self.original_plant = original_plant
         self.meshcat = meshcat
         self.q_nominal = np.array([0.0, 0.0, 0.0, 1.5, -1.8, 0.0])  # nominal joint for joint-centering
-        self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), robot_pose.translation() + [0.0, -0.65, 0.25])
+        self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), robot_pose.translation() + [0.0, -0.65, 1.0])
+        AddMeshcatTriad(meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
         self.source_regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
         self.previous_compute_result = None  # BpslineTrajectory object
         self.start_planning_time = box_randomization_runtime
@@ -69,6 +88,38 @@ class MotionPlanner(LeafSystem):
 
         # self.DeclarePeriodicUnrestrictedUpdateEvent(0.025, 0.0, self.compute_command)
         self.DeclarePeriodicUnrestrictedUpdateEvent(1, 0.0, self.compute_command)
+
+
+    def VisualizePath(self, traj, name):
+        """
+        Helper function that takes in trajopt basis and control points of Bspline
+        and draws spline in meshcat.
+        """
+        # Build a new plant to do the forward kinematics to turn this Bspline into 3D coordinates
+        # builder = DiagramBuilder()
+        # vis_plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
+        # viz_iiwa = Parser(vis_plant).AddModelsFromUrl("package://drake/manipulation/models/iiwa_description/urdf/iiwa14_spheres_dense_collision.urdf")[0]  # ModelInstance object
+        # vis_plant.WeldFrames(vis_plant.world_frame(), vis_plant.GetFrameByName("base"))
+        # vis_plant.Finalize()
+        # vis_plant_context = vis_plant.CreateDefaultContext()
+
+        traj_start_time = traj.start_time()
+        traj_end_time = traj.end_time()
+
+        # Build matrix of 3d positions by doing forward kinematics at time steps in the bspline
+        NUM_STEPS = 80
+        pos_3d_matrix = np.zeros((3,NUM_STEPS))
+        ctr = 0
+        for vis_t in np.linspace(traj_start_time, traj_end_time, NUM_STEPS):
+            pos = traj.value(vis_t)
+            self.plant.SetPositions(self.plant_context, self.kuka, pos)
+            pos_3d = self.plant.CalcRelativeTransform(self.plant_context, self.plant.world_frame(), self.plant.GetFrameByName("arm_eef")).translation()
+            pos_3d_matrix[:,ctr] = pos_3d
+            ctr += 1
+
+        # Draw line
+        if self.visualize:
+            self.meshcat.SetLine(name, pos_3d_matrix)
 
 
     def visualize_connectivity(self, iris_regions):
@@ -111,27 +162,12 @@ class MotionPlanner(LeafSystem):
         q_current = kuka_state[:6]
         q_dot_current = kuka_state[6:]
 
-        ### Create MBP for IK and Traj. Opt.
-        builder = DiagramBuilder()
-        plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
-        parser = Parser(plant)
-        ConfigureParser(parser)
-        parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")  # ModelInstance object
-
-        # Weld robot base in place
-        plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), self.robot_pose)
-        
-        plant.Finalize()
-        diagram = builder.Build()
-        context = diagram.CreateDefaultContext()
-        plant_context = plant.GetMyContextFromRoot(context)
-
         # Solve an IK program for the box deposit position
         # Separate IK program for each region with the constraint that the IK result must be in that region
         ik_start = time.time()
         solve_success = False
         for region in list(self.source_regions.values()):
-            ik = InverseKinematics(plant, plant_context)
+            ik = InverseKinematics(self.plant, self.plant_context)
             q_variables = ik.q()  # Get variables for MathematicalProgram
             ik_prog = ik.get_mutable_prog()
 
@@ -143,19 +179,19 @@ class MotionPlanner(LeafSystem):
 
             # Pose constraint
             ik.AddPositionConstraint(
-                frameA=plant.world_frame(),
-                frameB=plant.GetFrameByName("arm_eef"),
+                frameA=self.plant.world_frame(),
+                frameB=self.plant.GetFrameByName("arm_eef"),
                 p_BQ=[0, 0, 0.1],
                 p_AQ_lower=self.X_W_Deposit.translation(),
                 p_AQ_upper=self.X_W_Deposit.translation(),
             )
-            # ik.AddOrientationConstraint(
-            #     frameAbar=plant.world_frame(),
-            #     R_AbarA=self.X_W_Deposit.rotation(),
-            #     frameBbar=plant.GetFrameByName("arm_eef"),
-            #     R_BbarB=RotationMatrix(),
-            #     theta_bound=0.05,
-            # )
+            ik.AddOrientationConstraint(
+                frameAbar=self.plant.world_frame(),
+                R_AbarA=self.X_W_Deposit.rotation(),
+                frameBbar=self.plant.GetFrameByName("arm_eef"),
+                R_BbarB=RotationMatrix(),
+                theta_bound=0.05,
+            )
 
             ik_prog.SetInitialGuess(q_variables, self.q_nominal)
             ik_result = Solve(ik_prog)
@@ -172,27 +208,28 @@ class MotionPlanner(LeafSystem):
         if solve_success == False:
             print("IK Solve Failed. GCS unable to work.")
             return        
-
-        self.source_regions["start"] = Point(q_current)
-        self.source_regions["goal"] = Point(q_goal)
+        
+        gcs_regions = self.source_regions.copy()
+        gcs_regions["start"] = Point(q_current)
+        gcs_regions["goal"] = Point(q_goal)
         if self.visualize:
             with SuppressOutput():  # Suppress Gurobi spam
-                self.visualize_connectivity(self.source_regions)
-            print("Connectivity graph saved to ../data/iris_connectivity.svg.")
+                self.visualize_connectivity(gcs_regions)
+            # print("Connectivity graph saved to ../data/iris_connectivity.svg.")
 
         edges = []
 
         with SuppressOutput():  # Suppress Gurobi spam
             gcs = GcsTrajectoryOptimization(len(q_current))
-            self.source_regions = gcs.AddRegions(list(self.source_regions.values()), order=1)
+            gcs_regions = gcs.AddRegions(list(gcs_regions.values()), order=1)
             source = gcs.AddRegions([Point(q_current)], order=0)
             target = gcs.AddRegions([Point(q_goal)], order=0)
-            edges.append(gcs.AddEdges(source, self.source_regions))
-            edges.append(gcs.AddEdges(self.source_regions, target))
+            edges.append(gcs.AddEdges(source, gcs_regions))
+            edges.append(gcs.AddEdges(gcs_regions, target))
         
         gcs.AddTimeCost()
         gcs.AddVelocityBounds(
-            plant.GetVelocityLowerLimits(), plant.GetVelocityUpperLimits() * 0.25
+            self.plant.GetVelocityLowerLimits(), self.plant.GetVelocityUpperLimits() * 0.25
         )
         
         options = GraphOfConvexSetsOptions()
@@ -211,6 +248,8 @@ class MotionPlanner(LeafSystem):
             # print(edge.phi())
             # print(result)
             # print(result.GetSolution(edge.phi()))
+
+        self.VisualizePath(traj, f"GCS Traj")
 
         state.get_mutable_abstract_state(int(self._traj_index)).set_value(traj)
 

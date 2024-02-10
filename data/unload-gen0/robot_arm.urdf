@@ -758,7 +758,7 @@
         <drake:ignored_collision_filter_group name="base"/>
     </drake:collision_filter_group> -->
 
-    <drake:collision_filter_group name="arm_a4">
+    <!-- <drake:collision_filter_group name="arm_a4">
         <drake:member link="arm_a4"/>
         <drake:ignored_collision_filter_group name="arm_a6"/>
     </drake:collision_filter_group>
@@ -766,7 +766,7 @@
     <drake:collision_filter_group name="arm_a6">
         <drake:member link="arm_a6"/>
         <drake:ignored_collision_filter_group name="arm_a4"/>
-    </drake:collision_filter_group>
+    </drake:collision_filter_group> -->
 
 
 </robot>
