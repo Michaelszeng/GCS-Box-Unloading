@@ -78,7 +78,7 @@ class MotionPlanner(LeafSystem):
         self.robot_pose = robot_pose
         self.original_plant = original_plant
         self.meshcat = meshcat
-        self.q_nominal = np.array([0.0, 0.0, 0.0, 1.5, -1.8, 0.0])  # nominal joint for joint-centering
+        self.q_nominal = np.array([0.0, -1.8, 1.5, 0.0, 0.0, 0.0])  # nominal joint for joint-centering
         self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), robot_pose.translation() + [0.0, -0.65, 1.0])
         AddMeshcatTriad(meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
         self.source_regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
@@ -153,9 +153,9 @@ class MotionPlanner(LeafSystem):
         if is_yaml_empty("../data/iris_source_regions.yaml"):
             print(f"compute_command returning due to no IRIS regions ready yet.")
             return
-        # if context.get_time() < self.start_planning_time:
-        #     print(f"compute_command returning due to box randomization still occuring.")
-        #     return
+        if context.get_time() < self.start_planning_time:
+            print(f"compute_command returning due to box randomization still occuring.")
+            return
 
         ### Read Input Ports
         kuka_state = self.get_input_port(0).Eval(context)
@@ -259,11 +259,15 @@ class MotionPlanner(LeafSystem):
         traj_q = context.get_mutable_abstract_state(int(self._traj_index)).get_value()
 
         if (traj_q.rows() == 1):
-            output.SetFromVector(self.get_input_port(0).Eval(context))
+            print("default traj output.")
+            output.SetFromVector(np.append(
+                self.q_nominal,
+                np.zeros((6,))
+            ))
         else:
             output.SetFromVector(np.append(
-                traj_q.value(context.get_time()),
-                traj_q.EvalDerivative(context.get_time())
+                traj_q.value(context.get_time() - self.start_planning_time),
+                traj_q.EvalDerivative(context.get_time() - self.start_planning_time)
             ))
 
 
@@ -272,7 +276,7 @@ class MotionPlanner(LeafSystem):
         traj_q = context.get_mutable_abstract_state(int(self._traj_index)).get_value()
 
         if (traj_q.rows() == 1):
-            # print("planner outputting default 0 acceleration")
+            print("planner outputting default 0 acceleration")
             output.SetFromVector(np.zeros((6,)))
         else:
-            output.SetFromVector(traj_q.EvalDerivative(context.get_time(), 2))
+            output.SetFromVector(traj_q.EvalDerivative(context.get_time() - self.start_planning_time, 2))
