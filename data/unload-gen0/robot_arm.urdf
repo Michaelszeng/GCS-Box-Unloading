@@ -595,7 +595,8 @@
         <parent link="arm_a5" />
         <child link="arm_a6" />
         <axis xyz="0 0 1" />
-        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
+        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -605,7 +606,8 @@
         <parent link="arm_a4" />
         <child link="arm_a5" />
         <axis xyz="0 0 1" />
-        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
+        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -615,7 +617,8 @@
         <parent link="arm_a3" />
         <child link="arm_a4" />
         <axis xyz="0 0 1" />
-        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
+        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -625,7 +628,8 @@
         <parent link="arm_a2" />
         <child link="arm_a3" />
         <axis xyz="0 0 1" />
-        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
+        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -635,7 +639,8 @@
         <parent link="arm_a1" />
         <child link="arm_a2" />
         <axis xyz="0 0 1" />
-        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
+        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -645,7 +650,8 @@
         <parent link="arm_base" />
         <child link="arm_a1" />
         <axis xyz="0 0 1" />
-        <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" />
+        <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
+        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 

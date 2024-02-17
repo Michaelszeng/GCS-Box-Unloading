@@ -39,6 +39,7 @@ from utils import NUM_BOXES, diagram_visualize_connections
 from scenario import scenario_yaml, robot_yaml
 from iris import generate_source_iris_regions
 from gcs import MotionPlanner
+from debug import Debugger
 
 
 parser = argparse.ArgumentParser()
@@ -113,13 +114,19 @@ parser = Parser(plant)
 ConfigureParser(parser)
 Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
-controller_plant_context = controller_plant.CreateDefaultContext()
 num_robot_positions = controller_plant.num_positions()
-controller = builder.AddSystem(InverseDynamicsController(controller_plant, [100]*num_robot_positions, [0]*num_robot_positions, [20]*num_robot_positions, True))
+controller = builder.AddSystem(InverseDynamicsController(controller_plant, [100]*num_robot_positions, [0]*num_robot_positions, [0]*num_robot_positions, True))
 builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
 builder.Connect(motion_planner.GetOutputPort("kuka_command"), controller.GetInputPort("desired_state"))
 builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.GetInputPort("desired_acceleration"))
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
+
+### Print Debugger
+if True:
+    debugger = builder.AddSystem(Debugger())
+    builder.Connect(station.GetOutputPort("kuka_state"), debugger.GetInputPort("kuka_state"))
+    builder.Connect(station.GetOutputPort("body_poses"), debugger.GetInputPort("kuka_current_pose"))
+    builder.Connect(controller.GetOutputPort("generalized_force"), debugger.GetInputPort("kuka.actuation"))
 
 ### Finalizing diagram setup
 diagram = builder.Build()
@@ -137,16 +144,15 @@ station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 
-# print(f"controller_plant state: {controller_plant.get_state_output_port().Eval(controller_plant_context)}")
-# print(f"plant state:: {plant.get_state_output_port(plant.GetModelInstanceByName('kuka')).Eval(plant_context)}")
+controller.GetInputPort("desired_state").FixValue(controller_context, np.append(
+    [0.0, -1.8, 1.5, 0.0, 0.0, 0.0],
+    # np.zeros((6,)),
+    np.zeros((6,)),
+    # [0.0, -1.8, 1.5, 0.0, 0.0, 0.0],
+)) # TESTING
+controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(6)) # TESTING
 
-# controller.GetInputPort("desired_state").FixValue(controller_context, np.append(
-#     # [0.0, 0.0, 0.0, 1.5, -1.8, 0.0],
-#     [0.0, -1.8, 1.5, 0.0, 0.0, 0.0],
-#     # np.zeros((6,)),
-#     np.zeros((6,))
-# )) # TESTING
-# controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(6)) # TESTING
+# station.GetInputPort("kuka.actuation").FixValue(station_context, -1000*np.ones(6))
 
 ####################################
 ### Running Simulation & Meshcat ###

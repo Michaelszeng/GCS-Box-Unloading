@@ -82,7 +82,7 @@ class MotionPlanner(LeafSystem):
         self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), robot_pose.translation() + [0.0, -0.65, 1.0])
         AddMeshcatTriad(meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
         self.source_regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
-        self.previous_compute_result = None  # BpslineTrajectory object
+        self.previous_compute_result = None  # BsplineTrajectory object
         self.start_planning_time = box_randomization_runtime
         self.visualize = True
 
@@ -156,7 +156,7 @@ class MotionPlanner(LeafSystem):
         if context.get_time() < self.start_planning_time:
             print(f"compute_command returning due to box randomization still occuring.")
             return
-
+        
         ### Read Input Ports
         kuka_state = self.get_input_port(0).Eval(context)
         q_current = kuka_state[:6]
