@@ -78,7 +78,8 @@ class MotionPlanner(LeafSystem):
         self.robot_pose = robot_pose
         self.original_plant = original_plant
         self.meshcat = meshcat
-        self.q_nominal = np.array([0.0, -1.8, 1.5, 0.0, 0.0, 0.0])  # nominal joint for joint-centering
+
+        self.q_nominal = np.array([0.0, -2.5, 2.8, 0.0, 1.2, 0.0])  # nominal joint for joint-centering
         self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), robot_pose.translation() + [0.0, -0.65, 1.0])
         AddMeshcatTriad(meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
         self.source_regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
@@ -199,6 +200,7 @@ class MotionPlanner(LeafSystem):
                 q_goal = ik_result.GetSolution(q_variables)  # (6,) np array
                 print(f"IK solve succeeded. q_goal: {q_goal}")
                 solve_success = True
+                break
             # else:
             #     print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
             #     print(ik_result.GetInfeasibleConstraintNames(ik_prog))

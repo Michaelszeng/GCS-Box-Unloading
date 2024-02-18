@@ -23,9 +23,6 @@ absolute_path_to_truck_trailer_left_side = os.path.abspath(relative_path_to_truc
 absolute_path_to_truck_trailer_roof = os.path.abspath(relative_path_to_truck_trailer_roof)
 
 scenario_yaml = f"""
-model_drivers:
-    kuka: !ForceDriver {{}}  # ForceDriver allows access to desired_state and desired_acceleration input ports for station (results in better traj following)
-
 directives:
 - add_model:
     name: robot_base
@@ -34,12 +31,12 @@ directives:
     name: kuka
     file: file://{absolute_path_to_robot_arm}
     default_joint_positions:
-        arm_a6: [0.0]
-        arm_a5: [0.0]
-        arm_a4: [0.0]
-        arm_a3: [1.5]
-        arm_a2: [-1.8]
         arm_a1: [0.0]
+        arm_a2: [-2.5]
+        arm_a3: [2.8]
+        arm_a4: [0.0]
+        arm_a5: [1.2]
+        arm_a6: [0.0]
 - add_weld:
     parent: robot_base::base
     child: kuka::base_link        
@@ -114,12 +111,12 @@ directives:
     name: kuka
     file: file://{absolute_path_to_robot_arm}
     default_joint_positions:
-        arm_a6: [0.0]
-        arm_a5: [0.0]
-        arm_a4: [0.0]
-        arm_a3: [1.5]
-        arm_a2: [-1.8]
         arm_a1: [0.0]
+        arm_a2: [-2.5]
+        arm_a3: [2.8]
+        arm_a4: [0.0]
+        arm_a5: [1.2]
+        arm_a6: [0.0]
 
 - add_weld:
     parent: world

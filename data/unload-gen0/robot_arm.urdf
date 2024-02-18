@@ -27,12 +27,12 @@
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="50" />
-            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+            <inertia ixx="0.05" ixy="0" ixz="0" iyy="0.06" iyz="0" izz="0.03"/>
         </inertial>
     </link>
 
     <link name="arm_a1">
-        <visual>
+        <!-- <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
             <geometry>
@@ -43,13 +43,6 @@
                     rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
             </material>
         </visual>
-        <!-- <collision>
-            <origin xyz="1.5407439555097886824e-33 0 0"
-                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
-            <geometry>
-                <mesh filename="krl70_a1_surface_3.obj" />
-            </geometry>
-        </collision> -->
         <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
@@ -79,13 +72,6 @@
                     rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
             </material>
         </visual>
-        <!-- <collision>
-            <origin xyz="1.5407439555097886824e-33 0 0"
-                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
-            <geometry>
-                <mesh filename="krl70_a1_surface_4.obj" />
-            </geometry>
-        </collision> -->
         <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
@@ -168,14 +154,7 @@
                 <color
                     rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
             </material>
-        </visual>
-        <!-- <collision>
-            <origin xyz="1.5407439555097886824e-33 0 0"
-                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
-            <geometry>
-                <mesh filename="krl70_a1_part_3.obj" />
-            </geometry>
-        </collision> -->
+        </visual> -->
         <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
@@ -194,7 +173,7 @@
                 <mesh filename="krl70_a1_surface_1.obj" />
             </geometry>
         </collision>
-        <visual>
+        <!-- <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
             <geometry>
@@ -205,13 +184,6 @@
                     rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
             </material>
         </visual>
-        <!-- <collision>
-            <origin xyz="1.5407439555097886824e-33 0 0"
-                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
-            <geometry>
-                <mesh filename="krl70_a1_part_7.obj" />
-            </geometry>
-        </collision> -->
         <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
@@ -241,13 +213,6 @@
                     rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
             </material>
         </visual>
-        <!-- <collision>
-            <origin xyz="1.5407439555097886824e-33 0 0"
-                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
-            <geometry>
-                <mesh filename="krl70_a1_part_14.obj" />
-            </geometry>
-        </collision> -->
         <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
@@ -295,13 +260,6 @@
                     rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
             </material>
         </visual>
-        <!-- <collision>
-            <origin xyz="1.5407439555097886824e-33 0 0"
-                rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
-            <geometry>
-                <mesh filename="krl70_a1_part_15.obj" />
-            </geometry>
-        </collision> -->
         <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
@@ -319,28 +277,13 @@
             <geometry>
                 <mesh filename="krl70_a1_part_10.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="50" />
-            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+            <inertia ixx="0.05" ixy="0" ixz="0" iyy="0.05" iyz="0" izz="0.05" />
         </inertial>
     </link>
-
-    <link name="camera_mast_top">
-        <inertial>
-            <origin xyz="0 0 0" rpy="0 0 0" />
-            <mass value="1" />
-            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
-        </inertial>
-    </link>
-    <joint name="camera_mast_top_frame" type="fixed">
-        <origin xyz="0.28570765256881713867 0.063423349522054167648 -1.5078871250152587891"
-            rpy="3.141592653589793116 -8.2087530419469959112e-49 -7.771561172376135226e-16" />
-        <parent link="arm_a1" />
-        <child link="camera_mast_top" />
-        <axis xyz="0 0 0" />
-    </joint>
 
     <link name="arm_a2">
         <visual>
@@ -362,17 +305,14 @@
             </geometry>
         </collision>
         <inertial>
-            <origin xyz="0.5 0.0 -0.1"
-                rpy="0 0 0" />
+            <origin xyz="0.5 0.0 -0.1" rpy="0 0 0" />
             <mass value="50" />
-            <inertia ixx="0.23" ixy="0.0"
-                ixz="0.0" iyy="2.4"
-                iyz="0.0" izz="2.4" />
+            <inertia ixx="0.023" ixy="0.0" ixz="0.0" iyy="0.24" iyz="0.0" izz="0.24" />
         </inertial>
     </link>
 
     <link name="arm_a3">
-        <visual>
+        <!-- <visual>
             <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
                 rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
             <geometry>
@@ -407,7 +347,7 @@
             <geometry>
                 <mesh filename="krl70_a3_part_5.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <visual>
             <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
                 rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
@@ -426,7 +366,7 @@
                 <mesh filename="krl70_a3_part_1.obj" />
             </geometry>
         </collision>
-        <visual>
+        <!-- <visual>
             <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
                 rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
             <geometry>
@@ -461,14 +401,14 @@
             <geometry>
                 <mesh filename="krl70_a3_part_4.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0.030864427454271738116 -0.016399980131314512849 0.21198513183782663472"
                 rpy="0 0 0" />
             <mass value="50" />
-            <inertia ixx="0.76628668414763190242" ixy="0.11178510733530450105"
-                ixz="0.087892839544429543497" iyy="1.3806179180784203808"
-                iyz="-0.0049170055791110060112" izz="1.0716383689018762482" />
+            <inertia ixx="0.076628668414763190242" ixy="0.011178510733530450105"
+                ixz="0.0087892839544429543497" iyy="0.13806179180784203808"
+                iyz="-0.00049170055791110060112" izz="0.10716383689018762482" />
         </inertial>
     </link>
 
@@ -495,9 +435,9 @@
             <origin xyz="-0.00011009440598539983259 0.028101444653209010915 -0.39037704408288848024"
                 rpy="0 0 0" />
             <mass value="50" />
-            <inertia ixx="2.4684865646591473975" ixy="-0.00014431823090878446677"
-                ixz="-0.0001774880851912655059" iyy="2.4078279510668894048"
-                iyz="0.32674097923367650953" izz="0.23096980997028596083" />
+            <inertia ixx="0.24684865646591473975" ixy="-0.000014431823090878446677"
+                ixz="-0.00001774880851912655059" iyy="0.24078279510668894048"
+                iyz="0.032674097923367650953" izz="0.023096980997028596083" />
         </inertial>
     </link>
 
@@ -524,14 +464,14 @@
             <origin xyz="7.5009165057020920687e-05 0.034822251053373991236 0.065355301992343559081"
                 rpy="0 0 0" />
             <mass value="10" />
-            <inertia ixx="0.06458845766603940608" ixy="6.2576785854245072904e-05"
-                ixz="4.0996413523482483755e-05" iyy="0.038408465954688324195"
-                iyz="0.0073209078103269311852" izz="0.062834719263130195399" />
+            <inertia ixx="0.006458845766603940608" ixy="0.62576785854245072904e-05"
+                ixz="0.40996413523482483755e-05" iyy="0.0038408465954688324195"
+                iyz="0.00073209078103269311852" izz="0.0062834719263130195399" />
         </inertial>
     </link>
 
     <link name="arm_a6">
-        <visual>
+        <!-- <visual>
             <origin xyz="0.031966947383084032275 -2.63103341197057361e-15 0.18499993365743261364"
                 rpy="-1.5707963267948998887 3.9446934240444338375e-15 1.5707963267948124031" />
             <geometry>
@@ -548,7 +488,7 @@
             <geometry>
                 <mesh filename="krl70_a5_part_2.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <visual>
             <origin xyz="-0.181966947383084032275 -2.63103341197057361e-15 -0.01499993365743261364"
                 rpy="3.14159265 3.9446934240444338375e-15 0" />
@@ -569,8 +509,8 @@
         </collision>
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
-            <mass value="20" />
-            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+            <mass value="10" />
+            <inertia ixx="0.05" ixy="0" ixz="0" iyy="0.05" iyz="0" izz="0.05" />
         </inertial>
     </link>
 
@@ -665,58 +605,13 @@
         <joint_properties friction="0.0" />
     </joint> -->
 
-    <transmission name="tran_a6">
+    <transmission name="tran_a1">
         <robotNamespace>/kuka</robotNamespace>
         <type>transmission_interface/SimpleTransmission</type>
-        <joint name="arm_a6">
+        <joint name="arm_a1">
             <hardwareInterface>PositionJointInterface</hardwareInterface>
         </joint>
-        <actuator name="motor_a6">
-            <hardwareInterface>PositionJointInterface</hardwareInterface>
-            <mechanicalReduction>1</mechanicalReduction>
-            <!-- guessed gear_ratio and rotor_inertia -->
-            <drake:gear_ratio value="160.0" />
-            <drake:rotor_inertia value="0.0001321" />
-        </actuator>
-    </transmission>
-
-    <transmission name="tran_a5">
-        <robotNamespace>/kuka</robotNamespace>
-        <type>transmission_interface/SimpleTransmission</type>
-        <joint name="arm_a5">
-            <hardwareInterface>PositionJointInterface</hardwareInterface>
-        </joint>
-        <actuator name="motor_a5">
-            <hardwareInterface>PositionJointInterface</hardwareInterface>
-            <mechanicalReduction>1</mechanicalReduction>
-            <!-- guessed gear_ratio and rotor_inertia -->
-            <drake:gear_ratio value="160.0" />
-            <drake:rotor_inertia value="0.0001321" />
-        </actuator>
-    </transmission>
-
-    <transmission name="tran_a4">
-        <robotNamespace>/kuka</robotNamespace>
-        <type>transmission_interface/SimpleTransmission</type>
-        <joint name="arm_a4">
-            <hardwareInterface>PositionJointInterface</hardwareInterface>
-        </joint>
-        <actuator name="motor_a4">
-            <hardwareInterface>PositionJointInterface</hardwareInterface>
-            <mechanicalReduction>1</mechanicalReduction>
-            <!-- guessed gear_ratio and rotor_inertia -->
-            <drake:gear_ratio value="160.0" />
-            <drake:rotor_inertia value="0.0001321" />
-        </actuator>
-    </transmission>
-
-    <transmission name="tran_a3">
-        <robotNamespace>/kuka</robotNamespace>
-        <type>transmission_interface/SimpleTransmission</type>
-        <joint name="arm_a3">
-            <hardwareInterface>PositionJointInterface</hardwareInterface>
-        </joint>
-        <actuator name="motor_a3">
+        <actuator name="motor_a1">
             <hardwareInterface>PositionJointInterface</hardwareInterface>
             <mechanicalReduction>1</mechanicalReduction>
             <!-- guessed gear_ratio and rotor_inertia -->
@@ -740,13 +635,13 @@
         </actuator>
     </transmission>
 
-    <transmission name="tran_a1">
+    <transmission name="tran_a3">
         <robotNamespace>/kuka</robotNamespace>
         <type>transmission_interface/SimpleTransmission</type>
-        <joint name="arm_a1">
+        <joint name="arm_a3">
             <hardwareInterface>PositionJointInterface</hardwareInterface>
         </joint>
-        <actuator name="motor_a1">
+        <actuator name="motor_a3">
             <hardwareInterface>PositionJointInterface</hardwareInterface>
             <mechanicalReduction>1</mechanicalReduction>
             <!-- guessed gear_ratio and rotor_inertia -->
@@ -755,21 +650,110 @@
         </actuator>
     </transmission>
 
-    <!-- <drake:collision_filter_group name="base">
-        <drake:member link="base"/>
+    <transmission name="tran_a4">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a4">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a4">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <transmission name="tran_a5">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a5">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a5">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <transmission name="tran_a6">
+        <robotNamespace>/kuka</robotNamespace>
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="arm_a6">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor_a6">
+            <hardwareInterface>PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+            <!-- guessed gear_ratio and rotor_inertia -->
+            <drake:gear_ratio value="160.0" />
+            <drake:rotor_inertia value="0.0001321" />
+        </actuator>
+    </transmission>
+
+    <!-- Collision Filters between adjacent links -->
+    <drake:collision_filter_group name="arm_base">
+        <drake:member link="arm_base"/>
         <drake:ignored_collision_filter_group name="arm_a1"/>
+    </drake:collision_filter_group>
+    <drake:collision_filter_group name="arm_a1">
+        <drake:member link="arm_a1"/>
+        <drake:ignored_collision_filter_group name="arm_base"/>
     </drake:collision_filter_group>
 
     <drake:collision_filter_group name="arm_a1">
         <drake:member link="arm_a1"/>
-        <drake:ignored_collision_filter_group name="base"/>
-    </drake:collision_filter_group> -->
+        <drake:ignored_collision_filter_group name="arm_a2"/>
+    </drake:collision_filter_group>
+    <drake:collision_filter_group name="arm_a2">
+        <drake:member link="arm_a2"/>
+        <drake:ignored_collision_filter_group name="arm_a1"/>
+    </drake:collision_filter_group>
+
+    <drake:collision_filter_group name="arm_a2">
+        <drake:member link="arm_a2"/>
+        <drake:ignored_collision_filter_group name="arm_a3"/>
+    </drake:collision_filter_group>
+    <drake:collision_filter_group name="arm_a3">
+        <drake:member link="arm_a3"/>
+        <drake:ignored_collision_filter_group name="arm_a2"/>
+    </drake:collision_filter_group>
+
+    <drake:collision_filter_group name="arm_a3">
+        <drake:member link="arm_a3"/>
+        <drake:ignored_collision_filter_group name="arm_a4"/>
+    </drake:collision_filter_group>
+    <drake:collision_filter_group name="arm_a4">
+        <drake:member link="arm_a4"/>
+        <drake:ignored_collision_filter_group name="arm_a3"/>
+    </drake:collision_filter_group>
+
+    <drake:collision_filter_group name="arm_a4">
+        <drake:member link="arm_a4"/>
+        <drake:ignored_collision_filter_group name="arm_a5"/>
+    </drake:collision_filter_group>
+    <drake:collision_filter_group name="arm_a5">
+        <drake:member link="arm_a5"/>
+        <drake:ignored_collision_filter_group name="arm_a4"/>
+    </drake:collision_filter_group>
+
+    <drake:collision_filter_group name="arm_a5">
+        <drake:member link="arm_a5"/>
+        <drake:ignored_collision_filter_group name="arm_a6"/>
+    </drake:collision_filter_group>
+    <drake:collision_filter_group name="arm_a6">
+        <drake:member link="arm_a6"/>
+        <drake:ignored_collision_filter_group name="arm_a5"/>
+    </drake:collision_filter_group>
 
     <drake:collision_filter_group name="arm_a4">
         <drake:member link="arm_a4"/>
         <drake:ignored_collision_filter_group name="arm_a6"/>
     </drake:collision_filter_group>
-
     <drake:collision_filter_group name="arm_a6">
         <drake:member link="arm_a6"/>
         <drake:ignored_collision_filter_group name="arm_a4"/>

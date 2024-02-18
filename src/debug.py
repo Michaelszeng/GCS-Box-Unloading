@@ -44,7 +44,7 @@ class Debugger(LeafSystem):
         body_poses = AbstractValue.Make([RigidTransform()])
         self.DeclareAbstractInputPort("kuka_current_pose", body_poses)
 
-        kuka_actuation = self.DeclareVectorInputPort(name="kuka.actuation", size=6)
+        kuka_actuation = self.DeclareVectorInputPort(name="kuka_actuation", size=6)
 
         self.DeclarePeriodicUnrestrictedUpdateEvent(print_frequency, 0.0, self.debug_print)
 
