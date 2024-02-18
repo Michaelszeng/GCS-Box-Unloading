@@ -32,7 +32,7 @@
     </link>
 
     <link name="arm_a1">
-        <!-- <visual>
+        <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
             <geometry>
@@ -154,7 +154,7 @@
                 <color
                     rgba="0.20392156862745097756 0.82745098039215680963 0.34509803921568626972 1.0" />
             </material>
-        </visual> -->
+        </visual>
         <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
@@ -173,7 +173,7 @@
                 <mesh filename="krl70_a1_surface_1.obj" />
             </geometry>
         </collision>
-        <!-- <visual>
+        <visual>
             <origin xyz="1.5407439555097886824e-33 0 0"
                 rpy="-3.9707165676768317797e-50 -5.036083503801502306e-65 4.9303806576317792058e-32" />
             <geometry>
@@ -277,7 +277,7 @@
             <geometry>
                 <mesh filename="krl70_a1_part_10.obj" />
             </geometry>
-        </collision> -->
+        </collision>
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="50" />
@@ -312,7 +312,7 @@
     </link>
 
     <link name="arm_a3">
-        <!-- <visual>
+        <visual>
             <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
                 rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
             <geometry>
@@ -347,7 +347,7 @@
             <geometry>
                 <mesh filename="krl70_a3_part_5.obj" />
             </geometry>
-        </collision> -->
+        </collision>
         <visual>
             <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
                 rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
@@ -366,7 +366,7 @@
                 <mesh filename="krl70_a3_part_1.obj" />
             </geometry>
         </collision>
-        <!-- <visual>
+        <visual>
             <origin xyz="0 1.1102230246251565404e-16 -2.7755575615628913511e-17"
                 rpy="6.1629758220403877082e-33 -3.9873593713020731904e-42 6.5327543664026520664e-31" />
             <geometry>
@@ -401,7 +401,7 @@
             <geometry>
                 <mesh filename="krl70_a3_part_4.obj" />
             </geometry>
-        </collision> -->
+        </collision>
         <inertial>
             <origin xyz="0.030864427454271738116 -0.016399980131314512849 0.21198513183782663472"
                 rpy="0 0 0" />
@@ -471,7 +471,7 @@
     </link>
 
     <link name="arm_a6">
-        <!-- <visual>
+        <visual>
             <origin xyz="0.031966947383084032275 -2.63103341197057361e-15 0.18499993365743261364"
                 rpy="-1.5707963267948998887 3.9446934240444338375e-15 1.5707963267948124031" />
             <geometry>
@@ -488,7 +488,7 @@
             <geometry>
                 <mesh filename="krl70_a5_part_2.obj" />
             </geometry>
-        </collision> -->
+        </collision>
         <visual>
             <origin xyz="-0.181966947383084032275 -2.63103341197057361e-15 -0.01499993365743261364"
                 rpy="3.14159265 3.9446934240444338375e-15 0" />

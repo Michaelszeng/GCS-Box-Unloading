@@ -21,7 +21,7 @@ from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad
 from manipulation.utils import ConfigureParser
 
-from scenario import scenario_yaml_for_iris
+from scenario import scenario_yaml_for_iris, q_nominal
 from utils import NUM_BOXES, is_yaml_empty, SuppressOutput
 
 import time
@@ -79,7 +79,6 @@ class MotionPlanner(LeafSystem):
         self.original_plant = original_plant
         self.meshcat = meshcat
 
-        self.q_nominal = np.array([0.0, -2.5, 2.8, 0.0, 1.2, 0.0])  # nominal joint for joint-centering
         self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), robot_pose.translation() + [0.0, -0.65, 1.0])
         AddMeshcatTriad(meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
         self.source_regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
@@ -173,7 +172,7 @@ class MotionPlanner(LeafSystem):
             ik_prog = ik.get_mutable_prog()
 
             # ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_current, q_variables)
-            ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), self.q_nominal, q_variables)
+            ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_nominal, q_variables)
 
             # q_variables must be within half-plane for every half-plane in region
             ik_prog.AddConstraint(logical_and(*[expr <= const for expr, const in zip(region.A() @ q_variables, region.b())]))
@@ -194,7 +193,7 @@ class MotionPlanner(LeafSystem):
                 theta_bound=0.05,
             )
 
-            ik_prog.SetInitialGuess(q_variables, self.q_nominal)
+            ik_prog.SetInitialGuess(q_variables, q_nominal)
             ik_result = Solve(ik_prog)
             if ik_result.is_success():
                 q_goal = ik_result.GetSolution(q_variables)  # (6,) np array
@@ -261,9 +260,9 @@ class MotionPlanner(LeafSystem):
         traj_q = context.get_mutable_abstract_state(int(self._traj_index)).get_value()
 
         if (traj_q.rows() == 1):
-            print("default traj output.")
+            # print("default traj output.")
             output.SetFromVector(np.append(
-                self.q_nominal,
+                q_nominal,
                 np.zeros((6,))
             ))
         else:
@@ -278,7 +277,7 @@ class MotionPlanner(LeafSystem):
         traj_q = context.get_mutable_abstract_state(int(self._traj_index)).get_value()
 
         if (traj_q.rows() == 1):
-            print("planner outputting default 0 acceleration")
+            # print("planner outputting default 0 acceleration")
             output.SetFromVector(np.zeros((6,)))
         else:
             output.SetFromVector(traj_q.EvalDerivative(context.get_time() - self.start_planning_time, 2))

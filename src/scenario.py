@@ -2,6 +2,8 @@
 
 import os
 
+q_nominal = [0.0, -2.5, 2.5, 0.0, 1.5, 0.0]
+
 relative_path_to_robot_base = '../data/unload-gen0/robot_base.urdf'
 relative_path_to_robot_arm = '../data/unload-gen0/robot_arm.urdf'
 
@@ -31,12 +33,12 @@ directives:
     name: kuka
     file: file://{absolute_path_to_robot_arm}
     default_joint_positions:
-        arm_a1: [0.0]
-        arm_a2: [-2.5]
-        arm_a3: [2.8]
-        arm_a4: [0.0]
-        arm_a5: [1.2]
-        arm_a6: [0.0]
+        arm_a1: [{q_nominal[0]}]
+        arm_a2: [{q_nominal[1]}]
+        arm_a3: [{q_nominal[2]}]
+        arm_a4: [{q_nominal[3]}]
+        arm_a5: [{q_nominal[4]}]
+        arm_a6: [{q_nominal[5]}]
 - add_weld:
     parent: robot_base::base
     child: kuka::base_link        
@@ -111,12 +113,12 @@ directives:
     name: kuka
     file: file://{absolute_path_to_robot_arm}
     default_joint_positions:
-        arm_a1: [0.0]
-        arm_a2: [-2.5]
-        arm_a3: [2.8]
-        arm_a4: [0.0]
-        arm_a5: [1.2]
-        arm_a6: [0.0]
+        arm_a1: [{q_nominal[0]}]
+        arm_a2: [{q_nominal[1]}]
+        arm_a3: [{q_nominal[2]}]
+        arm_a4: [{q_nominal[3]}]
+        arm_a5: [{q_nominal[4]}]
+        arm_a6: [{q_nominal[5]}]
 
 - add_weld:
     parent: world

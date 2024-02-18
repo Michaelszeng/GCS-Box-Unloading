@@ -48,13 +48,17 @@ class Debugger(LeafSystem):
 
         self.DeclarePeriodicUnrestrictedUpdateEvent(print_frequency, 0.0, self.debug_print)
 
+        self.on = False
+
 
     def debug_print(self, context, state):
         kuka_state = self.get_input_port(0).Eval(context)
         q_current = kuka_state[:6]
         q_dot_current = kuka_state[6:]
-        print(f"q_current: {q_current}")
-        print(f"q_dot_current: {q_dot_current}")
 
         kuka_actuation = self.get_input_port(2).Eval(context)
-        print(f"kuka_actuation: {kuka_actuation}")
+        
+        if self.on:
+            print(f"q_current: {q_current}")
+            print(f"q_dot_current: {q_dot_current}")
+            print(f"kuka_actuation: {kuka_actuation}")
