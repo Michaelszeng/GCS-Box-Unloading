@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
+<!-- KUKA KR 70 Robot -->
 <robot xmlns:drake="http://drake.mit.edu" xmlns:xacro="http://www.ros.org/wiki/xacro" name="kuka">
     <link name="base_link"></link>
     <joint name="base_link_to_base" type="fixed">
@@ -596,7 +597,7 @@
         <child link="arm_a6" />
         <axis xyz="0 0 1" />
         <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
-        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
+        <limit drake:acceleration="8.57" effort="10000" lower="-6.10865" upper="6.10865" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -607,7 +608,7 @@
         <child link="arm_a5" />
         <axis xyz="0 0 1" />
         <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
-        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
+        <limit drake:acceleration="8.57" effort="10000" lower="-2.18166" upper="2.18166" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -618,7 +619,7 @@
         <child link="arm_a4" />
         <axis xyz="0 0 1" />
         <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
-        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
+        <limit drake:acceleration="8.57" effort="10000" lower="-3.141592" upper="3.141592" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -629,7 +630,7 @@
         <child link="arm_a3" />
         <axis xyz="0 0 1" />
         <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
-        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
+        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.87979" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -640,7 +641,7 @@
         <child link="arm_a2" />
         <axis xyz="0 0 1" />
         <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
-        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
+        <limit drake:acceleration="8.57" effort="10000" lower="-3.05433" upper="1.0472" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -651,7 +652,7 @@
         <child link="arm_a1" />
         <axis xyz="0 0 1" />
         <!-- <limit effort="1" velocity="20" lower="-3.05432619099" upper="3.05432619099" /> -->
-        <limit drake:acceleration="8.57" effort="10000" lower="-2.09439510239" upper="2.09439510239" velocity="1.4835298641951802"/>
+        <limit drake:acceleration="8.57" effort="10000" lower="-3.22886" upper="3.22886" velocity="1.4835298641951802"/>
         <joint_properties friction="0.0" />
     </joint>
 
@@ -764,7 +765,7 @@
         <drake:ignored_collision_filter_group name="base"/>
     </drake:collision_filter_group> -->
 
-    <!-- <drake:collision_filter_group name="arm_a4">
+    <drake:collision_filter_group name="arm_a4">
         <drake:member link="arm_a4"/>
         <drake:ignored_collision_filter_group name="arm_a6"/>
     </drake:collision_filter_group>
@@ -772,7 +773,7 @@
     <drake:collision_filter_group name="arm_a6">
         <drake:member link="arm_a6"/>
         <drake:ignored_collision_filter_group name="arm_a4"/>
-    </drake:collision_filter_group> -->
+    </drake:collision_filter_group>
 
 
 </robot>

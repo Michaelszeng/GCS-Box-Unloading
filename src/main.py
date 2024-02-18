@@ -115,9 +115,9 @@ ConfigureParser(parser)
 Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
 num_robot_positions = controller_plant.num_positions()
-controller = builder.AddSystem(InverseDynamicsController(controller_plant, [100]*num_robot_positions, [0]*num_robot_positions, [0]*num_robot_positions, True))
+controller = builder.AddSystem(InverseDynamicsController(controller_plant, [100]*num_robot_positions, [0]*num_robot_positions, [0]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
 builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
-builder.Connect(motion_planner.GetOutputPort("kuka_command"), controller.GetInputPort("desired_state"))
+builder.Connect(motion_planner.GetOutputPort("kuka_desired_state"), controller.GetInputPort("desired_state"))
 builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.GetInputPort("desired_acceleration"))
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
 
@@ -144,6 +144,14 @@ station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 
+
+### TESTING
+controller.GetInputPort("estimated_state").FixValue(controller_context, np.append(
+    [0.0, -1.8, 1.5, 0.0, 0.0, 0.0],
+    # np.zeros((6,)),
+    np.zeros((6,)),
+    # [0.0, -1.8, 1.5, 0.0, 0.0, 0.0],
+)) # TESTING
 controller.GetInputPort("desired_state").FixValue(controller_context, np.append(
     [0.0, -1.8, 1.5, 0.0, 0.0, 0.0],
     # np.zeros((6,)),

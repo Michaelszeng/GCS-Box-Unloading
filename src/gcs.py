@@ -49,7 +49,7 @@ class MotionPlanner(LeafSystem):
         )
 
         self.DeclareVectorOutputPort(
-            "kuka_command", 12, self.output_command  # 6 pos, 6 vel
+            "kuka_desired_state", 12, self.output_command  # 6 pos, 6 vel
         )
 
         self.DeclareVectorOutputPort(
