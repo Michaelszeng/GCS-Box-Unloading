@@ -2429,7 +2429,7 @@
 <text text-anchor="start" x="1352" y="-5115.8" font-family="Times,serif" font-size="14.00">inertia_visualizer_configuration</text>
 </g>
 <!-- s2&#45;&gt;s3 -->
-<g id="edge8" class="edge">
+<g id="edge9" class="edge">
 <title>s2:e&#45;&gt;s3:w</title>
 <path fill="none" stroke="black" d="M973,-4813C1042.99,-4813 967.41,-5074.63 1016,-5125 1117.56,-5230.28 1194.53,-5185.25 1337.58,-5183.08"/>
 <polygon fill="black" stroke="black" points="1338.03,-5186.58 1348,-5183 1337.97,-5179.58 1338.03,-5186.58"/>
@@ -2446,7 +2446,7 @@
 <text text-anchor="start" x="1210.5" y="-201.8" font-family="Times,serif" font-size="14.00">y0</text>
 </g>
 <!-- s2&#45;&gt;s541 -->
-<g id="edge10" class="edge">
+<g id="edge8" class="edge">
 <title>s2:e&#45;&gt;s541:w</title>
 <path fill="none" stroke="black" d="M973,-528C1042.65,-528 975.68,-236.97 1031.46,-207.41"/>
 <polygon fill="black" stroke="black" points="1032.59,-210.74 1041.5,-205 1030.96,-203.93 1032.59,-210.74"/>
@@ -2463,7 +2463,7 @@
 <text text-anchor="start" x="1185.5" y="-4921.8" font-family="Times,serif" font-size="14.00">geometry_pose</text>
 </g>
 <!-- s2&#45;&gt;s543 -->
-<g id="edge12" class="edge">
+<g id="edge16" class="edge">
 <title>s2:e&#45;&gt;s543:w</title>
 <path fill="none" stroke="black" d="M973,-4813C1023.76,-4813 976.59,-4909.8 1013.58,-4923.42"/>
 <polygon fill="black" stroke="black" points="1013.07,-4926.88 1023.5,-4925 1014.18,-4919.97 1013.07,-4926.88"/>
@@ -2482,7 +2482,7 @@
 <text text-anchor="start" x="1795" y="-74.8" font-family="Times,serif" font-size="14.00">query_object</text>
 </g>
 <!-- s2&#45;&gt;s812 -->
-<g id="edge16" class="edge">
+<g id="edge13" class="edge">
 <title>s2:e&#45;&gt;s812:w</title>
 <path fill="none" stroke="black" d="M973,-528C998.5,-528 995.46,-505.12 1016,-490 1152.05,-389.9 1188.17,-364.93 1341,-293 1467.03,-233.68 1515.26,-257.7 1637,-190 1690.02,-160.52 1685.89,-105.68 1739.24,-99.56"/>
 <polygon fill="black" stroke="black" points="1739.71,-103.04 1749.5,-99 1739.32,-96.05 1739.71,-103.04"/>
@@ -2511,7 +2511,7 @@
 <polyline fill="none" stroke="grey" points="1922.5,-5157 2008.5,-5157 2008.5,-5178 "/>
 </g>
 <!-- s3&#45;&gt;s533 -->
-<g id="edge15" class="edge">
+<g id="edge19" class="edge">
 <title>s3:e&#45;&gt;s533:w</title>
 <path fill="none" stroke="black" d="M1630,-5151C1677.87,-5151 1691.33,-5164.89 1734.49,-5166.79"/>
 <polygon fill="black" stroke="black" points="1734.43,-5170.29 1744.5,-5167 1734.58,-5163.29 1734.43,-5170.29"/>
@@ -2545,7 +2545,7 @@
 <polyline fill="none" stroke="grey" points="1922.5,-5442 2018.5,-5442 2018.5,-5463 "/>
 </g>
 <!-- s3&#45;&gt;s809 -->
-<g id="edge18" class="edge">
+<g id="edge12" class="edge">
 <title>s3:e&#45;&gt;s809:w</title>
 <path fill="none" stroke="black" d="M1630,-5151C1692.73,-5151 1633.06,-5381.62 1673,-5430 1689.17,-5449.59 1701.9,-5451.74 1724.28,-5451.97"/>
 <polygon fill="black" stroke="black" points="1724.49,-5455.47 1734.5,-5452 1724.51,-5448.47 1724.49,-5455.47"/>
@@ -2562,7 +2562,7 @@
 <polyline fill="none" stroke="grey" points="1922.5,-5537 2002.5,-5537 2002.5,-5558 "/>
 </g>
 <!-- s3&#45;&gt;s810 -->
-<g id="edge19" class="edge">
+<g id="edge18" class="edge">
 <title>s3:e&#45;&gt;s810:w</title>
 <path fill="none" stroke="black" d="M1630,-5151C1713.66,-5151 1618.83,-5461.25 1673,-5525 1693.92,-5549.62 1711.03,-5547.72 1740.48,-5547.12"/>
 <polygon fill="black" stroke="black" points="1740.54,-5550.62 1750.5,-5547 1740.46,-5543.62 1740.54,-5550.62"/>
@@ -2579,32 +2579,32 @@
 <polyline fill="none" stroke="grey" points="1922.5,-5347 2013.5,-5347 2013.5,-5368 "/>
 </g>
 <!-- s3&#45;&gt;s811 -->
-<g id="edge13" class="edge">
+<g id="edge17" class="edge">
 <title>s3:e&#45;&gt;s811:w</title>
 <path fill="none" stroke="black" d="M1630,-5151C1713.98,-5151 1616.35,-5273.01 1673,-5335 1691.54,-5355.29 1704.91,-5356.9 1729.21,-5357"/>
 <polygon fill="black" stroke="black" points="1729.5,-5360.5 1739.5,-5357 1729.5,-5353.5 1729.5,-5360.5"/>
 </g>
 <!-- s3&#45;&gt;s812 -->
-<g id="edge17" class="edge">
+<g id="edge14" class="edge">
 <title>s3:e&#45;&gt;s812:w</title>
 <path fill="none" stroke="black" d="M1630,-5151C1699.16,-5151 1649.55,-237.06 1673,-172 1690.05,-124.69 1694.99,-83.79 1739.41,-78.56"/>
 <polygon fill="black" stroke="black" points="1739.71,-82.05 1749.5,-78 1739.32,-75.06 1739.71,-82.05"/>
 </g>
-<!-- drakelcminterface49270720in -->
+<!-- drakelcminterface68560560in -->
 <g id="node6" class="node">
-<title>drakelcminterface49270720in</title>
+<title>drakelcminterface68560560in</title>
 <ellipse fill="none" stroke="black" cx="2266.79" cy="-5192" rx="150.57" ry="18"/>
-<text text-anchor="middle" x="2266.79" y="-5188.3" font-family="Times,serif" font-size="14.00">drakelcminterface49270720in</text>
+<text text-anchor="middle" x="2266.79" y="-5188.3" font-family="Times,serif" font-size="14.00">drakelcminterface68560560in</text>
 </g>
-<!-- s533&#45;&gt;drakelcminterface49270720in -->
+<!-- s533&#45;&gt;drakelcminterface68560560in -->
 <g id="edge1" class="edge">
-<title>s533:e&#45;&gt;drakelcminterface49270720in</title>
+<title>s533:e&#45;&gt;drakelcminterface68560560in</title>
 <path fill="none" stroke="#800080" stroke-dasharray="5,2" d="M2017.5,-5192C2045.94,-5192 2076.21,-5192 2105.48,-5192"/>
 <polygon fill="#800080" stroke="#800080" points="2105.78,-5195.5 2115.78,-5192 2105.78,-5188.5 2105.78,-5195.5"/>
 </g>
-<!-- s537&#45;&gt;drakelcminterface49270720in -->
+<!-- s537&#45;&gt;drakelcminterface68560560in -->
 <g id="edge2" class="edge">
-<title>s537:e&#45;&gt;drakelcminterface49270720in</title>
+<title>s537:e&#45;&gt;drakelcminterface68560560in</title>
 <path fill="none" stroke="#800080" stroke-dasharray="5,2" d="M2054.5,-5287C2123.67,-5287 2195.27,-5244.12 2234.81,-5215.98"/>
 <polygon fill="#800080" stroke="#800080" points="2237.18,-5218.58 2243.21,-5209.87 2233.07,-5212.92 2237.18,-5218.58"/>
 </g>
@@ -2621,19 +2621,19 @@
 <polyline fill="none" stroke="grey" points="1537,-93 1615,-93 1615,-114 "/>
 </g>
 <!-- s541&#45;&gt;s542 -->
-<g id="edge14" class="edge">
+<g id="edge15" class="edge">
 <title>s541:e&#45;&gt;s542:w</title>
 <path fill="none" stroke="black" d="M1279.5,-205C1334.42,-205 1308.26,-115.35 1353.05,-104.15"/>
 <polygon fill="black" stroke="black" points="1353.47,-107.62 1363,-103 1352.67,-100.67 1353.47,-107.62"/>
 </g>
-<!-- s542&#45;&gt;drakelcminterface49270720in -->
+<!-- s542&#45;&gt;drakelcminterface68560560in -->
 <g id="edge3" class="edge">
-<title>s542:e&#45;&gt;drakelcminterface49270720in</title>
+<title>s542:e&#45;&gt;drakelcminterface68560560in</title>
 <path fill="none" stroke="#800080" stroke-dasharray="5,2" d="M1624,-135C1665.69,-135 1636.62,-75.38 1673,-55 1712.45,-32.9 2047.45,-23.61 2080,-55 2276.43,-244.46 2267.1,-4763.26 2265.88,-5163.7"/>
 <polygon fill="#800080" stroke="#800080" points="2262.38,-5163.85 2265.85,-5173.86 2269.38,-5163.87 2262.38,-5163.85"/>
 </g>
 <!-- s543&#45;&gt;s3 -->
-<g id="edge9" class="edge">
+<g id="edge10" class="edge">
 <title>s543:e&#45;&gt;s3:w</title>
 <path fill="none" stroke="black" d="M1298.5,-4925C1392.73,-4925 1261.03,-5123.53 1337.6,-5139.04"/>
 <polygon fill="black" stroke="black" points="1337.72,-5142.57 1348,-5140 1338.36,-5135.6 1337.72,-5142.57"/>
@@ -2704,7 +2704,7 @@
 <text text-anchor="start" x="3106.57" y="-5619.8" font-family="Times,serif" font-size="14.00">🪦</text>
 </g>
 <!-- s1154in&#45;&gt;s1155 -->
-<g id="edge232" class="edge">
+<g id="edge233" class="edge">
 <title>s1154in:e&#45;&gt;s1155:w</title>
 <path fill="none" stroke="blue" d="M2623.57,-5693C2656.65,-5693 2632.82,-5645.37 2661.57,-5629 2786.72,-5557.76 2856.5,-5566.16 2985.57,-5630 3010.07,-5642.12 3001.09,-5675.33 3018.83,-5683.94"/>
 <polygon fill="blue" stroke="blue" points="3018.58,-5687.46 3029.07,-5686 3019.96,-5680.6 3018.58,-5687.46"/>
@@ -2723,7 +2723,7 @@
 <text text-anchor="start" x="2689.57" y="-5648.8" font-family="Times,serif" font-size="14.00">desired_state</text>
 </g>
 <!-- s1154in&#45;&gt;s1156 -->
-<g id="edge233" class="edge">
+<g id="edge232" class="edge">
 <title>s1154in:e&#45;&gt;s1156:w</title>
 <path fill="none" stroke="blue" d="M2623.57,-5693C2644.82,-5693 2650.02,-5678.76 2666.25,-5674.31"/>
 <polygon fill="blue" stroke="blue" points="2667.09,-5677.73 2676.57,-5673 2666.21,-5670.79 2667.09,-5677.73"/>
@@ -2787,13 +2787,13 @@
 <polygon fill="green" stroke="green" points="3361.62,-5669.79 3371.07,-5665 3360.7,-5662.85 3361.62,-5669.79"/>
 </g>
 <!-- s1156&#45;&gt;s1157 -->
-<g id="edge231" class="edge">
+<g id="edge230" class="edge">
 <title>s1156:e&#45;&gt;s1157:w</title>
 <path fill="none" stroke="black" d="M2856.57,-5663C2875.42,-5663 2881.74,-5670.54 2896.27,-5673.14"/>
 <polygon fill="black" stroke="black" points="2896.32,-5676.65 2906.57,-5674 2896.9,-5669.68 2896.32,-5676.65"/>
 </g>
 <!-- s1157&#45;&gt;s1155 -->
-<g id="edge230" class="edge">
+<g id="edge231" class="edge">
 <title>s1157:e&#45;&gt;s1155:w</title>
 <path fill="none" stroke="black" d="M2978.57,-5664C2997.16,-5664 3004.2,-5664 3018.82,-5664"/>
 <polygon fill="black" stroke="black" points="3019.07,-5667.5 3029.07,-5664 3019.07,-5660.5 3019.07,-5667.5"/>

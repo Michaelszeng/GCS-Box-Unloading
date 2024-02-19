@@ -233,8 +233,20 @@ for i in range(NUM_BOXES):
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
 
-# generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=14, use_previous_saved_sets=False, visualize_connectivity=True, visualize_iris_scene=False)
-# generate_source_iris_regions(meshcat, robot_pose, box_poses, minimum_clique_size=10, use_previous_saved_sets=True, visualize_connectivity=True, visualize_iris_scene=False)
+generate_source_iris_regions(meshcat, 
+                             robot_pose, 
+                             box_poses, 
+                             minimum_clique_size=18, 
+                             coverage_threshold=0.35, 
+                             use_previous_saved_regions=False, 
+                             visualize_iris_scene=False)
+generate_source_iris_regions(meshcat, 
+                             robot_pose, 
+                             box_poses, 
+                             minimum_clique_size=12, 
+                             coverage_threshold=0.6, 
+                             use_previous_saved_regions=True, 
+                             visualize_iris_scene=False)
 
 simulator.AdvanceTo(sim_runtime)
 
