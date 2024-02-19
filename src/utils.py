@@ -23,6 +23,7 @@ import os
 import sys
 
 NUM_BOXES = 40
+BOX_DIM = 0.5
 
 
 def diagram_visualize_connections(diagram: Diagram, file: Union[BinaryIO, str]) -> None:

@@ -35,7 +35,7 @@ import time
 import argparse
 import yaml
 
-from utils import NUM_BOXES, diagram_visualize_connections
+from utils import NUM_BOXES, BOX_DIM, diagram_visualize_connections
 from scenario import scenario_yaml, robot_yaml
 from iris import generate_source_iris_regions
 from gcs import MotionPlanner
@@ -181,13 +181,30 @@ for joint_idx in plant.GetJointIndices(robot_model_idx):
 
 
 # Set poses for all boxes
+all_box_positions = []
 for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 
-    box_pos_x = np.random.uniform(-1, 1.3, 1)
-    box_pos_y = np.random.uniform(-0.95, 0.95, 1)
-    box_pos_z = np.random.uniform(0, 8, 1)
+    i=0
+    while True:
+        box_pos_x = np.random.uniform(-1, 1.3, 1)
+        box_pos_y = np.random.uniform(-0.95, 0.95, 1)
+        box_pos_z = np.random.uniform(0, 8, 1)
+
+        in_collision = False
+        for pos in all_box_positions:
+            if abs(box_pos_x - pos[0]) < BOX_DIM and abs(box_pos_y - pos[1]) < BOX_DIM and abs(box_pos_z - pos[2]) < BOX_DIM:
+                in_collision = True
+                break
+        
+        if not in_collision:   
+            all_box_positions.append((box_pos_x, box_pos_y, box_pos_z))
+            break
+
+        i+=1
+        if (i > 100):
+            raise Exception("Could not find box randomization configuration that does not result in collision.")
 
     plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
 
