@@ -37,7 +37,7 @@ import yaml
 
 from utils import NUM_BOXES, BOX_DIM, diagram_visualize_connections
 from scenario import scenario_yaml, robot_yaml
-from iris import generate_source_iris_regions
+from iris import IrisRegionGenerator
 from gcs import MotionPlanner
 from debug import Debugger
 
@@ -49,22 +49,26 @@ args = parser.parse_args()
 seed = int(args.randomization)
 
     
-##### Settings #####
+#####################
+###    Settings   ###
+#####################
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_fall_runtime = 1.15
-box_randomization_runtime = box_fall_runtime + 7.1
+box_fall_runtime = 0.95
+box_randomization_runtime = box_fall_runtime + 5.5
 sim_runtime = box_randomization_runtime + 2.5
 
 robot_pose = RigidTransform([0.0,0.0,0.58])
 
 np.random.seed(seed)
 
+
 #####################
 ### Meshcat Setup ###
 #####################
 meshcat = StartMeshcat()
 meshcat.AddButton(close_button_str)
+
 
 #####################
 ### Diagram Setup ###
@@ -144,7 +148,6 @@ station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 
-
 ### TESTING
 # controller.GetInputPort("estimated_state").FixValue(controller_context, np.append(
 #     [0.0, -2.5, 2.8, 0.0, 1.2, 0.0],
@@ -155,8 +158,8 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 #     np.zeros((6,)),
 # )) # TESTING
 # controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(6)) # TESTING
-
 # station.GetInputPort("kuka_actuation").FixValue(station_context, -1000*np.ones(6))
+
 
 ####################################
 ### Running Simulation & Meshcat ###
@@ -190,7 +193,7 @@ for i in range(NUM_BOXES):
     while True:
         box_pos_x = np.random.uniform(-1, 1.3, 1)
         box_pos_y = np.random.uniform(-0.95, 0.95, 1)
-        box_pos_z = np.random.uniform(0, 8, 1)
+        box_pos_z = np.random.uniform(0, 5, 1)
 
         in_collision = False
         for pos in all_box_positions:
@@ -238,7 +241,7 @@ for i in range(NUM_BOXES):
 
 # Apply pushing force to back of truck trailer
 station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
-simulator.AdvanceTo(box_fall_runtime+1.5)
+simulator.AdvanceTo(box_fall_runtime+1.0)
 
 # Remove pushing force to back of truck trailer
 station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
@@ -250,20 +253,15 @@ for i in range(NUM_BOXES):
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
 
-generate_source_iris_regions(meshcat, 
-                             robot_pose, 
-                             box_poses, 
-                             minimum_clique_size=18, 
-                             coverage_threshold=0.35, 
-                             use_previous_saved_regions=False, 
-                             visualize_iris_scene=False)
-generate_source_iris_regions(meshcat, 
-                             robot_pose, 
-                             box_poses, 
-                             minimum_clique_size=12, 
-                             coverage_threshold=0.6, 
-                             use_previous_saved_regions=True, 
-                             visualize_iris_scene=False)
+
+region_generator = IrisRegionGenerator(meshcat, robot_pose, box_poses)
+region_generator.generate_source_region_at_q_nominal()
+region_generator.generate_source_iris_regions(minimum_clique_size=30, 
+                                              coverage_threshold=0.5, 
+                                              use_previous_saved_regions=True)
+region_generator.generate_source_iris_regions(minimum_clique_size=15, 
+                                              coverage_threshold=0.7, 
+                                              use_previous_saved_regions=True)
 
 simulator.AdvanceTo(sim_runtime)
 

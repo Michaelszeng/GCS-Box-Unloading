@@ -237,6 +237,7 @@ class MotionPlanner(LeafSystem):
         options.preprocessing = True
         options.max_rounded_paths = 5  # Max number of distinct paths to compare during random rounding; only the lowest cost path is returned.
         start_time = time.time()
+        print("Starting gcs.SolvePath.")
         with SuppressOutput():  # Suppress Gurobi spam
             traj, result = gcs.SolvePath(source, target, options)
         print(f"GCS SolvePath Runtime: {time.time() - start_time}")

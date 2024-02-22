@@ -3,6 +3,7 @@
 import os
 
 q_nominal = [0.0, -2.5, 2.5, 0.0, 1.5, 0.0]
+# q_nominal = [0.0, -1.8, 1.5, 0.0, 0.0, 0.0]
 
 relative_path_to_robot_base = '../data/unload-gen0/robot_base.urdf'
 relative_path_to_robot_arm = '../data/unload-gen0/robot_arm.urdf'
