@@ -1,3 +1,9 @@
+"""
+This test takes an IRIS region (specifically, the one generated around q_nominal),
+places a box that intersect with the region, and then runs clique covers within
+
+"""
+
 from pydrake.all import (
     AddMultibodyPlantSceneGraph,
     BsplineTrajectory,
