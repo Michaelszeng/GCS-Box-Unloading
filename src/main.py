@@ -55,7 +55,7 @@ seed = int(args.randomization)
 close_button_str = "Close"
 this_drake_module_name = "cwd"
 box_fall_runtime = 0.95
-box_randomization_runtime = box_fall_runtime + 5.5
+box_randomization_runtime = box_fall_runtime + 17
 sim_runtime = box_randomization_runtime + 2.5
 
 robot_pose = RigidTransform([0.0,0.0,0.58])
@@ -159,7 +159,6 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 # )) # TESTING
 # controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(6)) # TESTING
 # station.GetInputPort("kuka_actuation").FixValue(station_context, -1000*np.ones(6))
-
 
 ####################################
 ### Running Simulation & Meshcat ###

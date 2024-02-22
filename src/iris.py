@@ -158,7 +158,7 @@ class IrisRegionGenerator():
         """
         checker = SceneGraphCollisionChecker(**self.collision_checker_params)
         options = IrisFromCliqueCoverOptions()
-        # options.num_builders = 7  # set to 1 fewer than number of cores on computer
+        options.num_builders = 7  # set to 1 fewer than number of cores on computer
         options.num_points_per_coverage_check = 1000
         options.num_points_per_visibility_round = 250  # 1000
         options.coverage_termination_threshold = coverage_threshold
