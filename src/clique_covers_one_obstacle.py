@@ -1,7 +1,10 @@
 """
 This test takes an IRIS region (specifically, the one generated around q_nominal),
 places a box that intersect with the region, and then runs clique covers within
+the region to divide that region into sub-regions avoiding that obstacle.
 
+We are measuring the runtime of this operation (it will be critical to dynamic
+IRIS).
 """
 
 from pydrake.all import (
@@ -17,6 +20,7 @@ from pydrake.all import (
     SceneGraphCollisionChecker,
     MaxCliqueSolverViaMip,
     SolverOptions,
+    GurobiSolver,
     SaveIrisRegionsYamlFile,
     LoadIrisRegionsYamlFile,
     RandomGenerator,
@@ -35,11 +39,9 @@ from pydrake.all import (
     StartMeshcat,
     Simulator,
 )
-from pydrake.solvers import GurobiSolver
 from manipulation.meshcat_utils import AddMeshcatTriad
 
 from scenario import scenario_yaml_for_iris, q_nominal
-from utils import NUM_BOXES
 
 import os
 import time
@@ -97,6 +99,7 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
         pc = PointCloud(len(xyzs))
         pc.mutable_xyzs()[:] = xyzs.T
         meshcat.SetObject(f"region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
+
 
 
 robot_pose = RigidTransform([0.0,0.0,0.58])
@@ -162,8 +165,7 @@ clique_solver_options = SolverOptions()
 clique_solver_options.SetOption(GurobiSolver().solver_id(), "WorkLimit", 5.5)  # Complete guess
 clique_solver = MaxCliqueSolverViaMip()
 clique_solver.SetSolverOptions(clique_solver_options)
-
-options.max_clique_solver = clique_solver
+options.max_clique_solver.SetSolverOptions(clique_solver_options)
 
 options_internal = IrisOptions()
 options_internal.random_seed = 0
@@ -171,10 +173,12 @@ options_internal.bounding_region = regions[0]  # regions should be length 1
 
 options.iris_options = options_internal
 
-
+print("starting IrisInConfigurationSpaceFromCliqueCover().")
+start = time.time()
 regions = IrisInConfigurationSpaceFromCliqueCover(
     checker=checker, options=options, generator=RandomGenerator(42), sets=[]  # start without any regions since we're regenerating regions within the source region
 )  # List of HPolyhedrons
+print(f"IrisInConfigurationSpaceFromCliqueCover() runtime: {time.time() - start}")
 
 regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
 SaveIrisRegionsYamlFile(regions_file, regions_dict)

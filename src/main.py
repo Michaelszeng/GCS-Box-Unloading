@@ -160,9 +160,6 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 # controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(6)) # TESTING
 # station.GetInputPort("kuka_actuation").FixValue(station_context, -1000*np.ones(6))
 
-box_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
-body = plant.GetRigidBodyByName("base_link", box_model_idx)
-print(plant.EvalBodyPoseInWorld(plant_context, body))
 
 ####################################
 ### Running Simulation & Meshcat ###
@@ -255,9 +252,6 @@ for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
-    if i == 2:
-        print(f"box2: {plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx))}")
-
 
 region_generator = IrisRegionGenerator(meshcat, robot_pose, box_poses)
 region_generator.generate_source_region_at_q_nominal()
