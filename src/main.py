@@ -256,9 +256,12 @@ for i in range(NUM_BOXES):
 region_generator = IrisRegionGenerator(meshcat, robot_pose, box_poses)
 region_generator.generate_source_region_at_q_nominal()
 region_generator.generate_source_iris_regions(minimum_clique_size=30, 
-                                              coverage_threshold=0.5, 
+                                              coverage_threshold=0.2, 
                                               use_previous_saved_regions=True)
 region_generator.generate_source_iris_regions(minimum_clique_size=15, 
+                                              coverage_threshold=0.45, 
+                                              use_previous_saved_regions=True)
+region_generator.generate_source_iris_regions(minimum_clique_size=9, 
                                               coverage_threshold=0.7, 
                                               use_previous_saved_regions=True)
 
