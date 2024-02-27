@@ -102,6 +102,9 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
 
 
 
+########################
+###    Scene Setup   ###
+########################
 robot_pose = RigidTransform([0.0,0.0,0.58])
 
 # Compute box transform (box is hand-picked to intersect with IRIS region)
@@ -138,13 +141,31 @@ box_frame = plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
 plant.WeldFrames(plant.world_frame(), box_frame, box_pose)
 
 scene_graph = robot_diagram_builder.scene_graph()
+
+visualizer = MeshcatVisualizer.AddToBuilder(diagram_builder, scene_graph, meshcat)
+
 # Weld robot base in place
 plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), robot_pose)
 diagram = robot_diagram_builder.Build()
 collision_checker_params["model"] = diagram
 context = diagram.CreateDefaultContext()
-plant_context = plant.GetMyContextFromRoot(context)
+# plant_context = plant.GetMyContextFromRoot(context)
 
+########################
+### Simulation Setup ###
+########################
+simulator = Simulator(diagram)
+simulator_context = simulator.get_mutable_context()
+plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
+simulator.set_target_realtime_rate(1)
+simulator.set_publish_every_time_step(True)
+meshcat.StartRecording()
+simulator.AdvanceTo(0.1)
+
+
+########################
+###   Clique Cover   ###
+########################
 # Load iris test region
 regions_file = Path("../data/iris_test_region.yaml")
 regions = LoadIrisRegionsYamlFile(regions_file)
@@ -163,6 +184,7 @@ options.iteration_limit = 25
 # Set work and time limits on clique solver
 clique_solver_options = SolverOptions()
 clique_solver_options.SetOption(GurobiSolver().solver_id(), "WorkLimit", 5.5)  # Complete guess
+clique_solver_options.SetOption(GurobiSolver().solver_id(), "MIPGap", 0.1)
 clique_solver = MaxCliqueSolverViaMip()
 clique_solver.SetSolverOptions(clique_solver_options)
 options.max_clique_solver.SetSolverOptions(clique_solver_options)
@@ -184,3 +206,6 @@ regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
 SaveIrisRegionsYamlFile(regions_file, regions_dict)
 
 test_iris_region(plant, plant_context, meshcat, regions)
+
+simulator.AdvanceTo(0.2)
+meshcat.PublishRecording()

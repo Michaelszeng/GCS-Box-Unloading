@@ -41,7 +41,6 @@ class IrisRegionGenerator():
 
     def __init__(self, meshcat, robot_pose, box_poses):
         self.meshcat = meshcat
-        self.collision_checker_params = dict(edge_step_size=0.125)
         robot_diagram_builder = RobotDiagramBuilder()
         diagram_builder = robot_diagram_builder.builder()
 
@@ -57,7 +56,7 @@ class IrisRegionGenerator():
         #     file: file://{absolute_path_to_box}
         # """
 
-        self.collision_checker_params["robot_model_instances"] = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+        self.robot = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
         self.plant = robot_diagram_builder.plant()
 
         #     # Set Pose of each box (from simulating the box randomization) and weld
@@ -69,9 +68,8 @@ class IrisRegionGenerator():
         scene_graph = robot_diagram_builder.scene_graph()
         # Weld robot base in place
         self.plant.WeldFrames(self.plant.world_frame(), self.plant.GetFrameByName("base_link", self.plant.GetModelInstanceByName("robot_base")), robot_pose)
-        diagram = robot_diagram_builder.Build()
-        self.collision_checker_params["model"] = diagram
-        context = diagram.CreateDefaultContext()
+        self.diagram = robot_diagram_builder.Build()
+        context = self.diagram.CreateDefaultContext()
         self.plant_context = self.plant.GetMyContextFromRoot(context)
 
         self.regions_file = Path("../data/iris_source_regions.yaml")
@@ -156,7 +154,12 @@ class IrisRegionGenerator():
 
         Note: visualize_iris_scene is not working right now.
         """
-        checker = SceneGraphCollisionChecker(**self.collision_checker_params)
+        # Note: it's necessary to create a new collision_checker for each time we run IrisInConfigurationspaceFromCliqueCover
+        collision_checker_params = dict(edge_step_size=0.125)
+        collision_checker_params["robot_model_instances"] = self.robot
+        collision_checker_params["model"] = self.diagram
+
+        checker = SceneGraphCollisionChecker(**collision_checker_params)
         options = IrisFromCliqueCoverOptions()
         options.num_points_per_coverage_check = 1000
         options.num_points_per_visibility_round = 250  # 1000
