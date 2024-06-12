@@ -1,7 +1,5 @@
 from pydrake.all import (
     AddMultibodyPlantSceneGraph,
-    BsplineTrajectory,
-    DiagramBuilder,
     IrisInConfigurationSpace,
     IrisOptions,
     Hyperellipsoid,
@@ -15,57 +13,29 @@ from pydrake.all import (
     PointCloud,
     RobotDiagramBuilder,
     MathematicalProgram,
-    Parser,
-    PositionConstraint,
     Rgba,
     RigidTransform,
-    Solve,
-    Sphere,
-    InverseKinematics,
-    MeshcatVisualizer,
-    StartMeshcat,
-    Simulator,
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
 from scenario import scenario_yaml_for_iris, q_nominal
 from utils import NUM_BOXES
 
-import os
-import time
 import numpy as np
 from pathlib import Path
 
 
 class IrisRegionGenerator():
 
-    def __init__(self, meshcat, robot_pose, box_poses):
+    def __init__(self, meshcat, robot_pose):
         self.meshcat = meshcat
         robot_diagram_builder = RobotDiagramBuilder()
         diagram_builder = robot_diagram_builder.builder()
 
-        #     # Add boxes to scenario yaml
-        #     scenario_yaml_for_iris = scenario_yaml_for_iris
-        #     for i in range(len(box_poses)):
-        #         relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
-        #         absolute_path_to_box = os.path.abspath(relative_path_to_box)
-
-        #         scenario_yaml_for_iris += f"""
-        # - add_model: 
-        #     name: Boxes/Box_{i}
-        #     file: file://{absolute_path_to_box}
-        # """
-
         self.robot = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
         self.plant = robot_diagram_builder.plant()
 
-        #     # Set Pose of each box (from simulating the box randomization) and weld
-        #     for i in range(len(box_poses)):
-        #         box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-        #         box_frame = plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
-                # plant.WeldFrames(plant.world_frame(), box_frame, box_poses[i])
-
-        scene_graph = robot_diagram_builder.scene_graph()
+        # scene_graph = robot_diagram_builder.scene_graph()
         # Weld robot base in place
         self.plant.WeldFrames(self.plant.world_frame(), self.plant.GetFrameByName("base_link", self.plant.GetModelInstanceByName("robot_base")), robot_pose)
         self.diagram = robot_diagram_builder.Build()
@@ -73,6 +43,13 @@ class IrisRegionGenerator():
         self.plant_context = self.plant.GetMyContextFromRoot(context)
 
         self.regions_file = Path("../data/iris_source_regions.yaml")
+
+
+    def check_regions_IOU(self):
+        """
+        IOU = intersection over union; measure of region overlap
+        """
+        pass
 
 
     def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=50000, colors=None):
@@ -136,6 +113,7 @@ class IrisRegionGenerator():
         self.plant.SetPositions(self.plant_context, q_nominal)
 
         iris_options = IrisOptions()
+        iris_options.require_sample_point_is_contained = True
         iris_options.random_seed = 0
 
         region = IrisInConfigurationSpace(self.plant, self.plant_context, iris_options)
@@ -146,22 +124,23 @@ class IrisRegionGenerator():
         self.test_iris_region(self.plant, self.plant_context, self.meshcat, [region], colors=[Rgba(0.0,0.0,0.0,0.5)])
 
 
-    def generate_source_iris_regions(self, minimum_clique_size=7, coverage_threshold=0.35, use_previous_saved_regions=True):
+    def generate_source_iris_regions(self, minimum_clique_size=12, coverage_threshold=0.35, use_previous_saved_regions=True):
         """
         Source IRIS regions are defined as the regions considering only self-
         collision with the robot, and collision with the walls of the empty truck
         trailer (excluding the back wall).
 
-        Note: visualize_iris_scene is not working right now.
+        This function automatically searches the regions_file for existing
+        regions, and 
         """
-        # Note: it's necessary to create a new collision_checker for each time we run IrisInConfigurationspaceFromCliqueCover
         collision_checker_params = dict(edge_step_size=0.125)
         collision_checker_params["robot_model_instances"] = self.robot
-        collision_checker_params["model"] = self.diagram
-
+        # Must clone diagram so we don't pass ownership of the original digram to SceneGraphCollisionChecker (preventing us from ever using the digram again)
+        collision_checker_params["model"] = self.diagram.Clone()
+        
         checker = SceneGraphCollisionChecker(**collision_checker_params)
         options = IrisFromCliqueCoverOptions()
-        options.num_points_per_coverage_check = 1000
+        options.num_points_per_coverage_check = 500
         options.num_points_per_visibility_round = 250  # 1000
         options.coverage_termination_threshold = coverage_threshold
         options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
@@ -171,9 +150,16 @@ class IrisRegionGenerator():
         if use_previous_saved_regions:
             print("Using saved iris regions.")
             regions = LoadIrisRegionsYamlFile(self.regions_file)
-            regions = [hpolytope for hpolytope in regions.values()]
+            regions = [hpolyhedron for hpolyhedron in regions.values()]
+
+            # Scale down previous regions and use as obstacles in new round of Clique Covers
+            # Encourages exploration while still allowing small degree of region overlap
+            region_obstacles = [hpolyhedron.Scale(0.85) for hpolyhedron in regions]
         else:
             regions = []
+
+        # Set previous regions as obstacles to encourage exploration
+        options.iris_options.configuration_obstacles = region_obstacles
 
         regions = IrisInConfigurationSpaceFromCliqueCover(
             checker=checker, options=options, generator=RandomGenerator(42), sets=regions

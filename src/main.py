@@ -18,6 +18,7 @@ from pydrake.all import (
     ContactModel,
     Parser,
     PdControllerGains,
+    configure_logging,
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -34,6 +35,7 @@ import os
 import time
 import argparse
 import yaml
+import logging
 
 from utils import NUM_BOXES, BOX_DIM, diagram_visualize_connections
 from scenario import scenario_yaml, robot_yaml
@@ -41,6 +43,12 @@ from iris import IrisRegionGenerator
 from gcs import MotionPlanner
 from debug import Debugger
 
+
+# Set logging level in drake to DEBUG
+configure_logging()
+log = logging.getLogger("drake")
+# log.setLevel("DEBUG")
+log.setLevel("INFO")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
@@ -161,6 +169,19 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 # station.GetInputPort("kuka_actuation").FixValue(station_context, -1000*np.ones(6))
 
 
+region_generator = IrisRegionGenerator(meshcat, robot_pose)
+region_generator.generate_source_region_at_q_nominal()
+region_generator.generate_source_iris_regions(minimum_clique_size=12, 
+                                              coverage_threshold=0.2, 
+                                              use_previous_saved_regions=True)
+region_generator.generate_source_iris_regions(minimum_clique_size=12, 
+                                              coverage_threshold=0.45, 
+                                              use_previous_saved_regions=True)
+region_generator.generate_source_iris_regions(minimum_clique_size=10,
+                                              coverage_threshold=0.7, 
+                                              use_previous_saved_regions=True)
+
+
 ####################################
 ### Running Simulation & Meshcat ###
 ####################################
@@ -247,23 +268,12 @@ simulator.AdvanceTo(box_fall_runtime+1.0)
 station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
 simulator.AdvanceTo(box_randomization_runtime)
 
+# Get box poses to pass to pick planner to select a box to pick first
 box_poses = []
 for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
-
-region_generator = IrisRegionGenerator(meshcat, robot_pose, box_poses)
-region_generator.generate_source_region_at_q_nominal()
-region_generator.generate_source_iris_regions(minimum_clique_size=30, 
-                                              coverage_threshold=0.2, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=15, 
-                                              coverage_threshold=0.45, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=9, 
-                                              coverage_threshold=0.7, 
-                                              use_previous_saved_regions=True)
 
 simulator.AdvanceTo(sim_runtime)
 

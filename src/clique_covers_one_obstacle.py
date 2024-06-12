@@ -20,6 +20,7 @@ from pydrake.all import (
     SceneGraphCollisionChecker,
     MaxCliqueSolverViaMip,
     SolverOptions,
+    CommonSolverOption,
     GurobiSolver,
     SaveIrisRegionsYamlFile,
     LoadIrisRegionsYamlFile,
@@ -38,11 +39,13 @@ from pydrake.all import (
     MeshcatVisualizer,
     StartMeshcat,
     Simulator,
+    configure_logging,
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
 from scenario import scenario_yaml_for_iris, q_nominal
 
+import logging
 import os
 import time
 import numpy as np
@@ -101,6 +104,9 @@ def test_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample
         meshcat.SetObject(f"region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
 
+configure_logging()
+log = logging.getLogger("drake")
+log.setLevel("DEBUG")
 
 ########################
 ###    Scene Setup   ###
@@ -175,7 +181,7 @@ checker = SceneGraphCollisionChecker(**collision_checker_params)
 
 options = IrisFromCliqueCoverOptions()
 options.num_points_per_coverage_check = 500
-options.num_points_per_visibility_round = 200  # 1000
+options.num_points_per_visibility_round = 10  # 1000
 
 options.coverage_termination_threshold = 0.75  # should do fairly well with coverage since the source region itself is easy to cover
 options.minimum_clique_size = 10  # minimum of 7 points needed to create a shape with volume in 6D
@@ -185,9 +191,12 @@ options.iteration_limit = 25
 clique_solver_options = SolverOptions()
 clique_solver_options.SetOption(GurobiSolver().solver_id(), "WorkLimit", 5.5)  # Complete guess
 clique_solver_options.SetOption(GurobiSolver().solver_id(), "MIPGap", 0.1)
+clique_solver_options.SetOption(CommonSolverOption.kPrintToConsole, 1)
 clique_solver = MaxCliqueSolverViaMip()
 clique_solver.SetSolverOptions(clique_solver_options)
 options.max_clique_solver.SetSolverOptions(clique_solver_options)
+print(options.max_clique_solver.GetSolverOptions().get_print_to_console())
+
 
 options_internal = IrisOptions()
 options_internal.random_seed = 0
