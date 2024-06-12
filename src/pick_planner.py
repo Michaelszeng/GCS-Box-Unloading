@@ -13,7 +13,8 @@ from utils import NUM_BOXES, BOX_DIM
 class BoxSelectorGraph:
     """
     Graph where each node is a tuple representing a box, containing 
-    (BodyIndex, RigidTransform).
+    (BodyIndex, RigidTransform). An edge is drawn from a parent box to a child
+    box if the child box is vertically above that parent box.
 
     This is used to efficiently find the first box to remove from the pile in
     the truck trailer.
@@ -76,8 +77,18 @@ class BoxSelectorGraph:
         if len(self.removable_boxes_heap) == 0:
             print("Unable to find a box without boxes above it.")
             return None
+        
         # Find box to remove
         ret = heapq.heappop(self.removable_boxes_heap)[1]
+
+        # Find, if after this node is removed, if there are any new boxes that
+        # could now be removed, and add them to the heap
+        if ret in self.reverse_adj_list:
+            for parent in self.reverse_adj_list[ret]:
+                if len(self.adj_list[parent]) == 1:  # 
+                    parent_x_coord = parent[1].translation()[0]
+                    heapq.heappush(self.removable_boxes_heap, (parent_x_coord, parent))
+
         # Remove its node from the graph
         self.remove_node(ret)
         return ret
@@ -93,19 +104,20 @@ class PickPlanner:
     which face to pick it up from.
     """
     def __init__(self, box_poses):
+        """
+        Initialize the BoxSelectorGraph data structure. This is done by checking
+        which boxes vertically overlap and which boxes are closer to the robot
+        in the world x-axis.
+        """
         self.box_selector_graph = BoxSelectorGraph()
+
+        # Add all boxes as nodes to the graph
         for box_body_idx, box_pose in box_poses.items():
             node = (box_body_idx, box_pose)
             self.box_selector_graph.add_node(node)
 
-
-    def get_box_idx_to_pick(self, box_poses):
-        """
-        Simulate how a perception system might order the boxes to be picked.
-
-        Firstly, only boxes without other boxes above it can be picked. Then, the
-        boxes with the minimum x-pose (closest to the robot) will be selected.
-        """
+        # Compute projections of boxes onto XY plane to more easily determine
+        # which are vertically overlapping
         box_projections = {}  # dict mapping box bodyIndex to VPolytope XY projection
         for box_body_idx, box_pose in box_poses.items():
             # Find vertices of projection of box onto XY plane
@@ -121,13 +133,35 @@ class PickPlanner:
             
             box_projections[box_body_idx] = VPolytope(np.array(box_corner))
 
+        # Now, determine which boxes vertically overlap and add corresponding edges to graph
         for box_body_idx, box_proj in box_projections:
             for other_box_body_idx, other_box_proj in box_projections:
-                # box cannot be on top of itself
+                # Box cannot be on top of itself
                 if box_body_idx == other_box_body_idx:
                     continue
+                
+                # If boxes vertically overlap, figure out which one is above the
+                # other by looking at their z-coordinates. 
+                # Note: This isn't a perfect solution; i.e. one box can be on
+                # another but still have a lower z-coordinate; but this seems
+                # unlikely enough (and also I can't think of a perfect way to
+                # do this).
+                if box_proj.IntersectsWith(other_box_proj):
+                    if box_poses[box_body_idx].translation()[2] > box_poses[other_box_body_idx].translation()[2]:
+                        # box_body_idx is above other_box_body_idx
+                        self.box_selector_graph.add_edge((other_box_body_idx, box_poses[other_box_body_idx]),
+                                                         (box_body_idx, box_poses[box_body_idx]))
+                    else:
+                        # other_box_body_idx is above box_body_idx
+                        self.box_selector_graph.add_edge((box_body_idx, box_poses[box_body_idx]),
+                                                         (other_box_body_idx, box_poses[other_box_body_idx]))
+                        
+        self.box_selector_graph.build_heap()
 
 
 
-            
-            
+    def get_box_idx_to_pick(self):
+        """
+        Pick the first box to grab.
+        """
+        return self.box_selector_graph.remove_next_node()
