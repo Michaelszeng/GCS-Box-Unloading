@@ -41,6 +41,7 @@ from utils import NUM_BOXES, BOX_DIM, diagram_visualize_connections
 from scenario import scenario_yaml, robot_yaml
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
+from pick_planner import PickPlanner
 from debug import Debugger
 
 
@@ -169,17 +170,17 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 # station.GetInputPort("kuka_actuation").FixValue(station_context, -1000*np.ones(6))
 
 
-region_generator = IrisRegionGenerator(meshcat, robot_pose)
-region_generator.generate_source_region_at_q_nominal()
-region_generator.generate_source_iris_regions(minimum_clique_size=12, 
-                                              coverage_threshold=0.2, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=12, 
-                                              coverage_threshold=0.45, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=10,
-                                              coverage_threshold=0.7, 
-                                              use_previous_saved_regions=True)
+# region_generator = IrisRegionGenerator(meshcat, robot_pose)
+# region_generator.generate_source_region_at_q_nominal()
+# region_generator.generate_source_iris_regions(minimum_clique_size=12, 
+#                                               coverage_threshold=0.2, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=12, 
+#                                               coverage_threshold=0.45, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=10,
+#                                               coverage_threshold=0.7, 
+#                                               use_previous_saved_regions=True)
 
 
 ####################################
@@ -269,11 +270,16 @@ station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box
 simulator.AdvanceTo(box_randomization_runtime)
 
 # Get box poses to pass to pick planner to select a box to pick first
-box_poses = []
+box_poses = {}
 for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-    box_poses.append(plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx)))
+    box_poses[box_body_idx] = plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx))
+
+pick_planner = PickPlanner(box_poses)
+for i in range(NUM_BOXES):
+    box_to_pick = pick_planner.get_box_idx_to_pick()
+    print(f"{box_to_pick=}")
 
 simulator.AdvanceTo(sim_runtime)
 

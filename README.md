@@ -11,7 +11,7 @@ Our recommended setup requires using a Linux machine, or using WSL2 on Windows, 
 
 Necessary installs:
 - `pip install manipulation`
-- `pip install --extra-index-url https://drake-packages.csail.mit.edu/whl/nightly/ 'drake==0.0.20231210'` (or any newer version of drake)
+- `pip install drake`
 - `pip install ipython`
 - `pip install pyvirtualdisplay`
 

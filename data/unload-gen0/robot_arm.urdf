@@ -700,62 +700,41 @@
         <drake:member link="arm_base"/>
         <drake:ignored_collision_filter_group name="arm_a1"/>
     </drake:collision_filter_group>
+
     <drake:collision_filter_group name="arm_a1">
         <drake:member link="arm_a1"/>
         <drake:ignored_collision_filter_group name="arm_base"/>
-    </drake:collision_filter_group>
-
-    <drake:collision_filter_group name="arm_a1">
-        <drake:member link="arm_a1"/>
         <drake:ignored_collision_filter_group name="arm_a2"/>
-    </drake:collision_filter_group>
-    <drake:collision_filter_group name="arm_a2">
-        <drake:member link="arm_a2"/>
-        <drake:ignored_collision_filter_group name="arm_a1"/>
     </drake:collision_filter_group>
 
     <drake:collision_filter_group name="arm_a2">
         <drake:member link="arm_a2"/>
+        <drake:ignored_collision_filter_group name="arm_a1"/>
         <drake:ignored_collision_filter_group name="arm_a3"/>
     </drake:collision_filter_group>
+
     <drake:collision_filter_group name="arm_a3">
         <drake:member link="arm_a3"/>
         <drake:ignored_collision_filter_group name="arm_a2"/>
-    </drake:collision_filter_group>
-
-    <drake:collision_filter_group name="arm_a3">
-        <drake:member link="arm_a3"/>
         <drake:ignored_collision_filter_group name="arm_a4"/>
     </drake:collision_filter_group>
+
     <drake:collision_filter_group name="arm_a4">
         <drake:member link="arm_a4"/>
         <drake:ignored_collision_filter_group name="arm_a3"/>
-    </drake:collision_filter_group>
-
-    <drake:collision_filter_group name="arm_a4">
-        <drake:member link="arm_a4"/>
         <drake:ignored_collision_filter_group name="arm_a5"/>
-    </drake:collision_filter_group>
-    <drake:collision_filter_group name="arm_a5">
-        <drake:member link="arm_a5"/>
-        <drake:ignored_collision_filter_group name="arm_a4"/>
+        <drake:ignored_collision_filter_group name="arm_a6"/>
     </drake:collision_filter_group>
 
     <drake:collision_filter_group name="arm_a5">
         <drake:member link="arm_a5"/>
+        <drake:ignored_collision_filter_group name="arm_a4"/>
         <drake:ignored_collision_filter_group name="arm_a6"/>
     </drake:collision_filter_group>
+
     <drake:collision_filter_group name="arm_a6">
         <drake:member link="arm_a6"/>
         <drake:ignored_collision_filter_group name="arm_a5"/>
-    </drake:collision_filter_group>
-
-    <drake:collision_filter_group name="arm_a4">
-        <drake:member link="arm_a4"/>
-        <drake:ignored_collision_filter_group name="arm_a6"/>
-    </drake:collision_filter_group>
-    <drake:collision_filter_group name="arm_a6">
-        <drake:member link="arm_a6"/>
         <drake:ignored_collision_filter_group name="arm_a4"/>
     </drake:collision_filter_group>
 

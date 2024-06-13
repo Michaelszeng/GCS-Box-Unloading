@@ -20,9 +20,19 @@ class BoxSelectorGraph:
     the truck trailer.
     """
     def __init__(self):
+        """
+        Both an adjacency list and reversed adjacency list are used so that
+        removing a node from the graph entirely can be done quicky (the
+        reversed adjacency list is used to quickly find which nodes have the
+        to-be-removed node as a child).
+
+        The heap is used to quickly find the minimum x-coordinate box to be
+        picked first.
+        """
         self.adj_list = {}  # Adjacency list to store graph
         self.reverse_adj_list = {}  # Reverse adjacency list to track parents of each child
-        self.removable_boxes_heap = []  # maintain min heap of removable boxes (nodes w/ no children), with value being x-coordinate
+        self.removable_boxes_heap = []  # maintain min heap of removable boxes (nodes w/ no children)
+        # Each node in the heap is a tuple (Box x-coord, (BodyIndex, RigidTransform))
     
 
     def add_node(self, node):
@@ -75,17 +85,17 @@ class BoxSelectorGraph:
     def remove_next_node(self):
         """O(log(n))"""
         if len(self.removable_boxes_heap) == 0:
-            print("Unable to find a box without boxes above it.")
+            print("Unable to find a box without boxes above it that can be picked.")
             return None
         
         # Find box to remove
-        ret = heapq.heappop(self.removable_boxes_heap)[1]
+        ret = heapq.heappop(self.removable_boxes_heap)[1]  # [1] so we return the (BodyIndex, RigidTransform) tuple only (ignoring the x-coord)
 
-        # Find, if after this node is removed, if there are any new boxes that
-        # could now be removed, and add them to the heap
+        # Find, if after this box is removed, if there are any new boxes that
+        # have been exposed and could now be removed, and add them to the heap
         if ret in self.reverse_adj_list:
             for parent in self.reverse_adj_list[ret]:
-                if len(self.adj_list[parent]) == 1:  # 
+                if len(self.adj_list[parent]) == 1:  # The only box above `parent` is the one about to be removed
                     parent_x_coord = parent[1].translation()[0]
                     heapq.heappush(self.removable_boxes_heap, (parent_x_coord, parent))
 
@@ -108,13 +118,10 @@ class PickPlanner:
         Initialize the BoxSelectorGraph data structure. This is done by checking
         which boxes vertically overlap and which boxes are closer to the robot
         in the world x-axis.
+
+        box_poses: dictionary mapping BodyIndex: RigidTransform for each box.
         """
         self.box_selector_graph = BoxSelectorGraph()
-
-        # Add all boxes as nodes to the graph
-        for box_body_idx, box_pose in box_poses.items():
-            node = (box_body_idx, box_pose)
-            self.box_selector_graph.add_node(node)
 
         # Compute projections of boxes onto XY plane to more easily determine
         # which are vertically overlapping
@@ -133,7 +140,7 @@ class PickPlanner:
             
             box_projections[box_body_idx] = VPolytope(np.array(box_corner))
 
-        # Now, determine which boxes vertically overlap and add corresponding edges to graph
+        # Now, determine which boxes vertically overlap and add corresponding nodes and edges to graph
         for box_body_idx, box_proj in box_projections:
             for other_box_body_idx, other_box_proj in box_projections:
                 # Box cannot be on top of itself
