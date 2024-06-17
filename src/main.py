@@ -38,7 +38,7 @@ import yaml
 import logging
 
 from utils import NUM_BOXES, BOX_DIM, diagram_visualize_connections
-from scenario import scenario_yaml, robot_yaml
+from scenario import scenario_yaml, robot_yaml, get_fast_box_poses
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
 from pick_planner import PickPlanner
@@ -48,14 +48,16 @@ from debug import Debugger
 # Set logging level in drake to DEBUG
 configure_logging()
 log = logging.getLogger("drake")
-# log.setLevel("DEBUG")
+# log.setLevel("DEBUG")fast_box_poses
 log.setLevel("INFO")
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--fast', default='T', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
 args = parser.parse_args()
 
 seed = int(args.randomization)
+randomize_boxes = (args.fast == 'F')
 
     
 #####################
@@ -63,11 +65,17 @@ seed = int(args.randomization)
 #####################
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_fall_runtime = 0.95
-box_randomization_runtime = box_fall_runtime + 17
-sim_runtime = box_randomization_runtime + 2.5
+
+if randomize_boxes:
+    box_fall_runtime = 0.95
+    box_randomization_runtime = box_fall_runtime + 17
+    sim_runtime = box_randomization_runtime + 2.5
+else:
+    sim_runtime = 2.5
 
 robot_pose = RigidTransform([0.0,0.0,0.58])
+fast_box_poses = get_fast_box_poses()
+print(fast_box_poses)
 
 np.random.seed(seed)
 
@@ -117,7 +125,7 @@ plant = station.GetSubsystemByName("plant")
 AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
 
 ### GCS Motion Planer
-motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat, robot_pose, box_randomization_runtime))
+motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat, robot_pose, box_randomization_runtime if randomize_boxes else 0))
 builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("kuka_current_pose"))
 builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort("kuka_state"))
 
@@ -145,7 +153,7 @@ if True:
 diagram = builder.Build()
 context = diagram.CreateDefaultContext()
 diagram.set_name("Box Unloader")
-diagram_visualize_connections(diagram, "diagram.svg")
+diagram_visualize_connections(diagram, "../diagram.svg")
 
 
 ########################
@@ -194,7 +202,8 @@ meshcat.StartRecording()
 # 'Remove' Top of truck trailer
 trailer_roof_model_idx = plant.GetModelInstanceByName("Truck_Trailer_Roof")  # ModelInstanceIndex
 trailer_roof_body_idx = plant.GetBodyIndices(trailer_roof_model_idx)[0]  # BodyIndex
-plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
+if randomize_boxes:
+    plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
 
 # Move Robot to start position
 robot_model_idx = plant.GetModelInstanceByName("robot_base")  # ModelInstanceIndex
@@ -211,27 +220,31 @@ for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 
-    i=0
-    while True:
-        box_pos_x = np.random.uniform(-1, 1.3, 1)
-        box_pos_y = np.random.uniform(-0.95, 0.95, 1)
-        box_pos_z = np.random.uniform(0, 5, 1)
+    if randomize_boxes:
+        i=0
+        while True:
+            box_pos_x = np.random.uniform(-1, 1.3, 1)
+            box_pos_y = np.random.uniform(-0.95, 0.95, 1)
+            box_pos_z = np.random.uniform(0, 5, 1)
 
-        in_collision = False
-        for pos in all_box_positions:
-            if abs(box_pos_x - pos[0]) < BOX_DIM and abs(box_pos_y - pos[1]) < BOX_DIM and abs(box_pos_z - pos[2]) < BOX_DIM:
-                in_collision = True
+            in_collision = False
+            for pos in all_box_positions:
+                if abs(box_pos_x - pos[0]) < BOX_DIM and abs(box_pos_y - pos[1]) < BOX_DIM and abs(box_pos_z - pos[2]) < BOX_DIM:
+                    in_collision = True
+                    break
+            
+            if not in_collision:   
+                all_box_positions.append((box_pos_x, box_pos_y, box_pos_z))
                 break
-        
-        if not in_collision:   
-            all_box_positions.append((box_pos_x, box_pos_y, box_pos_z))
-            break
 
-        i+=1
-        if (i > 100):
-            raise Exception("Could not find box randomization configuration that does not result in collision.")
+            i+=1
+            if (i > 100):
+                raise Exception("Could not find box randomization configuration that does not result in collision.")
 
-    plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
+        plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
+    else:
+        plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), fast_box_poses[i])
+
 
 simulator.AdvanceTo(box_fall_runtime)
 
@@ -241,33 +254,34 @@ trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # Joi
 trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
 trailer_roof_joint.Lock(plant_context)
 
-# Applied external forces on the box to shove them to the back of the truck trailer
-box_forces = []
-zero_box_forces = []
-for i in range(NUM_BOXES):
-    force = ExternallyAppliedSpatialForce()
-    zero_force = ExternallyAppliedSpatialForce()
+if randomize_boxes:
+    # Applied external forces on the box to shove them to the back of the truck trailer
+    box_forces = []
+    zero_box_forces = []
+    for i in range(NUM_BOXES):
+        force = ExternallyAppliedSpatialForce()
+        zero_force = ExternallyAppliedSpatialForce()
 
-    box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-    box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+        box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
+        box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 
-    force.body_index = box_body_idx
-    force.p_BoBq_B = [0,0,0]
-    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,0])
-    box_forces.append(force)
+        force.body_index = box_body_idx
+        force.p_BoBq_B = [0,0,0]
+        force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,0])
+        box_forces.append(force)
 
-    zero_force.body_index = box_body_idx
-    zero_force.p_BoBq_B = [0,0,0]
-    zero_force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
-    zero_box_forces.append(zero_force)
+        zero_force.body_index = box_body_idx
+        zero_force.p_BoBq_B = [0,0,0]
+        zero_force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
+        zero_box_forces.append(zero_force)
 
-# Apply pushing force to back of truck trailer
-station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
-simulator.AdvanceTo(box_fall_runtime+1.0)
+    # Apply pushing force to back of truck trailer
+    station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
+    simulator.AdvanceTo(box_fall_runtime+1.0)
 
-# Remove pushing force to back of truck trailer
-station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
-simulator.AdvanceTo(box_randomization_runtime)
+    # Remove pushing force to back of truck trailer
+    station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
+    simulator.AdvanceTo(box_randomization_runtime)
 
 # Get box poses to pass to pick planner to select a box to pick first
 box_poses = {}
