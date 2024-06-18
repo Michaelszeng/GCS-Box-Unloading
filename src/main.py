@@ -66,16 +66,15 @@ randomize_boxes = (args.fast == 'F')
 close_button_str = "Close"
 this_drake_module_name = "cwd"
 
+robot_pose = RigidTransform([0.0,0.0,0.58])
+
 if randomize_boxes:
     box_fall_runtime = 0.95
     box_randomization_runtime = box_fall_runtime + 17
     sim_runtime = box_randomization_runtime + 2.5
 else:
     sim_runtime = 2.5
-
-robot_pose = RigidTransform([0.0,0.0,0.58])
-fast_box_poses = get_fast_box_poses()
-print(fast_box_poses)
+    fast_box_poses = get_fast_box_poses()  # Get pre-computed box poses
 
 np.random.seed(seed)
 
@@ -178,19 +177,6 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 # station.GetInputPort("kuka_actuation").FixValue(station_context, -1000*np.ones(6))
 
 
-# region_generator = IrisRegionGenerator(meshcat, robot_pose)
-# region_generator.generate_source_region_at_q_nominal()
-# region_generator.generate_source_iris_regions(minimum_clique_size=12, 
-#                                               coverage_threshold=0.2, 
-#                                               use_previous_saved_regions=True)
-# region_generator.generate_source_iris_regions(minimum_clique_size=12, 
-#                                               coverage_threshold=0.45, 
-#                                               use_previous_saved_regions=True)
-# region_generator.generate_source_iris_regions(minimum_clique_size=10,
-#                                               coverage_threshold=0.7, 
-#                                               use_previous_saved_regions=True)
-
-
 ####################################
 ### Running Simulation & Meshcat ###
 ####################################
@@ -245,8 +231,8 @@ for i in range(NUM_BOXES):
     else:
         plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), fast_box_poses[i])
 
-
-simulator.AdvanceTo(box_fall_runtime)
+if randomize_boxes:
+    simulator.AdvanceTo(box_fall_runtime)
 
 # Put Top of truck trailer back and lock it
 plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
@@ -282,6 +268,22 @@ if randomize_boxes:
     # Remove pushing force to back of truck trailer
     station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
     simulator.AdvanceTo(box_randomization_runtime)
+
+
+simulator.AdvanceTo(0.1)
+region_generator = IrisRegionGenerator(meshcat, robot_pose)
+region_generator.load_and_test_regions()
+region_generator.generate_source_region_at_q_nominal()
+region_generator.generate_source_iris_regions(minimum_clique_size=20, 
+                                              coverage_threshold=0.2, 
+                                              use_previous_saved_regions=False)  # False --> regenerate regions from scratch
+region_generator.generate_source_iris_regions(minimum_clique_size=15, 
+                                              coverage_threshold=0.45, 
+                                              use_previous_saved_regions=True)
+region_generator.generate_source_iris_regions(minimum_clique_size=8,
+                                              coverage_threshold=0.7, 
+                                              use_previous_saved_regions=True)
+
 
 # Get box poses to pass to pick planner to select a box to pick first
 box_poses = {}

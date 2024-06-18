@@ -27,8 +27,6 @@ from utils import NUM_BOXES, is_yaml_empty, SuppressOutput
 import time
 import numpy as np
 from pathlib import Path
-import pydot
-import os
 
 
 class MotionPlanner(LeafSystem):
@@ -122,32 +120,6 @@ class MotionPlanner(LeafSystem):
             self.meshcat.SetLine(name, pos_3d_matrix)
 
 
-    def visualize_connectivity(self, iris_regions):
-        """
-        Create and display SVG graph of IRIS Region connectivity
-        """
-        numEdges = 0
-
-        graph = pydot.Dot("IRIS region connectivity")
-        keys = list(iris_regions.keys())
-        for k in keys:
-            graph.add_node(pydot.Node(k))
-        for i in range(len(keys)):
-            v1 = iris_regions[keys[i]]
-            for j in range(i + 1, len(keys)):
-                v2 = iris_regions[keys[j]]
-                if v1.IntersectsWith(v2):
-                    numEdges += 1
-                    graph.add_edge(pydot.Edge(keys[i], keys[j], dir="both"))
-
-        svg = graph.create_svg()
-
-        with open('../data/iris_connectivity.svg', 'wb') as svg_file:
-            svg_file.write(svg)
-
-        return numEdges
-
-
     def compute_command(self, context, state):
         ### Deal with Special Cases
         if is_yaml_empty("../data/iris_source_regions.yaml"):
@@ -213,10 +185,6 @@ class MotionPlanner(LeafSystem):
         gcs_regions = self.source_regions.copy()
         gcs_regions["start"] = Point(q_current)
         gcs_regions["goal"] = Point(q_goal)
-        if self.visualize:
-            with SuppressOutput():  # Suppress Gurobi spam
-                self.visualize_connectivity(gcs_regions)
-            # print("Connectivity graph saved to ../data/iris_connectivity.svg.")
 
         edges = []
 

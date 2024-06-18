@@ -1,11 +1,14 @@
 from pydrake.all import (
     RigidTransform,
     VPolytope,
+    StartMeshcat,
+    Rgba
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
 import numpy as np
 import heapq
+from scipy.spatial import ConvexHull
 
 from utils import NUM_BOXES, BOX_DIM
 
@@ -113,7 +116,7 @@ class PickPlanner:
     A class to manage all picking logic, i.e. selecting which box to pick,
     which face to pick it up from.
     """
-    def __init__(self, box_poses):
+    def __init__(self, box_poses, DEBUG=True):
         """
         Initialize the BoxSelectorGraph data structure. This is done by checking
         which boxes vertically overlap and which boxes are closer to the robot
@@ -133,16 +136,38 @@ class PickPlanner:
                 for dy in [-BOX_DIM/2, BOX_DIM/2]:
                     for dz in [-BOX_DIM/2, BOX_DIM/2]:
                         # Find coordinate of box corner in 3D
-                        box_corner = box_pose.translation() + RigidTransform(box_pose.rotation(), [dx, dy,dz])
+                        box_corner = box_pose.translation() + box_pose.rotation() @ np.array([dx, dy, dz])
                         # Project box corner into XY plane by removing Z coordinate
                         box_corner_xy = np.array([box_corner[0], box_corner[1]])
                         box_corners.append(box_corner_xy)
+
+            box_corners = np.array(box_corners)
+
+            # Only keep the points in the convex hull of the projection
+            box_hull = ConvexHull(box_corners)
+            box_points = box_corners[box_hull.vertices, :]
+            box_points = np.hstack((box_points, np.zeros((np.shape(box_points)[0], 1))))  # Append 0 z-coordinate
             
-            box_projections[box_body_idx] = VPolytope(np.array(box_corner))
+            box_projections[box_body_idx] = VPolytope(box_points.T)
+
+        if DEBUG:
+            # Render projections in Meshcat
+            meshcat = StartMeshcat()
+            meshcat.Set2dRenderMode(RigidTransform([0, 0, 1]), -4, 4, -4, 4)
+            meshcat.SetProperty("/Axes", "visible", True)
+            
+            ctr = 0
+            for vpoly in box_projections.values():
+                points = np.array(self.sort_vertices_ccw(vpoly))
+                print(points)
+
+                meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(np.random.random(), np.random.random(), np.random.random()))
+                ctr += 1
+
 
         # Now, determine which boxes vertically overlap and add corresponding nodes and edges to graph
-        for box_body_idx, box_proj in box_projections:
-            for other_box_body_idx, other_box_proj in box_projections:
+        for box_body_idx, box_proj in box_projections.items():
+            for other_box_body_idx, other_box_proj in box_projections.items():
                 # Box cannot be on top of itself
                 if box_body_idx == other_box_body_idx:
                     continue
@@ -166,6 +191,36 @@ class PickPlanner:
         self.box_selector_graph.build_heap()
 
 
+    def sort_vertices_ccw(self, vpolytope: VPolytope) -> np.ndarray:
+        """
+        Util functin that converts a Drake VPolytope to a list of ordered 
+        coordinates forming a complete polygon.
+
+        Parameters:
+        vpolytope (VPolytope): A Drake VPolytope object.
+
+        Returns:
+        np.ndarray: A numpy array of the VPolytope's ordered coordinates.
+        """
+        def angle_with_centroid(point, centroid):
+            """Calculate the angle between the point and the centroid."""
+            return np.arctan2(point[1] - centroid[1], point[0] - centroid[0])
+
+        # Extracting vertices from the VPolytope
+        vertices = vpolytope.vertices()
+
+        # Converting to numpy array for easier manipulation
+        coordinates = np.array(vertices).T  # Shape (num_vertices, 2)
+
+        # Compute the centroid
+        centroid = np.mean(coordinates, axis=0)
+
+        # Sort vertices by the angle with respect to the centroid
+        sorted_indices = np.argsort([angle_with_centroid(pt, centroid) for pt in coordinates])
+        ordered_coordinates = coordinates[sorted_indices].T
+        ordered_coordinates = np.hstack((ordered_coordinates, ordered_coordinates[:, 0].reshape(-1, 1)))
+
+        return ordered_coordinates
 
     def get_box_idx_to_pick(self):
         """

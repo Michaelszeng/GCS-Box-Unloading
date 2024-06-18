@@ -4,6 +4,8 @@ from pydrake.all import (
     IrisOptions,
     Hyperellipsoid,
     HPolyhedron,
+    VPolytope,
+    Intersection,
     IrisFromCliqueCoverOptions,
     IrisInConfigurationSpaceFromCliqueCover,
     SceneGraphCollisionChecker,
@@ -23,6 +25,9 @@ from utils import NUM_BOXES
 
 import numpy as np
 from pathlib import Path
+import pydot
+import os
+from itertools import combinations
 
 
 class IrisRegionGenerator():
@@ -45,11 +50,49 @@ class IrisRegionGenerator():
         self.regions_file = Path("../data/iris_source_regions.yaml")
 
 
-    def check_regions_IOU(self):
+    def calc_regions_IOU(self, regions):
         """
-        IOU = intersection over union; measure of region overlap
+        IOU = intersection over union; measure of region overlap.
         """
-        pass
+        random_generator = RandomGenerator()
+
+        intersection_vol = Intersection(regions).CalcVolumeViaSampling(random_generator, desired_rel_accuracy=0.01, max_num_samples=10000).volume
+
+        n = len(regions)
+        union_vol = 0
+        for k in range(1, n + 1):
+            for comb in combinations(regions, k):  # comb is a tuple of regions
+                intersection_volume = Intersection(list(comb)).CalcVolumeViaSampling(random_generator, desired_rel_accuracy=0.01, max_num_samples=10000).volume
+                if k % 2 == 1:
+                    union_vol += intersection_volume
+                else:
+                    union_vol -= intersection_volume
+
+        return intersection_vol, union_vol, intersection_vol/union_vol
+
+
+    def visualize_connectivity(self, iris_regions):
+        """
+        Create and save SVG graph of IRIS Region connectivity.
+        """
+        numEdges = 0
+
+        graph = pydot.Dot("IRIS region connectivity")
+        for i in range(len(iris_regions)):
+            graph.add_node(pydot.Node(i))
+            v1 = iris_regions[i]
+            for j in range(i + 1, len(iris_regions)):
+                v2 = iris_regions[j]
+                if v1.IntersectsWith(v2):
+                    numEdges += 1
+                    graph.add_edge(pydot.Edge(i, j, dir="both"))
+
+        svg = graph.create_svg()
+
+        with open('../iris_connectivity.svg', 'wb') as svg_file:
+            svg_file.write(svg)
+
+        return numEdges
 
 
     def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=50000, colors=None):
@@ -65,19 +108,19 @@ class IrisRegionGenerator():
         # Allow caller to input custom colors
         if colors is None:
             colors = [Rgba(0.5,0.0,0.0,0.5),
-                    Rgba(0.0,0.5,0.0,0.5),
-                    Rgba(0.0,0.0,0.5,0.5),
-                    Rgba(0.5,0.5,0.0,0.5),
-                    Rgba(0.5,0.0,0.5,0.5),
-                    Rgba(0.0,0.5,0.5,0.5),
-                    Rgba(0.2,0.2,0.2,0.5),
-                    Rgba(0.5,0.2,0.0,0.5),
-                    Rgba(0.2,0.5,0.0,0.5),
-                    Rgba(0.5,0.0,0.2,0.5),
-                    Rgba(0.2,0.0,0.5,0.5),
-                    Rgba(0.0,0.5,0.2,0.5),
-                    Rgba(0.0,0.2,0.5,0.5),
-                    ]
+                      Rgba(0.0,0.5,0.0,0.5),
+                      Rgba(0.0,0.0,0.5,0.5),
+                      Rgba(0.5,0.5,0.0,0.5),
+                      Rgba(0.5,0.0,0.5,0.5),
+                      Rgba(0.0,0.5,0.5,0.5),
+                      Rgba(0.2,0.2,0.2,0.5),
+                      Rgba(0.5,0.2,0.0,0.5),
+                      Rgba(0.2,0.5,0.0,0.5),
+                      Rgba(0.5,0.0,0.2,0.5),
+                      Rgba(0.2,0.0,0.5,0.5),
+                      Rgba(0.0,0.5,0.2,0.5),
+                      Rgba(0.0,0.2,0.5,0.5),
+                     ]
 
         for i in range(len(regions)):
             region = regions[i]
@@ -101,7 +144,19 @@ class IrisRegionGenerator():
             xyzs = np.array(xyzs)
             pc = PointCloud(len(xyzs))
             pc.mutable_xyzs()[:] = xyzs.T
-            meshcat.SetObject(f"region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
+            meshcat.SetObject(f"regions/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
+
+        self.visualize_connectivity(regions)
+        print("Connectivity graph saved to ../iris_connectivity.svg.")
+
+        I, U, IOU = self.calc_regions_IOU(regions)
+        print(f"IRIS Regions IOU: {IOU} = {I}/{U}")
+
+
+    def load_and_test_regions(self):
+        regions = LoadIrisRegionsYamlFile(self.regions_file)
+        regions = [hpolyhedron for hpolyhedron in regions.values()]
+        self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
 
 
     def generate_source_region_at_q_nominal(self):
@@ -155,11 +210,11 @@ class IrisRegionGenerator():
             # Scale down previous regions and use as obstacles in new round of Clique Covers
             # Encourages exploration while still allowing small degree of region overlap
             region_obstacles = [hpolyhedron.Scale(0.85) for hpolyhedron in regions]
+
+            # Set previous regions as obstacles to encourage exploration
+            options.iris_options.configuration_obstacles = region_obstacles
         else:
             regions = []
-
-        # Set previous regions as obstacles to encourage exploration
-        options.iris_options.configuration_obstacles = region_obstacles
 
         regions = IrisInConfigurationSpaceFromCliqueCover(
             checker=checker, options=options, generator=RandomGenerator(42), sets=regions

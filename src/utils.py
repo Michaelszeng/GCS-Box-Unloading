@@ -10,6 +10,7 @@ from pydrake.all import (
     MultibodyPlant,
     Context,
     AngleAxis,
+    VPolytope,
 )
 from dataclasses import dataclass, field
 from pydrake.common.yaml import yaml_load_typed
