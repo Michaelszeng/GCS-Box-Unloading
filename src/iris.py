@@ -50,35 +50,6 @@ class IrisRegionGenerator():
         self.regions_file = Path(regions_file)
 
 
-    def calc_regions_IOU(self, regions):
-        """
-        IOU = intersection over union; used as a measure of region overlap/redundancy.
-
-        Intersection is calculated as any volume where 2 or more regions exist.
-
-        Union is calculated as the union of the sets.
-        """
-        random_generator = RandomGenerator()
-
-        n = len(regions)
-        union_vol = 0
-        intersection_vol = 0
-        for k in range(1, n + 1):
-            for comb in combinations(regions, k):  # comb is a tuple of regions
-                try:
-                    comb_intersection_vol = Intersection(list(comb)).CalcVolumeViaSampling(random_generator, desired_rel_accuracy=0.05, max_num_samples=1000).volume
-                    intersection_vol += comb_intersection_vol
-                except:
-                    pass  # Most likely, the intersection is an empty set causing CalcVolumeViaSampling to fail
-                    
-                if k % 2 == 1:
-                    union_vol += comb_intersection_vol
-                else:
-                    union_vol -= comb_intersection_vol
-
-        return intersection_vol, union_vol, intersection_vol/union_vol
-    
-
     # def generate_overlap_histogram(self, regions):
 
 
@@ -163,9 +134,6 @@ class IrisRegionGenerator():
         num_nodes, num_edges = self.visualize_connectivity(regions)
         print("Connectivity graph saved to ../iris_connectivity.svg.")
         print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
-
-        I, U, IOU = self.calc_regions_IOU(regions)
-        print(f"IRIS Regions IOU: {IOU} = {I}/{U}")
 
 
     def load_and_test_regions(self):
