@@ -32,7 +32,7 @@ from itertools import combinations
 
 class IrisRegionGenerator():
 
-    def __init__(self, meshcat, robot_pose):
+    def __init__(self, meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml"):
         self.meshcat = meshcat
         robot_diagram_builder = RobotDiagramBuilder()
         diagram_builder = robot_diagram_builder.builder()
@@ -47,28 +47,40 @@ class IrisRegionGenerator():
         context = self.diagram.CreateDefaultContext()
         self.plant_context = self.plant.GetMyContextFromRoot(context)
 
-        self.regions_file = Path("../data/iris_source_regions.yaml")
+        self.regions_file = Path(regions_file)
 
 
     def calc_regions_IOU(self, regions):
         """
-        IOU = intersection over union; measure of region overlap.
+        IOU = intersection over union; used as a measure of region overlap/redundancy.
+
+        Intersection is calculated as any volume where 2 or more regions exist.
+
+        Union is calculated as the union of the sets.
         """
         random_generator = RandomGenerator()
 
-        intersection_vol = Intersection(regions).CalcVolumeViaSampling(random_generator, desired_rel_accuracy=0.01, max_num_samples=10000).volume
-
         n = len(regions)
         union_vol = 0
+        intersection_vol = 0
         for k in range(1, n + 1):
             for comb in combinations(regions, k):  # comb is a tuple of regions
-                intersection_volume = Intersection(list(comb)).CalcVolumeViaSampling(random_generator, desired_rel_accuracy=0.01, max_num_samples=10000).volume
+                try:
+                    comb_intersection_vol = Intersection(list(comb)).CalcVolumeViaSampling(random_generator, desired_rel_accuracy=0.05, max_num_samples=1000).volume
+                    intersection_vol += comb_intersection_vol
+                except:
+                    pass  # Most likely, the intersection is an empty set causing CalcVolumeViaSampling to fail
+                    
                 if k % 2 == 1:
-                    union_vol += intersection_volume
+                    union_vol += comb_intersection_vol
                 else:
-                    union_vol -= intersection_volume
+                    union_vol -= comb_intersection_vol
 
         return intersection_vol, union_vol, intersection_vol/union_vol
+    
+
+    # def generate_overlap_histogram(self, regions):
+
 
 
     def visualize_connectivity(self, iris_regions):
@@ -76,9 +88,11 @@ class IrisRegionGenerator():
         Create and save SVG graph of IRIS Region connectivity.
         """
         numEdges = 0
+        numNodes = 0
 
         graph = pydot.Dot("IRIS region connectivity")
         for i in range(len(iris_regions)):
+            numNodes += 1
             graph.add_node(pydot.Node(i))
             v1 = iris_regions[i]
             for j in range(i + 1, len(iris_regions)):
@@ -92,7 +106,7 @@ class IrisRegionGenerator():
         with open('../iris_connectivity.svg', 'wb') as svg_file:
             svg_file.write(svg)
 
-        return numEdges
+        return numNodes, numEdges
 
 
     def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=50000, colors=None):
@@ -146,8 +160,9 @@ class IrisRegionGenerator():
             pc.mutable_xyzs()[:] = xyzs.T
             meshcat.SetObject(f"regions/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
-        self.visualize_connectivity(regions)
+        num_nodes, num_edges = self.visualize_connectivity(regions)
         print("Connectivity graph saved to ../iris_connectivity.svg.")
+        print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
 
         I, U, IOU = self.calc_regions_IOU(regions)
         print(f"IRIS Regions IOU: {IOU} = {I}/{U}")
@@ -209,7 +224,7 @@ class IrisRegionGenerator():
 
             # Scale down previous regions and use as obstacles in new round of Clique Covers
             # Encourages exploration while still allowing small degree of region overlap
-            region_obstacles = [hpolyhedron.Scale(0.85) for hpolyhedron in regions]
+            region_obstacles = [hpolyhedron.Scale(0.975) for hpolyhedron in regions]
 
             # Set previous regions as obstacles to encourage exploration
             options.iris_options.configuration_obstacles = region_obstacles

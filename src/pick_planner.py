@@ -8,6 +8,8 @@ from manipulation.meshcat_utils import AddMeshcatTriad
 
 import numpy as np
 import heapq
+import os
+import time
 from scipy.spatial import ConvexHull
 
 from utils import NUM_BOXES, BOX_DIM
@@ -132,9 +134,9 @@ class PickPlanner:
         for box_body_idx, box_pose in box_poses.items():
             # Find vertices of projection of box onto XY plane
             box_corners = []
-            for dx in [-BOX_DIM/2, BOX_DIM/2]:
-                for dy in [-BOX_DIM/2, BOX_DIM/2]:
-                    for dz in [-BOX_DIM/2, BOX_DIM/2]:
+            for dx in [0, BOX_DIM]:
+                for dy in [0, BOX_DIM]:
+                    for dz in [0, BOX_DIM]:
                         # Find coordinate of box corner in 3D
                         box_corner = box_pose.translation() + box_pose.rotation() @ np.array([dx, dy, dz])
                         # Project box corner into XY plane by removing Z coordinate
@@ -163,6 +165,8 @@ class PickPlanner:
 
                 meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(np.random.random(), np.random.random(), np.random.random()))
                 ctr += 1
+
+            time.sleep(4)
 
 
         # Now, determine which boxes vertically overlap and add corresponding nodes and edges to graph
@@ -227,3 +231,85 @@ class PickPlanner:
         Pick the first box to grab.
         """
         return self.box_selector_graph.remove_next_node()
+
+
+
+
+
+
+
+# from pydrake.all import (
+#     DiagramBuilder,
+#     StartMeshcat,
+#     Simulator,
+#     Box,
+#     ModelInstanceIndex,
+#     InverseDynamicsController,
+#     RigidTransform,
+#     MultibodyPlant,
+#     RotationMatrix,
+#     RollPitchYaw,
+#     SpatialVelocity,
+#     SpatialForce,
+#     ExternallyAppliedSpatialForce,
+#     ConstantVectorSource,
+#     AbstractValue,
+#     ContactModel,
+#     Parser,
+#     configure_logging,
+# )
+# from station import MakeHardwareStation, load_scenario, add_directives  # local version allows ForceDriver
+# from scenario import scenario_yaml, robot_yaml, get_fast_box_poses
+
+# robot_pose = RigidTransform([0.0,0.0,0.58])
+
+# fast_box_poses = [RigidTransform([1, 0, 0]), RigidTransform([0, 1, 0]), RigidTransform(RotationMatrix.MakeXRotation(3.141592 * 0.75), [0, 1, 0])]
+
+# #####################
+# ### Meshcat Setup ###
+# #####################
+# meshcat = StartMeshcat()
+
+
+# #####################
+# ### Diagram Setup ###
+# #####################
+# builder = DiagramBuilder()
+# scenario = load_scenario(data=scenario_yaml)
+
+# ### Add Boxes
+# box_directives = f"""
+# directives:
+# """
+# for i in range(len(fast_box_poses)):
+#     relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
+#     absolute_path_to_box = os.path.abspath(relative_path_to_box)
+
+#     box_directives += f"""
+# - add_model: 
+#     name: Boxes/Box_{i}
+#     file: file://{absolute_path_to_box}
+# """
+# scenario = add_directives(scenario, data=box_directives)
+
+
+# ### Hardware station setup
+# station = builder.AddSystem(MakeHardwareStation(
+#     scenario=scenario,
+#     meshcat=meshcat,
+
+#     # This is to be able to load our own models from a local path
+#     # we can refer to this using the "package://" URI directive
+#     parser_preload_callback=lambda parser: parser.package_map().Add("cwd", os.getcwd())
+# ))
+# scene_graph = station.GetSubsystemByName("scene_graph")
+# plant = station.GetSubsystemByName("plant")
+
+# box_poses = {}
+# for i in range(len(fast_box_poses)):
+#     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
+#     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+#     box_poses[box_body_idx] = fast_box_poses[i]
+
+
+# pick_planner = PickPlanner(box_poses)

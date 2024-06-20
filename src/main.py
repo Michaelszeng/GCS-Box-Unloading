@@ -5,7 +5,6 @@ from pydrake.all import (
     Box,
     ModelInstanceIndex,
     InverseDynamicsController,
-    PidController,
     RigidTransform,
     MultibodyPlant,
     RotationMatrix,
@@ -17,7 +16,6 @@ from pydrake.all import (
     AbstractValue,
     ContactModel,
     Parser,
-    PdControllerGains,
     configure_logging,
 )
 
@@ -271,19 +269,19 @@ if randomize_boxes:
 
 
 simulator.AdvanceTo(0.1)
-region_generator = IrisRegionGenerator(meshcat, robot_pose)
+region_generator = IrisRegionGenerator(meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml")
 region_generator.load_and_test_regions()
-region_generator.generate_source_region_at_q_nominal()
-region_generator.generate_source_iris_regions(minimum_clique_size=20, 
-                                              coverage_threshold=0.2, 
-                                              use_previous_saved_regions=False)  # False --> regenerate regions from scratch
-region_generator.generate_source_iris_regions(minimum_clique_size=15, 
-                                              coverage_threshold=0.45, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=8,
-                                              coverage_threshold=0.7, 
-                                              use_previous_saved_regions=True)
 
+# region_generator.generate_source_region_at_q_nominal()
+# region_generator.generate_source_iris_regions(minimum_clique_size=20, 
+#                                               coverage_threshold=0.2, 
+#                                               use_previous_saved_regions=False)  # False --> regenerate regions from scratch
+# region_generator.generate_source_iris_regions(minimum_clique_size=15, 
+#                                               coverage_threshold=0.45, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=8,
+#                                               coverage_threshold=0.7, 
+#                                               use_previous_saved_regions=True)
 
 # Get box poses to pass to pick planner to select a box to pick first
 box_poses = {}
@@ -292,10 +290,10 @@ for i in range(NUM_BOXES):
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses[box_body_idx] = plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx))
 
-pick_planner = PickPlanner(box_poses)
-for i in range(NUM_BOXES):
-    box_to_pick = pick_planner.get_box_idx_to_pick()
-    print(f"{box_to_pick=}")
+# pick_planner = PickPlanner(box_poses)
+# for i in range(NUM_BOXES):
+#     box_to_pick = pick_planner.get_box_idx_to_pick()
+#     print(f"{box_to_pick=}")
 
 simulator.AdvanceTo(sim_runtime)
 
