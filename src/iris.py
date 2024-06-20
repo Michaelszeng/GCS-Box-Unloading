@@ -26,8 +26,7 @@ from utils import NUM_BOXES
 import numpy as np
 from pathlib import Path
 import pydot
-import os
-from itertools import combinations
+import matplotlib.pyplot as plt
 
 
 class IrisRegionGenerator():
@@ -50,7 +49,52 @@ class IrisRegionGenerator():
         self.regions_file = Path(regions_file)
 
 
-    # def generate_overlap_histogram(self, regions):
+    def generate_overlap_histogram(self, plant, regions, num_samples=10000, seed=42):
+        """
+        Measure region overlap by randomly sampling over union of all sets, and
+        creating a histogram of how many sets of sample falls in. The fewer, the
+        better.
+        """
+        rng = RandomGenerator(seed)
+
+        sampling_domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
+
+        data = {}
+
+        last_sample = sampling_domain.UniformSample(rng)
+        for i in range(num_samples):
+            last_sample = sampling_domain.UniformSample(rng, last_sample)
+            last_sample_num_regions = 0
+            # Count the number of sets the sample appears in
+            for r in regions:
+                if r.PointInSet(last_sample):
+                    last_sample_num_regions += 1
+            
+            if last_sample_num_regions == 0:
+                continue
+
+            if last_sample_num_regions in data.keys():
+                data[last_sample_num_regions] += 1
+            else:
+                data[last_sample_num_regions] = 0
+
+        # Plot data
+        num_regions = list(data.keys())
+        samples = list(data.values())
+
+        # Plotting the histogram
+        plt.figure(figsize=(10, 6))
+        bars = plt.bar(num_regions, samples, color='blue', edgecolor='black')
+        plt.xlabel('Number of Regions Sample Appears In')
+        plt.ylabel('Number of Samples')
+        plt.title('Histogram of Sample Distribution Across Regions')
+        plt.xticks(num_regions)  # Ensure all x-axis labels are shown
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        # Add text annotations on top of each bar
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height}', ha='center', va='bottom')
+        plt.show()
 
 
 
@@ -134,6 +178,8 @@ class IrisRegionGenerator():
         num_nodes, num_edges = self.visualize_connectivity(regions)
         print("Connectivity graph saved to ../iris_connectivity.svg.")
         print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
+
+        self.generate_overlap_histogram(plant, regions)
 
 
     def load_and_test_regions(self):
