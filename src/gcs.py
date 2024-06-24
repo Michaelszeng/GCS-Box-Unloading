@@ -40,7 +40,7 @@ class MotionPlanner(LeafSystem):
         body_poses = AbstractValue.Make([RigidTransform()])
         self.DeclareAbstractInputPort("kuka_current_pose", body_poses)
 
-        self._traj_index = self.DeclareAbstractState(
+        self.traj_idx = self.DeclareAbstractState(
             AbstractValue.Make(CompositeTrajectory([PiecewisePolynomial.FirstOrderHold(
                                                         [0, 1],
                                                         np.array([[0, 0]])
@@ -92,6 +92,8 @@ class MotionPlanner(LeafSystem):
 
         self.q_place = self.pick_planner.solve_q_place()
 
+        self.state = 1  # 1 for picking, 0 for placing
+
         # self.DeclarePeriodicUnrestrictedUpdateEvent(0.025, 0.0, self.compute_command)
         self.DeclarePeriodicUnrestrictedUpdateEvent(1, 0.0, self.compute_command)
 
@@ -130,9 +132,6 @@ class MotionPlanner(LeafSystem):
 
     def compute_command(self, context, state):
         ### Deal with Special Cases
-        if is_yaml_empty("../data/iris_source_regions.yaml"):
-            print(f"compute_command returning due to no IRIS regions ready yet.")
-            return
         if context.get_time() < self.start_planning_time:
             print(f"compute_command returning due to box randomization still occuring.")
             return
@@ -147,12 +146,18 @@ class MotionPlanner(LeafSystem):
         for box_body_idx in self.box_body_indices:
             box_poses[box_body_idx] = body_poses[box_body_idx]
 
-        # Get potential pick poses for GCS
-        target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # In task space
-        
+        # Define GCS Program
         gcs_regions = self.source_regions.copy()
         gcs_regions["start"] = Point(q_current)
-        gcs_regions["goal"] = Point(self.q_place)
+
+        # Plan path either to pick or to placing pose
+        if self.state == 1:  # Pick
+            # Get potential pick poses for GCS
+            target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
+            for i in range(len(target_regions)):
+                gcs_regions[f"target_region_{i}"] = target_regions[i]
+        else:  # Place
+            gcs_regions["goal"] = Point(self.q_place)
 
         edges = []
 
@@ -189,12 +194,12 @@ class MotionPlanner(LeafSystem):
 
         self.VisualizePath(traj, f"GCS Traj")
 
-        state.get_mutable_abstract_state(int(self._traj_index)).set_value(traj)
+        state.get_mutable_abstract_state(int(self.traj_idx)).set_value(traj)
 
 
     def output_command(self, context, output):
         # Set value at output port according to context time and trajectory state variable
-        traj_q = context.get_mutable_abstract_state(int(self._traj_index)).get_value()
+        traj_q = context.get_mutable_abstract_state(int(self.traj_idx)).get_value()
 
         if (traj_q.rows() == 1):
             # print("default traj output.")
@@ -211,7 +216,7 @@ class MotionPlanner(LeafSystem):
 
     def output_acceleration(self, context, output):
         # Set value at output port according to context time and trajectory state variable
-        traj_q = context.get_mutable_abstract_state(int(self._traj_index)).get_value()
+        traj_q = context.get_mutable_abstract_state(int(self.traj_idx)).get_value()
 
         if (traj_q.rows() == 1):
             # print("planner outputting default 0 acceleration")

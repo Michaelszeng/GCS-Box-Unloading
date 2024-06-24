@@ -3,6 +3,7 @@ from pydrake.all import (
     StartMeshcat,
     Simulator,
     Box,
+    Rgba,
     ModelInstanceIndex,
     InverseDynamicsController,
     RigidTransform,
@@ -49,7 +50,7 @@ log = logging.getLogger("drake")
 log.setLevel("INFO")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--fast', default='T', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
+parser.add_argument('--fast', default='F', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
 args = parser.parse_args()
 
@@ -206,9 +207,9 @@ for i in range(NUM_BOXES):
     if randomize_boxes:
         i=0
         while True:
-            box_pos_x = np.random.uniform(-1, 1.3, 1)
-            box_pos_y = np.random.uniform(-0.95, 0.95, 1)
-            box_pos_z = np.random.uniform(0, 5, 1)
+            box_pos_x = np.random.uniform(2.0, 3.5, 1)
+            box_pos_y = np.random.uniform(-1.2, 0.7, 1)
+            box_pos_z = np.random.uniform(0.5, 5, 1)
 
             in_collision = False
             for pos in all_box_positions:
@@ -288,6 +289,7 @@ for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses[box_body_idx] = plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx))
+print(box_poses)
 
 simulator.AdvanceTo(sim_runtime)
 

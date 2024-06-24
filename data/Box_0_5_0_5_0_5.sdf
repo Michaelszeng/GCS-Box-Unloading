@@ -3,7 +3,8 @@
   <model name='Box_0_5_0_5_0_5'>
     <link name='Box_0_5_0_5_0_5'>
       <inertial>
-        <pose>2.25 0 0.75 0 0 0</pose>
+        <!-- <pose>2 -0.25 1 0 0 0</pose> -->
+        <pose>0 0 0 0 0 0</pose>
         <mass>20</mass>
         <inertia>
           <ixx>0.8</ixx>
@@ -15,7 +16,8 @@
         </inertia>
       </inertial>
       <visual name='visual'>
-        <pose>2 -0.25 1 0 0 0</pose>
+        <!-- <pose>2 -0.25 1 0 0 0</pose> -->
+        <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
             <uri>Box_0_5_0_5_0_5.obj</uri>
@@ -25,7 +27,8 @@
         </geometry>
       </visual>
       <collision name='collision'>
-        <pose>2 -0.25 1 0 0 0</pose>
+        <!-- <pose>2 -0.25 1 0 0 0</pose> -->
+        <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
             <uri>Box_0_5_0_5_0_5.obj</uri>

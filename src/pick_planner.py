@@ -237,6 +237,11 @@ class PickPlanner():
         """
         Return a list of regions in configuration that are viable pick poses.
         """
+        for box_idx in box_poses.keys():
+            self.meshcat.SetObject(f"illustration/Viable_Boxes/{box_idx}", Box(BOX_DIM, BOX_DIM, BOX_DIM), Rgba(0.75, 0.0, 0.0))
+            self.meshcat.SetTransform(f"illustration/Viable_Boxes/{box_idx}", box_poses[box_idx])
+            print(box_poses[box_idx])
+
         # Compute projections of boxes onto XY plane to more easily determine
         # which are vertically overlapping
         box_projections = {}  # dict mapping box bodyIndex to VPolytope XY projection
@@ -261,20 +266,17 @@ class PickPlanner():
             
             box_projections[box_body_idx] = VPolytope(box_points.T)
 
+        # Render 2D projections in Meshcat
         if self.DEBUG:
-            # Render projections in Meshcat
             meshcat = StartMeshcat()
             meshcat.Set2dRenderMode(RigidTransform([0, 0, 1]), -4, 4, -4, 4)
             meshcat.SetProperty("/Axes", "visible", True)
-            
             ctr = 0
             for vpoly in box_projections.values():
                 points = np.array(self.sort_vertices_ccw(vpoly))
-
                 meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(np.random.random(), np.random.random(), np.random.random()))
                 ctr += 1
-
-            time.sleep(4)
+            time.sleep(4)  # Give time to load in browser before everything is unrendered
 
         # Now, determine which boxes vertically overlap and remove any boxes that are in lower layers
         viable_boxes = list(box_poses.keys())
