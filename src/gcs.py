@@ -23,6 +23,7 @@ from manipulation.utils import ConfigureParser
 
 from scenario import scenario_yaml_for_iris, q_nominal
 from utils import NUM_BOXES, is_yaml_empty, SuppressOutput
+from pick_planner import PickPlanner
 
 import time
 import numpy as np
@@ -77,12 +78,19 @@ class MotionPlanner(LeafSystem):
         self.original_plant = original_plant
         self.meshcat = meshcat
 
-        self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), robot_pose.translation() + [0.0, -0.65, 1.0])
-        AddMeshcatTriad(meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
         self.source_regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
         self.previous_compute_result = None  # BsplineTrajectory object
         self.start_planning_time = box_randomization_runtime
         self.visualize = True
+        
+        self.box_body_indices = []
+        for i in range(NUM_BOXES):
+            box_model_idx = original_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
+            box_body_idx = original_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+            self.box_body_indices.append(box_body_idx)
+        self.pick_planner = PickPlanner(self.meshcat, self.robot_pose, self.box_body_indices)
+
+        self.q_place = self.pick_planner.solve_q_place()
 
         # self.DeclarePeriodicUnrestrictedUpdateEvent(0.025, 0.0, self.compute_command)
         self.DeclarePeriodicUnrestrictedUpdateEvent(1, 0.0, self.compute_command)
@@ -134,57 +142,17 @@ class MotionPlanner(LeafSystem):
         q_current = kuka_state[:6]
         q_dot_current = kuka_state[6:]
 
-        # Solve an IK program for the box deposit position
-        # Separate IK program for each region with the constraint that the IK result must be in that region
-        ik_start = time.time()
-        solve_success = False
-        for region in list(self.source_regions.values()):
-            ik = InverseKinematics(self.plant, self.plant_context)
-            q_variables = ik.q()  # Get variables for MathematicalProgram
-            ik_prog = ik.get_mutable_prog()
+        body_poses = self.get_input_port(1).Eval(context)
+        box_poses = {}
+        for box_body_idx in self.box_body_indices:
+            box_poses[box_body_idx] = body_poses[box_body_idx]
 
-            # ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_current, q_variables)
-            ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_nominal, q_variables)
-
-            # q_variables must be within half-plane for every half-plane in region
-            ik_prog.AddConstraint(logical_and(*[expr <= const for expr, const in zip(region.A() @ q_variables, region.b())]))
-
-            # Pose constraint
-            ik.AddPositionConstraint(
-                frameA=self.plant.world_frame(),
-                frameB=self.plant.GetFrameByName("arm_eef"),
-                p_BQ=[0, 0, 0.1],
-                p_AQ_lower=self.X_W_Deposit.translation(),
-                p_AQ_upper=self.X_W_Deposit.translation(),
-            )
-            ik.AddOrientationConstraint(
-                frameAbar=self.plant.world_frame(),
-                R_AbarA=self.X_W_Deposit.rotation(),
-                frameBbar=self.plant.GetFrameByName("arm_eef"),
-                R_BbarB=RotationMatrix(),
-                theta_bound=0.05,
-            )
-
-            ik_prog.SetInitialGuess(q_variables, q_nominal)
-            ik_result = Solve(ik_prog)
-            if ik_result.is_success():
-                q_goal = ik_result.GetSolution(q_variables)  # (6,) np array
-                print(f"IK solve succeeded. q_goal: {q_goal}")
-                solve_success = True
-                break
-            # else:
-            #     print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
-            #     print(ik_result.GetInfeasibleConstraintNames(ik_prog))
-
-        print(f"IK Runtime: {time.time() - ik_start}")
-
-        if solve_success == False:
-            print("IK Solve Failed. GCS unable to work.")
-            return        
+        # Get potential pick poses for GCS
+        target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # In task space
         
         gcs_regions = self.source_regions.copy()
         gcs_regions["start"] = Point(q_current)
-        gcs_regions["goal"] = Point(q_goal)
+        gcs_regions["goal"] = Point(self.q_place)
 
         edges = []
 
@@ -192,7 +160,7 @@ class MotionPlanner(LeafSystem):
             gcs = GcsTrajectoryOptimization(len(q_current))
             gcs_regions = gcs.AddRegions(list(gcs_regions.values()), order=1)
             source = gcs.AddRegions([Point(q_current)], order=0)
-            target = gcs.AddRegions([Point(q_goal)], order=0)
+            target = gcs.AddRegions([Point(self.q_place)], order=0)
             edges.append(gcs.AddEdges(source, gcs_regions))
             edges.append(gcs.AddEdges(gcs_regions, target))
         

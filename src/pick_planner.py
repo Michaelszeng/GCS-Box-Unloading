@@ -1,8 +1,13 @@
 from pydrake.all import (
     RigidTransform,
+    RotationMatrix,
     VPolytope,
     StartMeshcat,
-    Rgba
+    Rgba,
+    InverseKinematics,
+    Solve,
+    logical_or,
+    logical_and
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
@@ -12,7 +17,8 @@ import os
 import time
 from scipy.spatial import ConvexHull
 
-from utils import NUM_BOXES, BOX_DIM
+from utils import NUM_BOXES, BOX_DIM, GRIPPER_DIM
+from scenario import q_nominal
 
 
 class BoxSelectorGraph:
@@ -113,86 +119,16 @@ class BoxSelectorGraph:
         return "\n".join(f"{node}: {children}" for node, children in self.adj_list.items())
 
 
-class PickPlanner:
+class PickPlanner():
     """
-    A class to manage all picking logic, i.e. selecting which box to pick,
-    which face to pick it up from.
+    A class to manage all picking logic, i.e. selecting which boxes are viable
+    to be picked at the current time.
     """
-    def __init__(self, box_poses, DEBUG=True):
-        """
-        Initialize the BoxSelectorGraph data structure. This is done by checking
-        which boxes vertically overlap and which boxes are closer to the robot
-        in the world x-axis.
-
-        box_poses: dictionary mapping BodyIndex: RigidTransform for each box.
-        """
-        self.box_selector_graph = BoxSelectorGraph()
-
-        # Compute projections of boxes onto XY plane to more easily determine
-        # which are vertically overlapping
-        box_projections = {}  # dict mapping box bodyIndex to VPolytope XY projection
-        for box_body_idx, box_pose in box_poses.items():
-            # Find vertices of projection of box onto XY plane
-            box_corners = []
-            for dx in [0, BOX_DIM]:
-                for dy in [0, BOX_DIM]:
-                    for dz in [0, BOX_DIM]:
-                        # Find coordinate of box corner in 3D
-                        box_corner = box_pose.translation() + box_pose.rotation() @ np.array([dx, dy, dz])
-                        # Project box corner into XY plane by removing Z coordinate
-                        box_corner_xy = np.array([box_corner[0], box_corner[1]])
-                        box_corners.append(box_corner_xy)
-
-            box_corners = np.array(box_corners)
-
-            # Only keep the points in the convex hull of the projection
-            box_hull = ConvexHull(box_corners)
-            box_points = box_corners[box_hull.vertices, :]
-            box_points = np.hstack((box_points, np.zeros((np.shape(box_points)[0], 1))))  # Append 0 z-coordinate
-            
-            box_projections[box_body_idx] = VPolytope(box_points.T)
-
-        if DEBUG:
-            # Render projections in Meshcat
-            meshcat = StartMeshcat()
-            meshcat.Set2dRenderMode(RigidTransform([0, 0, 1]), -4, 4, -4, 4)
-            meshcat.SetProperty("/Axes", "visible", True)
-            
-            ctr = 0
-            for vpoly in box_projections.values():
-                points = np.array(self.sort_vertices_ccw(vpoly))
-                print(points)
-
-                meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(np.random.random(), np.random.random(), np.random.random()))
-                ctr += 1
-
-            time.sleep(4)
-
-
-        # Now, determine which boxes vertically overlap and add corresponding nodes and edges to graph
-        for box_body_idx, box_proj in box_projections.items():
-            for other_box_body_idx, other_box_proj in box_projections.items():
-                # Box cannot be on top of itself
-                if box_body_idx == other_box_body_idx:
-                    continue
-                
-                # If boxes vertically overlap, figure out which one is above the
-                # other by looking at their z-coordinates. 
-                # Note: This isn't a perfect solution; i.e. one box can be on
-                # another but still have a lower z-coordinate; but this seems
-                # unlikely enough (and also I can't think of a perfect way to
-                # do this).
-                if box_proj.IntersectsWith(other_box_proj):
-                    if box_poses[box_body_idx].translation()[2] > box_poses[other_box_body_idx].translation()[2]:
-                        # box_body_idx is above other_box_body_idx
-                        self.box_selector_graph.add_edge((other_box_body_idx, box_poses[other_box_body_idx]),
-                                                         (box_body_idx, box_poses[box_body_idx]))
-                    else:
-                        # other_box_body_idx is above box_body_idx
-                        self.box_selector_graph.add_edge((box_body_idx, box_poses[box_body_idx]),
-                                                         (other_box_body_idx, box_poses[other_box_body_idx]))
-                        
-        self.box_selector_graph.build_heap()
+    def __init__(self, meshcat, robot_pose, box_body_indices, DEBUG=True):
+        self.meshcat = meshcat
+        self.robot_pose = robot_pose
+        self.DEBUG = DEBUG
+        self.box_body_indices = box_body_indices
 
 
     def sort_vertices_ccw(self, vpolytope: VPolytope) -> np.ndarray:
@@ -225,15 +161,209 @@ class PickPlanner:
         ordered_coordinates = np.hstack((ordered_coordinates, ordered_coordinates[:, 0].reshape(-1, 1)))
 
         return ordered_coordinates
+    
 
-    def get_box_idx_to_pick(self):
+    def ik(self, pose):
         """
-        Pick the first box to grab.
+        Use Inverse Kinematics to solve for a configuration that satisfies a
+        task space pose that is reachable within the solved IRIS regions (or
+        return None if this is not possible).
         """
-        return self.box_selector_graph.remove_next_node()
+        # Separate IK program for each region with the constraint that the IK result must be in that region
+        ik_start = time.time()
+        solve_success = False
+        for region in list(self.source_regions.values()):
+            ik = InverseKinematics(self.plant, self.plant_context)
+            q_variables = ik.q()  # Get variables for MathematicalProgram
+            ik_prog = ik.get_mutable_prog()
+
+            ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_nominal, q_variables)
+
+            # q_variables must be within half-plane for every half-plane in region
+            ik_prog.AddConstraint(logical_and(*[expr <= const for expr, const in zip(region.A() @ q_variables, region.b())]))
+
+            # Pose constraint
+            ik.AddPositionConstraint(
+                frameA=self.plant.world_frame(),
+                frameB=self.plant.GetFrameByName("arm_eef"),
+                p_BQ=[0, 0, 0.1],
+                p_AQ_lower=self.X_W_Deposit.translation(),
+                p_AQ_upper=self.X_W_Deposit.translation(),
+            )
+            ik.AddOrientationConstraint(
+                frameAbar=self.plant.world_frame(),
+                R_AbarA=self.X_W_Deposit.rotation(),
+                frameBbar=self.plant.GetFrameByName("arm_eef"),
+                R_BbarB=RotationMatrix(),
+                theta_bound=0.05,
+            )
+
+            ik_prog.SetInitialGuess(q_variables, q_nominal)
+            ik_result = Solve(ik_prog)
+            if ik_result.is_success():
+                q_place = ik_result.GetSolution(q_variables)  # (6,) np array
+                print(f"IK solve succeeded. q_place: {q_place}")
+                solve_success = True
+                break
+            else:
+                print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
+                print(ik_result.GetInfeasibleConstraintNames(ik_prog))
+
+        # print(f"IK Runtime: {time.time() - ik_start}")
+
+        if solve_success == False:
+            print("IK Solve Failed. GCS unable to work.")
+            return None
+        
+        return q_place
+    
+
+    def solve_q_place(self):
+        """
+        Solve an IK program for the box deposit position that is reachable
+        within the solved IRIS regions.
+        """
+        self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), self.robot_pose.translation() + [0.0, -0.65, 1.0])
+        AddMeshcatTriad(self.meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
+        return self.ik(self.X_W_Deposit)
 
 
+    def get_viable_pick_poses(self, box_poses):
+        """
+        Return a list of polytopes in task space representing 
+        """
+        # Compute projections of boxes onto XY plane to more easily determine
+        # which are vertically overlapping
+        box_projections = {}  # dict mapping box bodyIndex to VPolytope XY projection
+        for box_body_idx, box_pose in box_poses.items():
+            # Find vertices of projection of box onto XY plane
+            box_corners = []
+            for dx in [0, BOX_DIM]:
+                for dy in [0, BOX_DIM]:
+                    for dz in [0, BOX_DIM]:
+                        # Find coordinate of box corner in 3D
+                        box_corner = box_pose.translation() + box_pose.rotation() @ np.array([dx, dy, dz])
+                        # Project box corner into XY plane by removing Z coordinate
+                        box_corner_xy = np.array([box_corner[0], box_corner[1]])
+                        box_corners.append(box_corner_xy)
 
+            box_corners = np.array(box_corners)
+
+            # Only keep the points in the convex hull of the projection
+            box_hull = ConvexHull(box_corners)
+            box_points = box_corners[box_hull.vertices, :]
+            box_points = np.hstack((box_points, np.zeros((np.shape(box_points)[0], 1))))  # Append 0 z-coordinate
+            
+            box_projections[box_body_idx] = VPolytope(box_points.T)
+
+        if self.DEBUG:
+            # Render projections in Meshcat
+            meshcat = StartMeshcat()
+            meshcat.Set2dRenderMode(RigidTransform([0, 0, 1]), -4, 4, -4, 4)
+            meshcat.SetProperty("/Axes", "visible", True)
+            
+            ctr = 0
+            for vpoly in box_projections.values():
+                points = np.array(self.sort_vertices_ccw(vpoly))
+                print(points)
+
+                meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(np.random.random(), np.random.random(), np.random.random()))
+                ctr += 1
+
+            time.sleep(4)
+
+        # Now, determine which boxes vertically overlap and remove any boxes that are in lower layers
+        viable_boxes = box_poses.keys()
+        for box_body_idx, box_proj in box_projections.items():
+            for other_box_body_idx, other_box_proj in box_projections.items():
+                # Box cannot be on top of itself
+                if box_body_idx == other_box_body_idx:
+                    continue
+                
+                # If boxes vertically overlap, figure out which one is above the
+                # other by looking at their z-coordinates. 
+                # Note: This isn't a perfect solution; i.e. one box can be on
+                # another but still have a lower z-coordinate; but this seems
+                # unlikely enough (and also I can't think of a perfect way to
+                # do this).
+                if box_proj.IntersectsWith(other_box_proj):
+                    if box_poses[box_body_idx].translation()[2] > box_poses[other_box_body_idx].translation()[2]:
+                        # box_body_idx is above other_box_body_idx
+                        try:
+                            viable_boxes.remove(other_box_body_idx)
+                        except:
+                            pass
+                    else:
+                        # other_box_body_idx is above box_body_idx
+                        try:
+                            viable_boxes.remove(box_body_idx)
+                        except:
+                            pass
+                        
+        # Remove drawn polytopes from previous iteration
+        if self.DEBUG:
+            for box_idx in self.box_body_indices:
+                for i in range(6):
+                    self.meshcat.Delete(f"pick_region_{box_idx}_{i+1}")
+
+        # For each viable box, generate polytope of grasp poses for each face
+        # Also, display the polytope in meshcat
+        MARGIN = 0.25  # how far pre-pick pose is from the box face
+        pick_regions = []
+        for box_idx in viable_boxes:
+            box_pose = box_poses[box_idx]
+            box_center = box_pose + box_pose.rotation() @ [BOX_DIM/2, BOX_DIM/2, BOX_DIM/2]  # Because box_pose is at the corner of the box
+
+            # For all 6 faces of each box
+            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2)]
+            p2 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2)]
+            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2)]
+            p4 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2)]
+            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
+            if self.DEBUG:
+                self.meshcat.SetLine(f"pick_region_{box_idx}_1", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
+
+            p1 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2)]
+            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2)]
+            p3 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2)]
+            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2)]
+            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
+            if self.DEBUG:
+                self.meshcat.SetLine(f"pick_region_{box_idx}_2", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
+
+            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2)]
+            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2)]
+            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2)]
+            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2)]
+            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
+            if self.DEBUG:
+                self.meshcat.SetLine(f"pick_region_{box_idx}_3", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
+
+            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2)]
+            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2)]
+            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2)]
+            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2)]
+            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
+            if self.DEBUG:
+               self.meshcat.SetLine(f"pick_region_{box_idx}_4", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
+
+            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN)]
+            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2),(BOX_DIM/2 + MARGIN)]
+            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN)]
+            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN)]
+            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
+            if self.DEBUG:
+                self.meshcat.SetLine(f"pick_region_{box_idx}_5", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
+
+            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN)]
+            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN)]
+            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN)]
+            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN)]
+            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
+            if self.DEBUG:
+                self.meshcat.SetLine(f"pick_region_{box_idx}_6", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
+
+        return pick_regions
 
 
 

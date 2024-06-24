@@ -39,14 +39,13 @@ from utils import NUM_BOXES, BOX_DIM, diagram_visualize_connections
 from scenario import scenario_yaml, robot_yaml, get_fast_box_poses
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
-from pick_planner import PickPlanner
 from debug import Debugger
 
 
 # Set logging level in drake to DEBUG
 configure_logging()
 log = logging.getLogger("drake")
-# log.setLevel("DEBUG")fast_box_poses
+# log.setLevel("DEBUG")
 log.setLevel("INFO")
 
 parser = argparse.ArgumentParser()
@@ -289,11 +288,6 @@ for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses[box_body_idx] = plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx))
-
-# pick_planner = PickPlanner(box_poses)
-# for i in range(NUM_BOXES):
-#     box_to_pick = pick_planner.get_box_idx_to_pick()
-#     print(f"{box_to_pick=}")
 
 simulator.AdvanceTo(sim_runtime)
 

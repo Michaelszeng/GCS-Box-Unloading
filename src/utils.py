@@ -24,7 +24,9 @@ import os
 import sys
 
 NUM_BOXES = 40
-BOX_DIM = 0.5
+BOX_DIM = 0.5  # box edge length in m
+
+GRIPPER_DIM = 0.25  # edge length of gripper in m
 
 
 def diagram_visualize_connections(diagram: Diagram, file: Union[BinaryIO, str]) -> None:
