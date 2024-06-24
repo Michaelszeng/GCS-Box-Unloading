@@ -6,6 +6,8 @@ from pydrake.all import (
     Rgba,
     InverseKinematics,
     Solve,
+    Point,
+    Sphere,
     logical_or,
     logical_and
 )
@@ -163,7 +165,7 @@ class PickPlanner():
         return ordered_coordinates
     
 
-    def ik(self, pose):
+    def ik(self, pose, translation_error=0, rotation_error=0.05):
         """
         Use Inverse Kinematics to solve for a configuration that satisfies a
         task space pose that is reachable within the solved IRIS regions (or
@@ -187,22 +189,22 @@ class PickPlanner():
                 frameA=self.plant.world_frame(),
                 frameB=self.plant.GetFrameByName("arm_eef"),
                 p_BQ=[0, 0, 0.1],
-                p_AQ_lower=self.X_W_Deposit.translation(),
-                p_AQ_upper=self.X_W_Deposit.translation(),
+                p_AQ_lower=pose.translation() - translation_error,
+                p_AQ_upper=pose.translation() + translation_error,
             )
             ik.AddOrientationConstraint(
                 frameAbar=self.plant.world_frame(),
-                R_AbarA=self.X_W_Deposit.rotation(),
+                R_AbarA=pose.rotation(),
                 frameBbar=self.plant.GetFrameByName("arm_eef"),
                 R_BbarB=RotationMatrix(),
-                theta_bound=0.05,
+                theta_bound=rotation_error,
             )
 
             ik_prog.SetInitialGuess(q_variables, q_nominal)
             ik_result = Solve(ik_prog)
             if ik_result.is_success():
-                q_place = ik_result.GetSolution(q_variables)  # (6,) np array
-                print(f"IK solve succeeded. q_place: {q_place}")
+                q = ik_result.GetSolution(q_variables)  # (6,) np array
+                print(f"IK solve succeeded. q: {q}")
                 solve_success = True
                 break
             else:
@@ -212,10 +214,10 @@ class PickPlanner():
         # print(f"IK Runtime: {time.time() - ik_start}")
 
         if solve_success == False:
-            print("IK Solve Failed. GCS unable to work.")
+            print("IK Solve Failed.")
             return None
         
-        return q_place
+        return q
     
 
     def solve_q_place(self):
@@ -315,53 +317,33 @@ class PickPlanner():
             box_center = box_pose + box_pose.rotation() @ [BOX_DIM/2, BOX_DIM/2, BOX_DIM/2]  # Because box_pose is at the corner of the box
 
             # For all 6 faces of each box
-            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2)]
-            p2 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2)]
-            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2)]
-            p4 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2)]
-            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
-            if self.DEBUG:
-                self.meshcat.SetLine(f"pick_region_{box_idx}_1", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
+            for i in range(6):
+                if i == 0:
+                    p = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), 0, 0]
+                    R = box_center.rotation().MakeYRotation(np.pi/2)
+                elif i == 1:
+                    p = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), 0, 0]
+                    R = box_center.rotation().MakeYRotation(-np.pi/2)
+                elif i == 2:
+                    p = box_center.translation() + box_pose.rotation() @ [0, (BOX_DIM/2 + MARGIN), 0]
+                    R = box_center.rotation().MakeXRotation(-np.pi/2)
+                elif i == 3:
+                    p = box_center.translation() + box_pose.rotation() @ [0, -(BOX_DIM/2 + MARGIN), 0]
+                    R = box_center.rotation().MakeXRotation(np.pi/2)
+                elif i == 4:
+                    p = box_center.translation() + box_pose.rotation() @ [0, 0, (BOX_DIM/2 + MARGIN)]
+                    R = box_center.rotation().MakeXRotation(np.pi)
+                else:
+                    p = box_center.translation() + box_pose.rotation() @ [0, 0, -(BOX_DIM/2 + MARGIN)]
+                    R = box_center.rotation()
 
-            p1 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2)]
-            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2)]
-            p3 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2)]
-            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2)]
-            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
-            if self.DEBUG:
-                self.meshcat.SetLine(f"pick_region_{box_idx}_2", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
-
-            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2)]
-            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2)]
-            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2)]
-            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2)]
-            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
-            if self.DEBUG:
-                self.meshcat.SetLine(f"pick_region_{box_idx}_3", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
-
-            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2)]
-            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN), (BOX_DIM/2 - GRIPPER_DIM/2)]
-            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2)]
-            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN), -(BOX_DIM/2 - GRIPPER_DIM/2)]
-            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
-            if self.DEBUG:
-               self.meshcat.SetLine(f"pick_region_{box_idx}_4", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
-
-            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN)]
-            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2),(BOX_DIM/2 + MARGIN)]
-            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN)]
-            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 + MARGIN)]
-            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
-            if self.DEBUG:
-                self.meshcat.SetLine(f"pick_region_{box_idx}_5", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
-
-            p1 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN)]
-            p2 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), (BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN)]
-            p3 = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN)]
-            p4 = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 - GRIPPER_DIM/2), -(BOX_DIM/2 + MARGIN)]
-            pick_regions.append(VPolytope(np.hstack((p1, p2, p3, p4))))
-            if self.DEBUG:
-                self.meshcat.SetLine(f"pick_region_{box_idx}_6", np.hstack((p1, p2, p3, p4)), 2.0, Rgba(0.75, 0.0, 0.0))
+                X = RigidTransform(R, p)
+                q = self.ik(X)
+                if q is not None:
+                    pick_regions.append(Point(q))
+                if self.DEBUG:
+                    self._meshcat.SetObject(f"Pick_Poses/{box_idx}_{i}", Sphere(0.005), Rgba(0.75, 0.0, 0.0))
+                    self._meshcat.SetTransform(f"Pick_Poses/{box_idx}_{i}", X)
 
         return pick_regions
 
