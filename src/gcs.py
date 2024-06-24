@@ -88,7 +88,7 @@ class MotionPlanner(LeafSystem):
             box_model_idx = original_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
             box_body_idx = original_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
             self.box_body_indices.append(box_body_idx)
-        self.pick_planner = PickPlanner(self.meshcat, self.robot_pose, self.box_body_indices)
+        self.pick_planner = PickPlanner(self.meshcat, self.robot_pose, self.source_regions, self.box_body_indices, self.plant, self.plant_context)
 
         self.q_place = self.pick_planner.solve_q_place()
 

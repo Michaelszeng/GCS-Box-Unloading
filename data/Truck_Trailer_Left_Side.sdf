@@ -23,6 +23,11 @@
             <drake:declare_convex/>
           </mesh>
         </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient> <!-- White color, fully opaque -->
+          <diffuse>1 1 1 0.1</diffuse> <!-- White color, 0.1 opacity -->
+          <specular>1 1 1 0.1</specular> <!-- Specular highlight color with 0.1 opacity -->
+        </material>
       </visual>
       <collision name='collision'>
         <pose>-6 -1.2954 0 1.57079632679 0 1.57079632679</pose>

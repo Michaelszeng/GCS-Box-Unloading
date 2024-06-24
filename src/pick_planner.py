@@ -8,6 +8,7 @@ from pydrake.all import (
     Solve,
     Point,
     Sphere,
+    Box,
     logical_or,
     logical_and
 )
@@ -126,11 +127,14 @@ class PickPlanner():
     A class to manage all picking logic, i.e. selecting which boxes are viable
     to be picked at the current time.
     """
-    def __init__(self, meshcat, robot_pose, box_body_indices, DEBUG=True):
+    def __init__(self, meshcat, robot_pose, source_regions, box_body_indices, ik_plant, ik_plant_context, DEBUG=True):
         self.meshcat = meshcat
         self.robot_pose = robot_pose
-        self.DEBUG = DEBUG
+        self.source_regions = source_regions
         self.box_body_indices = box_body_indices
+        self.plant = ik_plant
+        self.plant_context = ik_plant_context
+        self.DEBUG = DEBUG
 
 
     def sort_vertices_ccw(self, vpolytope: VPolytope) -> np.ndarray:
@@ -207,14 +211,13 @@ class PickPlanner():
                 print(f"IK solve succeeded. q: {q}")
                 solve_success = True
                 break
-            else:
-                print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
-                print(ik_result.GetInfeasibleConstraintNames(ik_prog))
+            # else:
+                # print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}: {ik_result.GetInfeasibleConstraintNames(ik_prog)}")
 
         # print(f"IK Runtime: {time.time() - ik_start}")
 
         if solve_success == False:
-            print("IK Solve Failed.")
+            print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
             return None
         
         return q
@@ -232,7 +235,7 @@ class PickPlanner():
 
     def get_viable_pick_poses(self, box_poses):
         """
-        Return a list of polytopes in task space representing 
+        Return a list of regions in configuration that are viable pick poses.
         """
         # Compute projections of boxes onto XY plane to more easily determine
         # which are vertically overlapping
@@ -267,7 +270,6 @@ class PickPlanner():
             ctr = 0
             for vpoly in box_projections.values():
                 points = np.array(self.sort_vertices_ccw(vpoly))
-                print(points)
 
                 meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(np.random.random(), np.random.random(), np.random.random()))
                 ctr += 1
@@ -275,7 +277,7 @@ class PickPlanner():
             time.sleep(4)
 
         # Now, determine which boxes vertically overlap and remove any boxes that are in lower layers
-        viable_boxes = box_poses.keys()
+        viable_boxes = list(box_poses.keys())
         for box_body_idx, box_proj in box_projections.items():
             for other_box_body_idx, other_box_proj in box_projections.items():
                 # Box cannot be on top of itself
@@ -301,12 +303,16 @@ class PickPlanner():
                             viable_boxes.remove(box_body_idx)
                         except:
                             pass
+        print(f"{len(viable_boxes)} viable boxes to be picked found.")
                         
-        # Remove drawn polytopes from previous iteration
         if self.DEBUG:
+            for box_idx in viable_boxes:
+                self.meshcat.SetObject(f"Viable_Boxes/{box_idx}", Box(BOX_DIM, BOX_DIM, BOX_DIM), Rgba(0.75, 0.0, 0.0))
+                self.meshcat.SetTransform(f"Viable_Boxes/{box_idx}", box_poses[box_idx])
+            # Remove drawn polytopes from previous iteration
             for box_idx in self.box_body_indices:
                 for i in range(6):
-                    self.meshcat.Delete(f"pick_region_{box_idx}_{i+1}")
+                    self.meshcat.Delete(f"Pick_Poses/{box_idx}_{i}")
 
         # For each viable box, generate polytope of grasp poses for each face
         # Also, display the polytope in meshcat
@@ -314,36 +320,36 @@ class PickPlanner():
         pick_regions = []
         for box_idx in viable_boxes:
             box_pose = box_poses[box_idx]
-            box_center = box_pose + box_pose.rotation() @ [BOX_DIM/2, BOX_DIM/2, BOX_DIM/2]  # Because box_pose is at the corner of the box
+            box_center = RigidTransform(box_pose.rotation(), box_pose.translation() + box_pose.rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, BOX_DIM/2]))  # Because box_pose is at the corner of the box
 
             # For all 6 faces of each box
             for i in range(6):
                 if i == 0:
-                    p = box_center.translation() + box_pose.rotation() @ [(BOX_DIM/2 + MARGIN), 0, 0]
+                    p = box_center.translation() + box_pose.rotation() @ np.array([(BOX_DIM/2 + MARGIN), 0, 0])
                     R = box_center.rotation().MakeYRotation(np.pi/2)
                 elif i == 1:
-                    p = box_center.translation() + box_pose.rotation() @ [-(BOX_DIM/2 + MARGIN), 0, 0]
+                    p = box_center.translation() + box_pose.rotation() @ np.array([-(BOX_DIM/2 + MARGIN), 0, 0])
                     R = box_center.rotation().MakeYRotation(-np.pi/2)
                 elif i == 2:
-                    p = box_center.translation() + box_pose.rotation() @ [0, (BOX_DIM/2 + MARGIN), 0]
+                    p = box_center.translation() + box_pose.rotation() @ np.array([0, (BOX_DIM/2 + MARGIN), 0])
                     R = box_center.rotation().MakeXRotation(-np.pi/2)
                 elif i == 3:
-                    p = box_center.translation() + box_pose.rotation() @ [0, -(BOX_DIM/2 + MARGIN), 0]
+                    p = box_center.translation() + box_pose.rotation() @ np.array([0, -(BOX_DIM/2 + MARGIN), 0])
                     R = box_center.rotation().MakeXRotation(np.pi/2)
                 elif i == 4:
-                    p = box_center.translation() + box_pose.rotation() @ [0, 0, (BOX_DIM/2 + MARGIN)]
+                    p = box_center.translation() + box_pose.rotation() @ np.array([0, 0, (BOX_DIM/2 + MARGIN)])
                     R = box_center.rotation().MakeXRotation(np.pi)
                 else:
-                    p = box_center.translation() + box_pose.rotation() @ [0, 0, -(BOX_DIM/2 + MARGIN)]
+                    p = box_center.translation() + box_pose.rotation() @ np.array([0, 0, -(BOX_DIM/2 + MARGIN)])
                     R = box_center.rotation()
 
                 X = RigidTransform(R, p)
                 q = self.ik(X)
                 if q is not None:
                     pick_regions.append(Point(q))
-                if self.DEBUG:
-                    self._meshcat.SetObject(f"Pick_Poses/{box_idx}_{i}", Sphere(0.005), Rgba(0.75, 0.0, 0.0))
-                    self._meshcat.SetTransform(f"Pick_Poses/{box_idx}_{i}", X)
+                    if self.DEBUG:
+                        self.meshcat.SetObject(f"Pick_Poses/{box_idx}_{i}", Sphere(0.03), Rgba(0.75, 0.0, 0.0))
+                        self.meshcat.SetTransform(f"Pick_Poses/{box_idx}_{i}", X)
 
         return pick_regions
 
