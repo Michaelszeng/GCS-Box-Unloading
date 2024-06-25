@@ -132,6 +132,9 @@ class IrisRegionGenerator():
         Plot small spheres in the volume of each region. (we are using forward
         kinematics to return from configuration space to task space.)
         """
+        if not self.DEBUG:
+            return
+
         world_frame = plant.world_frame()
         ee_frame = plant.GetFrameByName("arm_eef")
 

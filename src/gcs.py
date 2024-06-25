@@ -91,6 +91,7 @@ class MotionPlanner(LeafSystem):
         self.pick_planner = PickPlanner(self.meshcat, self.robot_pose, self.source_regions, self.box_body_indices, self.plant, self.plant_context)
 
         self.q_place = self.pick_planner.solve_q_place()
+        self.target_regions = None
 
         self.state = 1  # 1 for picking, 0 for placing
 
@@ -158,12 +159,13 @@ class MotionPlanner(LeafSystem):
             
         # Plan path either to pick or to placing pose
         if self.state == 1:  # Pick
-            target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
+            if self.target_regions is None:  # If program has just initialized
+                self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
             # for i in range(len(target_regions)):
                 # gcs_regions[f"target_region_{i}"] = target_regions[i]
             with SuppressOutput():  # Suppress Gurobi spam
-                target = gcs.AddRegions(target_regions, order=0)
-            for region in target_regions:  # If robot is very close to any of the viable pick positions, assume it has completed a pick.
+                target = gcs.AddRegions(self.target_regions, order=0)
+            for region in self.target_regions:  # If robot is very close to any of the viable pick positions, assume it has completed a pick.
                 if np.all(np.isclose(q_current, region.x(), rtol=1e-05, atol=1e-08)):
                     print("GCS: Finished picking; switching to placing.")
                     self.state = 0  # Switch to placing
@@ -175,12 +177,14 @@ class MotionPlanner(LeafSystem):
             if np.all(np.isclose(q_current, self.q_place, rtol=1e-05, atol=1e-08)):  # Finished placing
                 print("GCS: Finished placing; switching to picking.")
                 self.state = 1  # Switch to picking
+                self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
 
         with SuppressOutput():  # Suppress Gurobi spam
             edges.append(gcs.AddEdges(source, gcs_regions))
             edges.append(gcs.AddEdges(gcs_regions, target))
         
         gcs.AddTimeCost()
+        gcs.AddPathLengthCost()
         gcs.AddVelocityBounds(
             self.plant.GetVelocityLowerLimits(), self.plant.GetVelocityUpperLimits() * 0.25
         )
