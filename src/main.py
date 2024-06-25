@@ -71,7 +71,7 @@ if randomize_boxes:
     box_randomization_runtime = box_fall_runtime + 17
     sim_runtime = box_randomization_runtime + 2.5
 else:
-    sim_runtime = 2.5
+    sim_runtime = 10
     fast_box_poses = get_fast_box_poses()  # Get pre-computed box poses
 
 np.random.seed(seed)

@@ -218,7 +218,7 @@ class PickPlanner():
         # print(f"IK Runtime: {time.time() - ik_start}")
 
         if solve_success == False:
-            print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
+            # print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
             return None
         
         return q

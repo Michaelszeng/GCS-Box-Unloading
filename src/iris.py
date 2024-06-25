@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 
 class IrisRegionGenerator():
 
-    def __init__(self, meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml"):
+    def __init__(self, meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml", DEBUG=True):
         self.meshcat = meshcat
         robot_diagram_builder = RobotDiagramBuilder()
         diagram_builder = robot_diagram_builder.builder()
@@ -47,6 +47,8 @@ class IrisRegionGenerator():
         self.plant_context = self.plant.GetMyContextFromRoot(context)
 
         self.regions_file = Path(regions_file)
+
+        self.DEBUG = DEBUG
 
 
     def generate_overlap_histogram(self, plant, regions, num_samples=10000, seed=42):
@@ -83,18 +85,19 @@ class IrisRegionGenerator():
         samples = list(data.values())
 
         # Plotting the histogram
-        plt.figure(figsize=(10, 6))
-        bars = plt.bar(num_regions, samples, color='blue', edgecolor='black')
-        plt.xlabel('Number of Regions Sample Appears In')
-        plt.ylabel('Number of Samples')
-        plt.title('Histogram of Sample Distribution Across Regions')
-        plt.xticks(num_regions)  # Ensure all x-axis labels are shown
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-        # Add text annotations on top of each bar
-        for bar in bars:
-            height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height}', ha='center', va='bottom')
-        plt.show()
+        if self.DEBUG:
+            plt.figure(figsize=(10, 6))
+            bars = plt.bar(num_regions, samples, color='blue', edgecolor='black')
+            plt.xlabel('Number of Regions Sample Appears In')
+            plt.ylabel('Number of Samples')
+            plt.title('Histogram of Sample Distribution Across Regions')
+            plt.xticks(num_regions)  # Ensure all x-axis labels are shown
+            plt.grid(axis='y', linestyle='--', alpha=0.7)
+            # Add text annotations on top of each bar
+            for bar in bars:
+                height = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height}', ha='center', va='bottom')
+            plt.show()
 
 
 

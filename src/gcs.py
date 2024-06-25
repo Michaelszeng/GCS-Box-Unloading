@@ -150,22 +150,33 @@ class MotionPlanner(LeafSystem):
         gcs_regions = self.source_regions.copy()
         gcs_regions["start"] = Point(q_current)
 
-        # Plan path either to pick or to placing pose
-        if self.state == 1:  # Pick
-            # Get potential pick poses for GCS
-            target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
-            for i in range(len(target_regions)):
-                gcs_regions[f"target_region_{i}"] = target_regions[i]
-        else:  # Place
-            gcs_regions["goal"] = Point(self.q_place)
-
         edges = []
-
         with SuppressOutput():  # Suppress Gurobi spam
             gcs = GcsTrajectoryOptimization(len(q_current))
             gcs_regions = gcs.AddRegions(list(gcs_regions.values()), order=1)
             source = gcs.AddRegions([Point(q_current)], order=0)
-            target = gcs.AddRegions([Point(self.q_place)], order=0)
+            
+        # Plan path either to pick or to placing pose
+        if self.state == 1:  # Pick
+            target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
+            # for i in range(len(target_regions)):
+                # gcs_regions[f"target_region_{i}"] = target_regions[i]
+            with SuppressOutput():  # Suppress Gurobi spam
+                target = gcs.AddRegions(target_regions, order=0)
+            for region in target_regions:  # If robot is very close to any of the viable pick positions, assume it has completed a pick.
+                if np.all(np.isclose(q_current, region.x(), rtol=1e-05, atol=1e-08)):
+                    print("GCS: Finished picking; switching to placing.")
+                    self.state = 0  # Switch to placing
+                    break
+        else:  # Place
+            # gcs_regions["goal"] = Point(self.q_place)
+            with SuppressOutput():  # Suppress Gurobi spam
+                target = gcs.AddRegions([Point(self.q_place)], order=0)
+            if np.all(np.isclose(q_current, self.q_place, rtol=1e-05, atol=1e-08)):  # Finished placing
+                print("GCS: Finished placing; switching to picking.")
+                self.state = 1  # Switch to picking
+
+        with SuppressOutput():  # Suppress Gurobi spam
             edges.append(gcs.AddEdges(source, gcs_regions))
             edges.append(gcs.AddEdges(gcs_regions, target))
         
