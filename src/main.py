@@ -50,7 +50,7 @@ log = logging.getLogger("drake")
 log.setLevel("INFO")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--fast', default='F', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
+parser.add_argument('--fast', default='T', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
 args = parser.parse_args()
 
@@ -266,9 +266,9 @@ if randomize_boxes:
     # Remove pushing force to back of truck trailer
     station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
     simulator.AdvanceTo(box_randomization_runtime)
+else:
+    simulator.AdvanceTo(0.1)
 
-
-simulator.AdvanceTo(0.1)
 region_generator = IrisRegionGenerator(meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml")
 region_generator.load_and_test_regions()
 
@@ -289,7 +289,6 @@ for i in range(NUM_BOXES):
     box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
     box_poses[box_body_idx] = plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx))
-print(box_poses)
 
 simulator.AdvanceTo(sim_runtime)
 

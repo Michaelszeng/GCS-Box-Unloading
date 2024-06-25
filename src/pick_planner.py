@@ -19,6 +19,7 @@ import heapq
 import os
 import time
 from scipy.spatial import ConvexHull
+import matplotlib.pyplot as plt
 
 from utils import NUM_BOXES, BOX_DIM, GRIPPER_DIM
 from scenario import q_nominal
@@ -237,11 +238,6 @@ class PickPlanner():
         """
         Return a list of regions in configuration that are viable pick poses.
         """
-        for box_idx in box_poses.keys():
-            self.meshcat.SetObject(f"illustration/Viable_Boxes/{box_idx}", Box(BOX_DIM, BOX_DIM, BOX_DIM), Rgba(0.75, 0.0, 0.0))
-            self.meshcat.SetTransform(f"illustration/Viable_Boxes/{box_idx}", box_poses[box_idx])
-            print(box_poses[box_idx])
-
         # Compute projections of boxes onto XY plane to more easily determine
         # which are vertically overlapping
         box_projections = {}  # dict mapping box bodyIndex to VPolytope XY projection
@@ -250,7 +246,7 @@ class PickPlanner():
             box_corners = []
             for dx in [0, BOX_DIM]:
                 for dy in [0, BOX_DIM]:
-                    for dz in [0, BOX_DIM]:
+                    for dz in [0, -BOX_DIM]:
                         # Find coordinate of box corner in 3D
                         box_corner = box_pose.translation() + box_pose.rotation() @ np.array([dx, dy, dz])
                         # Project box corner into XY plane by removing Z coordinate
@@ -272,9 +268,10 @@ class PickPlanner():
             meshcat.Set2dRenderMode(RigidTransform([0, 0, 1]), -4, 4, -4, 4)
             meshcat.SetProperty("/Axes", "visible", True)
             ctr = 0
-            for vpoly in box_projections.values():
+            for box_body_idx, vpoly in box_projections.items():
                 points = np.array(self.sort_vertices_ccw(vpoly))
-                meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(np.random.random(), np.random.random(), np.random.random()))
+                z = box_poses[box_body_idx].translation()[2]
+                meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(*(plt.cm.viridis(z / 2.0))))
                 ctr += 1
             time.sleep(4)  # Give time to load in browser before everything is unrendered
 
@@ -299,18 +296,12 @@ class PickPlanner():
                             viable_boxes.remove(other_box_body_idx)
                         except:
                             pass
-                    else:
-                        # other_box_body_idx is above box_body_idx
-                        try:
-                            viable_boxes.remove(box_body_idx)
-                        except:
-                            pass
         print(f"{len(viable_boxes)} viable boxes to be picked found.")
                         
         if self.DEBUG:
             for box_idx in viable_boxes:
                 self.meshcat.SetObject(f"Viable_Boxes/{box_idx}", Box(BOX_DIM, BOX_DIM, BOX_DIM), Rgba(0.75, 0.0, 0.0))
-                self.meshcat.SetTransform(f"Viable_Boxes/{box_idx}", box_poses[box_idx])
+                self.meshcat.SetTransform(f"Viable_Boxes/{box_idx}", RigidTransform(box_poses[box_idx].rotation(), box_poses[box_idx].translation() + box_poses[box_idx].rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2])))
             # Remove drawn polytopes from previous iteration
             for box_idx in self.box_body_indices:
                 for i in range(6):
@@ -322,7 +313,7 @@ class PickPlanner():
         pick_regions = []
         for box_idx in viable_boxes:
             box_pose = box_poses[box_idx]
-            box_center = RigidTransform(box_pose.rotation(), box_pose.translation() + box_pose.rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, BOX_DIM/2]))  # Because box_pose is at the corner of the box
+            box_center = RigidTransform(box_pose.rotation(), box_pose.translation() + box_pose.rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2]))  # Because box_pose is at the corner of the box
 
             # For all 6 faces of each box
             for i in range(6):
