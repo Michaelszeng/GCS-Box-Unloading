@@ -93,7 +93,7 @@ class MotionPlanner(LeafSystem):
 
         self.state = 1  # 1 for picking, 0 for placing
         
-        self.self.q_pick = None
+        self.q_pick = None
         self.q_place = self.pick_planner.solve_q_place()
         self.target_regions = None
         self.traj = None
@@ -107,14 +107,6 @@ class MotionPlanner(LeafSystem):
         Helper function that takes in trajopt basis and control points of Bspline
         and draws spline in meshcat.
         """
-        # Build a new plant to do the forward kinematics to turn this Bspline into 3D coordinates
-        # builder = DiagramBuilder()
-        # vis_plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
-        # viz_iiwa = Parser(vis_plant).AddModelsFromUrl("package://drake/manipulation/models/iiwa_description/urdf/iiwa14_spheres_dense_collision.urdf")[0]  # ModelInstance object
-        # vis_plant.WeldFrames(vis_plant.world_frame(), vis_plant.GetFrameByName("base"))
-        # vis_plant.Finalize()
-        # vis_plant_context = vis_plant.CreateDefaultContext()
-
         traj_start_time = traj.start_time()
         traj_end_time = traj.end_time()
 
@@ -160,7 +152,7 @@ class MotionPlanner(LeafSystem):
         gcs.AddPathLengthCost()
         gcs.AddPathContinuityConstraints(2)  # Acceleration continuity
         gcs.AddVelocityBounds(
-            self.plant.GetVelocityLowerLimits(), self.plant.GetVelocityUpperLimits() * 0.25
+            self.plant.GetVelocityLowerLimits(), self.plant.GetVelocityUpperLimits()
         )
         
         options = GraphOfConvexSetsOptions()
@@ -184,13 +176,35 @@ class MotionPlanner(LeafSystem):
         return traj
     
 
-    def generate_pick_traj(self, q_current, q_pick):
-        PiecewisePolynomial.CubicWithContinuousSecondDerivatives()
+    def generate_pick_traj(self, q_current, q_dot_current, q_pick):
+        """
+        Compute simply trajectory starting from a pre-pick pose (q_current) to
+        a pick pose (q_pick).
+
+        q_current is a 6D numpy vector.
+
+        q_dot_current is a 6D numpy vector.
+
+        q_pick is a 6D numpy vector.
+        """
+        breaks = [0, 1]  # allocate 1 second to go from pre-pick to pick
+        samples = np.hstack((q_current.reshape(-1, 1), q_pick.reshape(-1, 1)))
+        sample_dot_at_start = q_dot_current
+        sample_dot_at_end = np.zeros(6)
+        traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(breaks, samples, sample_dot_at_start, sample_dot_at_end)
+
+        self.VisualizePath(traj, f"Pick Traj")
+
+        return traj
 
 
     def correct_traj_time(self, traj, context):
         """
         Takes a trajectory and time shifts it to begin at the current time.
+
+        traj is a Trajectory object.
+
+        context is the context passed from compute_command().
         """
         time_shift = context.get_time()  # Time shift value in seconds
         time_scaling_traj = PiecewisePolynomial.FirstOrderHold(
@@ -229,14 +243,15 @@ class MotionPlanner(LeafSystem):
                 if np.all(np.isclose(q_current, region.x(), rtol=1e-03, atol=1e-03)):
                     print("GCS: Reached pre-pick pose; switching to picking.")
                     self.state = 2  # Switch to picking
-                    self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, region.x()), context)  # region.x is the configuration at the pick pose
+                    self.q_pick = region.x()
+                    self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pick), context)  # region.x is the configuration at the pick pose
                     break
         elif self.state == 2:  # Picking
             # Check if we are finish picking up the box --> transition to placing
             if np.all(np.isclose(q_current, self.q_pick, rtol=1e-03, atol=1e-03)):
                 print("GCS: Finished picking; switching to placing.")
                 self.state = 0  # Switch to placing
-                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, self.q_place), context)
+                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, [Point(self.q_place)]), context)
         else:  # Place
             # Check if we are finished placing --> transition back to pre-pick
             if np.all(np.isclose(q_current, self.q_place, rtol=1e-03, atol=1e-03)):
