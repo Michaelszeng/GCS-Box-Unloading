@@ -14,6 +14,7 @@ from pydrake.all import (
     Solve,
     CompositeTrajectory,
     PiecewisePolynomial,
+    PathParameterizedTrajectory,
     logical_or,
     logical_and
 )
@@ -90,11 +91,11 @@ class MotionPlanner(LeafSystem):
             self.box_body_indices.append(box_body_idx)
         self.pick_planner = PickPlanner(self.meshcat, self.robot_pose, self.source_regions, self.box_body_indices, self.plant, self.plant_context)
 
+        self.state = 1  # 1 for picking, 0 for placing
+        
+        self.self.q_pick = None
         self.q_place = self.pick_planner.solve_q_place()
         self.target_regions = None
-
-        self.state = 1  # 1 for picking, 0 for placing
-
         self.traj = None
 
         # self.DeclarePeriodicUnrestrictedUpdateEvent(0.025, 0.0, self.compute_command)
@@ -167,10 +168,10 @@ class MotionPlanner(LeafSystem):
         options.max_rounded_paths = 5  # Max number of distinct paths to compare during random rounding; only the lowest cost path is returned.
         start_time = time.time()
         traj, result = gcs.SolvePath(source, target, options)
-        print(f"GCS SolvePath Runtime: {time.time() - start_time}")
+        print(f"GCS: GCS SolvePath Runtime: {time.time() - start_time}")
 
         if not result.is_success():
-            print("GCS Fail.")
+            print("GCS: GCS Fail.")
             return
 
         # for edge in gcs.graph_of_convex_sets().Edges():
@@ -181,12 +182,31 @@ class MotionPlanner(LeafSystem):
         self.VisualizePath(traj, f"GCS Traj")
 
         return traj
+    
+
+    def generate_pick_traj(self, q_current, q_pick):
+        PiecewisePolynomial.CubicWithContinuousSecondDerivatives()
+
+
+    def correct_traj_time(self, traj, context):
+        """
+        Takes a trajectory and time shifts it to begin at the current time.
+        """
+        time_shift = context.get_time()  # Time shift value in seconds
+        time_scaling_traj = PiecewisePolynomial.FirstOrderHold(
+            [time_shift, time_shift + traj.end_time()],  # Assuming two segments: initial and final times
+            np.array([[0, traj.end_time() - traj.start_time()]])  # Shifts start and end times by time_shift
+        )
+        time_shifted_final_traj = PathParameterizedTrajectory(
+            traj, time_scaling_traj
+        )
+        return time_shifted_final_traj
 
 
     def compute_command(self, context, state):
         ### Deal with Special Cases
         if context.get_time() < self.start_planning_time:
-            print(f"compute_command returning due to box randomization still occuring.")
+            print(f"GCS: compute_command returning due to box randomization still occuring.")
             return
         
         ### Read Input Ports
@@ -200,25 +220,30 @@ class MotionPlanner(LeafSystem):
             box_poses[box_body_idx] = body_poses[box_body_idx]
             
         # Plan path either to pick or to placing pose
-        if self.state == 1:  # Pick
+        if self.state == 1:  # Pre-Pick
             if self.target_regions is None:  # If program has just initialized
                 self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
                 self.traj = self.perform_gcs_traj_opt(q_current, self.target_regions)
-            # for i in range(len(target_regions)):
-                # gcs_regions[f"target_region_{i}"] = target_regions[i]
-            for region in self.target_regions:  # If robot is very close to any of the viable pick positions, assume it has completed a pick.
-                if np.all(np.isclose(q_current, region.x(), rtol=1e-05, atol=1e-08)):
-                    print("GCS: Finished picking; switching to placing.")
-                    self.state = 0  # Switch to placing
-                    self.traj = self.perform_gcs_traj_opt(q_current, self.target_regions)
+            # Check if robot is very close to any of the viable pre-pick positions --> assume it is ready to transition to picking
+            for region in self.target_regions:
+                if np.all(np.isclose(q_current, region.x(), rtol=1e-03, atol=1e-03)):
+                    print("GCS: Reached pre-pick pose; switching to picking.")
+                    self.state = 2  # Switch to picking
+                    self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, region.x()), context)  # region.x is the configuration at the pick pose
                     break
+        elif self.state == 2:  # Picking
+            # Check if we are finish picking up the box --> transition to placing
+            if np.all(np.isclose(q_current, self.q_pick, rtol=1e-03, atol=1e-03)):
+                print("GCS: Finished picking; switching to placing.")
+                self.state = 0  # Switch to placing
+                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, self.q_place), context)
         else:  # Place
-            # gcs_regions["goal"] = Point(self.q_place)
-            if np.all(np.isclose(q_current, self.q_place, rtol=1e-03, atol=1e-03)):  # Finished placing
+            # Check if we are finished placing --> transition back to pre-pick
+            if np.all(np.isclose(q_current, self.q_place, rtol=1e-03, atol=1e-03)):
                 print("GCS: Finished placing; switching to picking.")
                 self.state = 1  # Switch to picking
                 self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
-                self.traj = self.perform_gcs_traj_opt(q_current, self.target_regions)
+                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, self.target_regions), context)
 
         state.get_mutable_abstract_state(int(self.traj_idx)).set_value(self.traj)
 
@@ -228,7 +253,7 @@ class MotionPlanner(LeafSystem):
         traj_q = context.get_mutable_abstract_state(int(self.traj_idx)).get_value()
 
         if (traj_q.rows() == 1):
-            # print("default traj output.")
+            # print("GCS: default traj output.")
             output.SetFromVector(np.append(
                 q_nominal,
                 np.zeros((6,))
@@ -245,7 +270,7 @@ class MotionPlanner(LeafSystem):
         traj_q = context.get_mutable_abstract_state(int(self.traj_idx)).get_value()
 
         if (traj_q.rows() == 1):
-            # print("planner outputting default 0 acceleration")
+            # print("GCS: planner outputting default 0 acceleration")
             output.SetFromVector(np.zeros((6,)))
         else:
             output.SetFromVector(traj_q.EvalDerivative(context.get_time() - self.start_planning_time, 2))

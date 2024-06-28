@@ -309,7 +309,7 @@ class PickPlanner():
 
         # For each viable box, generate polytope of grasp poses for each face
         # Also, display the polytope in meshcat
-        MARGIN = 0.25  # how far pre-pick pose is from the box face
+        MARGIN = 0.2  # how far pre-pick pose is from the box face
         pick_regions = []
         for box_idx in viable_boxes:
             box_pose = box_poses[box_idx]
@@ -344,7 +344,7 @@ class PickPlanner():
                         self.meshcat.SetObject(f"Pick_Poses/{box_idx}_{i}", Sphere(0.03), Rgba(0.75, 0.0, 0.0))
                         self.meshcat.SetTransform(f"Pick_Poses/{box_idx}_{i}", X)
                         AddMeshcatTriad(self.meshcat, f"Pick_Poses/{box_idx}_pose_{i}", X_PT=X, opacity=0.5)
-                        
+
         return pick_regions
 
 
