@@ -15,15 +15,13 @@ from pydrake.all import (
     CompositeTrajectory,
     PiecewisePolynomial,
     PathParameterizedTrajectory,
-    logical_or,
-    logical_and
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad
 from manipulation.utils import ConfigureParser
 
 from scenario import scenario_yaml_for_iris, q_nominal
-from utils import NUM_BOXES, is_yaml_empty, SuppressOutput
+from utils import NUM_BOXES, PREPICK_MARGIN, is_yaml_empty, SuppressOutput
 from pick_planner import PickPlanner
 
 import time
@@ -237,17 +235,17 @@ class MotionPlanner(LeafSystem):
         if self.state == 1:  # Pre-Pick
             if self.target_regions is None:  # If program has just initialized
                 self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
-                self.traj = self.perform_gcs_traj_opt(q_current, self.target_regions)
+                self.traj = self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys()))
             # Check if robot is very close to any of the viable pre-pick positions --> assume it is ready to transition to picking
-            for region in self.target_regions:
+            for region, pre_pick_pose in self.target_regions.items():
                 if np.all(np.isclose(q_current, region.x(), rtol=1e-03, atol=1e-03)):
                     print("GCS: Reached pre-pick pose; switching to picking.")
                     self.state = 2  # Switch to picking
-                    self.q_pick = region.x()
+                    self.q_pick = self.pick_planner.solve_q_pick(pre_pick_pose)
                     self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pick), context)  # region.x is the configuration at the pick pose
                     break
         elif self.state == 2:  # Picking
-            # Check if we are finish picking up the box --> transition to placing
+            # Check if we are finished picking up the box --> transition to placing
             if np.all(np.isclose(q_current, self.q_pick, rtol=1e-03, atol=1e-03)):
                 print("GCS: Finished picking; switching to placing.")
                 self.state = 0  # Switch to placing
@@ -258,7 +256,7 @@ class MotionPlanner(LeafSystem):
                 print("GCS: Finished placing; switching to picking.")
                 self.state = 1  # Switch to picking
                 self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
-                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, self.target_regions), context)
+                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys())), context)
 
         state.get_mutable_abstract_state(int(self.traj_idx)).set_value(self.traj)
 

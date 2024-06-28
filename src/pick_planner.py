@@ -21,8 +21,7 @@ import time
 from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
 
-from utils import NUM_BOXES, BOX_DIM, GRIPPER_DIM
-from scenario import q_nominal
+from utils import NUM_BOXES, BOX_DIM, GRIPPER_DIM, PREPICK_MARGIN, ik
 
 
 class BoxSelectorGraph:
@@ -170,73 +169,31 @@ class PickPlanner():
         return ordered_coordinates
     
 
-    def ik(self, pose, translation_error=0, rotation_error=0.05):
-        """
-        Use Inverse Kinematics to solve for a configuration that satisfies a
-        task space pose that is reachable within the solved IRIS regions (or
-        return None if this is not possible).
-        """
-        # Separate IK program for each region with the constraint that the IK result must be in that region
-        ik_start = time.time()
-        solve_success = False
-        for region in list(self.source_regions.values()):
-            ik = InverseKinematics(self.plant, self.plant_context)
-            q_variables = ik.q()  # Get variables for MathematicalProgram
-            ik_prog = ik.get_mutable_prog()
-
-            ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_nominal, q_variables)
-
-            # q_variables must be within half-plane for every half-plane in region
-            ik_prog.AddConstraint(logical_and(*[expr <= const for expr, const in zip(region.A() @ q_variables, region.b())]))
-
-            # Pose constraint
-            ik.AddPositionConstraint(
-                frameA=self.plant.world_frame(),
-                frameB=self.plant.GetFrameByName("arm_eef"),
-                p_BQ=[0, 0, 0.1],
-                p_AQ_lower=pose.translation() - translation_error,
-                p_AQ_upper=pose.translation() + translation_error,
-            )
-            ik.AddOrientationConstraint(
-                frameAbar=self.plant.world_frame(),
-                R_AbarA=pose.rotation(),
-                frameBbar=self.plant.GetFrameByName("arm_eef"),
-                R_BbarB=RotationMatrix(),
-                theta_bound=rotation_error,
-            )
-
-            ik_prog.SetInitialGuess(q_variables, q_nominal)
-            ik_result = Solve(ik_prog)
-            if ik_result.is_success():
-                q = ik_result.GetSolution(q_variables)  # (6,) np array
-                print(f"IK solve succeeded. q: {q}")
-                solve_success = True
-                break
-            # else:
-                # print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}: {ik_result.GetInfeasibleConstraintNames(ik_prog)}")
-
-        # print(f"IK Runtime: {time.time() - ik_start}")
-
-        if solve_success == False:
-            # print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
-            return None
-        
-        return q
-    
-
     def solve_q_place(self):
         """
-        Solve an IK program for the box deposit position that is reachable
+        Solve an IK program for the box deposit pose that is reachable
         within the solved IRIS regions.
         """
         self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), self.robot_pose.translation() + [0.0, -0.65, 1.0])
         AddMeshcatTriad(self.meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
-        return self.ik(self.X_W_Deposit)
+        return ik(self.plant, self.plant_context, self.X_W_Deposit, regions=self.source_regions)
+    
+
+    def solve_q_pick(self, pre_pick_pose):
+        """
+        Solve an IK program for the box pre-pick pose.
+
+        pre_pick_pose is a RigidTransforms
+        """
+        # Offset the pre-pick pose by the PREPICK_MARGIN toward the box to get the pick pose
+        pick_pose = RigidTransform(pre_pick_pose.rotation(), pre_pick_pose.translation() + pre_pick_pose.rotation() @ [0, 0, PREPICK_MARGIN])
+        return ik(self.plant, self.plant_context, pick_pose)
 
 
     def get_viable_pick_poses(self, box_poses):
         """
-        Return a list of regions in configuration that are viable pick poses.
+        Return a dictionary mapping regions in configuration that are viable
+        pick poses to the corresponding pick pose.
         """
         # Compute projections of boxes onto XY plane to more easily determine
         # which are vertically overlapping
@@ -309,8 +266,7 @@ class PickPlanner():
 
         # For each viable box, generate polytope of grasp poses for each face
         # Also, display the polytope in meshcat
-        MARGIN = 0.2  # how far pre-pick pose is from the box face
-        pick_regions = []
+        pick_regions = {}  # dict mapping Points to RigidTransforms
         for box_idx in viable_boxes:
             box_pose = box_poses[box_idx]
             box_center = RigidTransform(box_pose.rotation(), box_pose.translation() + box_pose.rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2]))  # Because box_pose is at the corner of the box
@@ -318,28 +274,28 @@ class PickPlanner():
             # For all 6 faces of each box
             for i in range(6):
                 if i == 0:
-                    p = box_center.translation() + box_pose.rotation() @ np.array([(BOX_DIM/2 + MARGIN), 0, 0])
+                    p = box_center.translation() + box_pose.rotation() @ np.array([(BOX_DIM/2 + PREPICK_MARGIN), 0, 0])
                     R = box_center.rotation() @ RotationMatrix.MakeYRotation(-np.pi/2)
                 elif i == 1:
-                    p = box_center.translation() + box_pose.rotation() @ np.array([-(BOX_DIM/2 + MARGIN), 0, 0])
+                    p = box_center.translation() + box_pose.rotation() @ np.array([-(BOX_DIM/2 + PREPICK_MARGIN), 0, 0])
                     R = box_center.rotation() @ RotationMatrix.MakeYRotation(np.pi/2)
                 elif i == 2:
-                    p = box_center.translation() + box_pose.rotation() @ np.array([0, (BOX_DIM/2 + MARGIN), 0])
+                    p = box_center.translation() + box_pose.rotation() @ np.array([0, (BOX_DIM/2 + PREPICK_MARGIN), 0])
                     R = box_center.rotation() @ RotationMatrix.MakeXRotation(np.pi/2)
                 elif i == 3:
-                    p = box_center.translation() + box_pose.rotation() @ np.array([0, -(BOX_DIM/2 + MARGIN), 0])
+                    p = box_center.translation() + box_pose.rotation() @ np.array([0, -(BOX_DIM/2 + PREPICK_MARGIN), 0])
                     R = box_center.rotation() @ RotationMatrix.MakeXRotation(-np.pi/2)
                 elif i == 4:
-                    p = box_center.translation() + box_pose.rotation() @ np.array([0, 0, (BOX_DIM/2 + MARGIN)])
+                    p = box_center.translation() + box_pose.rotation() @ np.array([0, 0, (BOX_DIM/2 + PREPICK_MARGIN)])
                     R = box_center.rotation() @ RotationMatrix.MakeXRotation(np.pi)
                 else:
-                    p = box_center.translation() + box_pose.rotation() @ np.array([0, 0, -(BOX_DIM/2 + MARGIN)])
+                    p = box_center.translation() + box_pose.rotation() @ np.array([0, 0, -(BOX_DIM/2 + PREPICK_MARGIN)])
                     R = box_center.rotation()
 
                 X = RigidTransform(R, p)
-                q = self.ik(X)
+                q = ik(self.plant, self.plant_context, X, regions=self.source_regions)
                 if q is not None:
-                    pick_regions.append(Point(q))
+                    pick_regions[Point(q)] = X
                     if self.DEBUG:
                         self.meshcat.SetObject(f"Pick_Poses/{box_idx}_{i}", Sphere(0.03), Rgba(0.75, 0.0, 0.0))
                         self.meshcat.SetTransform(f"Pick_Poses/{box_idx}_{i}", X)
