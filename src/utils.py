@@ -33,6 +33,7 @@ NUM_BOXES = 40
 BOX_DIM = 0.5  # box edge length in m
 
 GRIPPER_DIM = 0.25  # edge length of gripper in m
+GRIPPER_THICKNESS = 0.045  # distance from gripper face to end of the last robot link
 PREPICK_MARGIN = 0.2  # how far pre-pick pose is from the box face
 
 

@@ -21,7 +21,7 @@ import time
 from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
 
-from utils import NUM_BOXES, BOX_DIM, GRIPPER_DIM, PREPICK_MARGIN, ik
+from utils import NUM_BOXES, BOX_DIM, GRIPPER_DIM, PREPICK_MARGIN, GRIPPER_THICKNESS, ik
 
 
 class BoxSelectorGraph:
@@ -186,14 +186,18 @@ class PickPlanner():
         pre_pick_pose is a RigidTransforms
         """
         # Offset the pre-pick pose by the PREPICK_MARGIN toward the box to get the pick pose
-        pick_pose = RigidTransform(pre_pick_pose.rotation(), pre_pick_pose.translation() + pre_pick_pose.rotation() @ [0, 0, PREPICK_MARGIN])
+        pick_pose = RigidTransform(pre_pick_pose.rotation(), pre_pick_pose.translation() + pre_pick_pose.rotation() @ [0, 0, PREPICK_MARGIN - GRIPPER_THICKNESS])
         return ik(self.plant, self.plant_context, pick_pose)
 
 
     def get_viable_pick_poses(self, box_poses):
         """
         Return a dictionary mapping regions in configuration that are viable
-        pick poses to the corresponding pick pose.
+        pick poses to tuples containing the corresponding box BodyIndex and pick
+        pose (in the form of a RigidTransform).
+
+        box_poses is a dictionary mapping box BodyIndex to RigidTransform
+        representing their 3D pose.
         """
         # Compute projections of boxes onto XY plane to more easily determine
         # which are vertically overlapping
@@ -256,19 +260,19 @@ class PickPlanner():
         print(f"{len(viable_boxes)} viable boxes to be picked found.")
                         
         if self.DEBUG:
-            for box_idx in viable_boxes:
-                self.meshcat.SetObject(f"Viable_Boxes/{box_idx}", Box(BOX_DIM, BOX_DIM, BOX_DIM), Rgba(0.75, 0.0, 0.0))
-                self.meshcat.SetTransform(f"Viable_Boxes/{box_idx}", RigidTransform(box_poses[box_idx].rotation(), box_poses[box_idx].translation() + box_poses[box_idx].rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2])))
+            for box_body_idx in viable_boxes:
+                self.meshcat.SetObject(f"Viable_Boxes/{box_body_idx}", Box(BOX_DIM, BOX_DIM, BOX_DIM), Rgba(0.75, 0.0, 0.0))
+                self.meshcat.SetTransform(f"Viable_Boxes/{box_body_idx}", RigidTransform(box_poses[box_body_idx].rotation(), box_poses[box_body_idx].translation() + box_poses[box_body_idx].rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2])))
             # Remove drawn polytopes from previous iteration
-            for box_idx in self.box_body_indices:
+            for box_body_idx in self.box_body_indices:
                 for i in range(6):
-                    self.meshcat.Delete(f"Pick_Poses/{box_idx}_{i}")
+                    self.meshcat.Delete(f"Pick_Poses/{box_body_idx}_{i}")
 
         # For each viable box, generate polytope of grasp poses for each face
         # Also, display the polytope in meshcat
         pick_regions = {}  # dict mapping Points to RigidTransforms
-        for box_idx in viable_boxes:
-            box_pose = box_poses[box_idx]
+        for box_body_idx in viable_boxes:
+            box_pose = box_poses[box_body_idx]
             box_center = RigidTransform(box_pose.rotation(), box_pose.translation() + box_pose.rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2]))  # Because box_pose is at the corner of the box
 
             # For all 6 faces of each box
@@ -295,11 +299,11 @@ class PickPlanner():
                 X = RigidTransform(R, p)
                 q = ik(self.plant, self.plant_context, X, regions=self.source_regions)
                 if q is not None:
-                    pick_regions[Point(q)] = X
+                    pick_regions[Point(q)] = (box_body_idx, X)
                     if self.DEBUG:
-                        self.meshcat.SetObject(f"Pick_Poses/{box_idx}_{i}", Sphere(0.03), Rgba(0.75, 0.0, 0.0))
-                        self.meshcat.SetTransform(f"Pick_Poses/{box_idx}_{i}", X)
-                        AddMeshcatTriad(self.meshcat, f"Pick_Poses/{box_idx}_pose_{i}", X_PT=X, opacity=0.5)
+                        self.meshcat.SetObject(f"Pick_Poses/{box_body_idx}_{i}", Sphere(0.03), Rgba(0.75, 0.0, 0.0))
+                        self.meshcat.SetTransform(f"Pick_Poses/{box_body_idx}_{i}", X)
+                        AddMeshcatTriad(self.meshcat, f"Pick_Poses/{box_body_idx}_pose_{i}", X_PT=X, opacity=0.5)
 
         return pick_regions
 

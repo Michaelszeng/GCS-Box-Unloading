@@ -15,6 +15,7 @@ from pydrake.all import (
     CompositeTrajectory,
     PiecewisePolynomial,
     PathParameterizedTrajectory,
+    WeldJoint,
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad
@@ -94,6 +95,8 @@ class MotionPlanner(LeafSystem):
         self.q_pick = None
         self.q_place = self.pick_planner.solve_q_place()
         self.target_regions = None
+        self.target_box = None  # BodyIndex object; note that this value is only updated after the robot reaches the pre-pick position for this box
+        self.box_weld_joint = None
         self.traj = None
 
         # self.DeclarePeriodicUnrestrictedUpdateEvent(0.025, 0.0, self.compute_command)
@@ -237,24 +240,44 @@ class MotionPlanner(LeafSystem):
                 self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
                 self.traj = self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys()))
             # Check if robot is very close to any of the viable pre-pick positions --> assume it is ready to transition to picking
-            for region, pre_pick_pose in self.target_regions.items():
-                if np.all(np.isclose(q_current, region.x(), rtol=1e-03, atol=1e-03)):
+            for region, body_idx_pre_pick_pose_tuple in self.target_regions.items():
+                if np.all(np.isclose(q_current, region.x(), rtol=5e-03, atol=5e-03)):
                     print("GCS: Reached pre-pick pose; switching to picking.")
-                    self.state = 2  # Switch to picking
-                    self.q_pick = self.pick_planner.solve_q_pick(pre_pick_pose)
+                    # Update state to picking and compute picking trajectory
+                    self.state = 2
+                    self.target_box = body_idx_pre_pick_pose_tuple[0]
+                    self.q_pick = self.pick_planner.solve_q_pick(body_idx_pre_pick_pose_tuple[1])
                     self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pick), context)  # region.x is the configuration at the pick pose
                     break
         elif self.state == 2:  # Picking
             # Check if we are finished picking up the box --> transition to placing
-            if np.all(np.isclose(q_current, self.q_pick, rtol=1e-03, atol=1e-03)):
+            if np.all(np.isclose(q_current, self.q_pick, rtol=5e-03, atol=5e-03)):
                 print("GCS: Finished picking; switching to placing.")
-                self.state = 0  # Switch to placing
+
+                # Weld box to gripper
+                eef_model_idx = self.original_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+                print(self.original_plant.GetBodyIndices(eef_model_idx))
+                eef_body_idx = self.original_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+                # frame_parent = self.original_plant.GetBodyByName("arm_eef").body_frame()
+                frame_parent = self.original_plant.get_body(eef_body_idx).body_frame()
+                frame_child = self.original_plant.get_body(self.target_box).body_frame()
+                relative_transform = body_poses[eef_body_idx].inverse() @ body_poses[self.target_box]  # Relative transform between eef and target box
+                self.box_weld_joint = WeldJoint("gripper", frame_parent, frame_child, relative_transform)
+                self.original_plant.AddJoint(self.box_weld_joint)
+
+                # Update state to placing and compute placing trajectory
+                self.state = 0
                 self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, [Point(self.q_place)]), context)
         else:  # Place
             # Check if we are finished placing --> transition back to pre-pick
-            if np.all(np.isclose(q_current, self.q_place, rtol=1e-03, atol=1e-03)):
+            if np.all(np.isclose(q_current, self.q_place, rtol=5e-03, atol=5e-03)):
                 print("GCS: Finished placing; switching to picking.")
-                self.state = 1  # Switch to picking
+
+                # Unweld box from gripper (aka drop the box)
+                self.original_plant.RemoveJoint(self.box_weld_joint)
+
+                # Update state to pre-picking and compute trajectory to a viable pre-pick pose
+                self.state = 1
                 self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
                 self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys())), context)
 
