@@ -319,19 +319,19 @@ class PickPlanner():
             for i in range(6):
                 if i == 0:
                     p = box_center.translation() + box_pose.rotation() @ np.array([(BOX_DIM/2 + MARGIN), 0, 0])
-                    R = box_center.rotation().MakeYRotation(np.pi/2)
+                    R = box_center.rotation() @ RotationMatrix.MakeYRotation(-np.pi/2)
                 elif i == 1:
                     p = box_center.translation() + box_pose.rotation() @ np.array([-(BOX_DIM/2 + MARGIN), 0, 0])
-                    R = box_center.rotation().MakeYRotation(-np.pi/2)
+                    R = box_center.rotation() @ RotationMatrix.MakeYRotation(np.pi/2)
                 elif i == 2:
                     p = box_center.translation() + box_pose.rotation() @ np.array([0, (BOX_DIM/2 + MARGIN), 0])
-                    R = box_center.rotation().MakeXRotation(-np.pi/2)
+                    R = box_center.rotation() @ RotationMatrix.MakeXRotation(np.pi/2)
                 elif i == 3:
                     p = box_center.translation() + box_pose.rotation() @ np.array([0, -(BOX_DIM/2 + MARGIN), 0])
-                    R = box_center.rotation().MakeXRotation(np.pi/2)
+                    R = box_center.rotation() @ RotationMatrix.MakeXRotation(-np.pi/2)
                 elif i == 4:
                     p = box_center.translation() + box_pose.rotation() @ np.array([0, 0, (BOX_DIM/2 + MARGIN)])
-                    R = box_center.rotation().MakeXRotation(np.pi)
+                    R = box_center.rotation() @ RotationMatrix.MakeXRotation(np.pi)
                 else:
                     p = box_center.translation() + box_pose.rotation() @ np.array([0, 0, -(BOX_DIM/2 + MARGIN)])
                     R = box_center.rotation()
@@ -343,7 +343,8 @@ class PickPlanner():
                     if self.DEBUG:
                         self.meshcat.SetObject(f"Pick_Poses/{box_idx}_{i}", Sphere(0.03), Rgba(0.75, 0.0, 0.0))
                         self.meshcat.SetTransform(f"Pick_Poses/{box_idx}_{i}", X)
-
+                        AddMeshcatTriad(self.meshcat, f"Pick_Poses/{box_idx}_pose_{i}", X_PT=X, opacity=0.5)
+                        
         return pick_regions
 
 

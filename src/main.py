@@ -82,6 +82,7 @@ np.random.seed(seed)
 #####################
 meshcat = StartMeshcat()
 meshcat.AddButton(close_button_str)
+# meshcat.SetProperty("/drake/contact_forces", "visible", False)  # Doesn't work for some reason
 
 
 #####################

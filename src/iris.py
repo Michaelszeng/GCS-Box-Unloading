@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 
 class IrisRegionGenerator():
 
-    def __init__(self, meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml", DEBUG=True):
+    def __init__(self, meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml", DEBUG=False):
         self.meshcat = meshcat
         robot_diagram_builder = RobotDiagramBuilder()
         diagram_builder = robot_diagram_builder.builder()
@@ -231,9 +231,10 @@ class IrisRegionGenerator():
         checker = SceneGraphCollisionChecker(**collision_checker_params)
         options = IrisFromCliqueCoverOptions()
         options.num_points_per_coverage_check = 500
-        options.num_points_per_visibility_round = 250  # 1000
+        options.num_points_per_visibility_round = 250
         options.coverage_termination_threshold = coverage_threshold
         options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
+        options.iteration_limit = 1  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
 
         options.iris_options.random_seed = 0
 
