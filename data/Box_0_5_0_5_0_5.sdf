@@ -5,7 +5,7 @@
       <inertial>
         <!-- <pose>2 -0.25 1 0 0 0</pose> -->
         <pose>0 0 0 0 0 0</pose>
-        <mass>20</mass>
+        <mass>10</mass>
         <inertia>
           <ixx>0.8</ixx>
           <ixy>0</ixy>
@@ -40,8 +40,8 @@
              contact model for this body. To use point contact instead, delete
              or comment out the <drake:rigid_hydroelastic> element. -->
         <drake:proximity_properties>
-          <drake:mu_dynamic>0.4</drake:mu_dynamic>
-          <drake:mu_static>0.4</drake:mu_static>
+          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_static>0.5</drake:mu_static>
           <drake:compliant_hydroelastic/>
           <drake:mesh_resolution_hint>0.1</drake:mesh_resolution_hint>
           <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>

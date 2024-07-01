@@ -9,6 +9,7 @@ from pydrake.all import (
     ExternallyAppliedSpatialForce,
     SpatialForce,
     BodyIndex,
+    Rgba,
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad
@@ -28,7 +29,7 @@ class GripperSimulator(LeafSystem):
     procedure.
     """
 
-    def __init__(self, plant, randomize_boxes, box_fall_runtime, box_randomization_runtime):
+    def __init__(self, plant, meshcat, randomize_boxes, box_fall_runtime, box_randomization_runtime):
         LeafSystem.__init__(self)
 
         motion_planner_state = self.DeclareVectorInputPort(name="motion_planner_state", size=1)  # 1 for pre-picking, 2 for picking, 0 for placing
@@ -43,12 +44,13 @@ class GripperSimulator(LeafSystem):
         self.DeclareAbstractInputPort("body_poses", body_poses)
 
         self.DeclareAbstractOutputPort(
-            "applied_spatial_forces",
+            "applied_spatial_force",
             lambda: AbstractValue.Make([ExternallyAppliedSpatialForce()]),
             self.output_forces,
         )
 
         self.plant = plant
+        self.meshcat = meshcat
         self.randomize_boxes = randomize_boxes
         self.box_fall_runtime = box_fall_runtime
         self.box_randomization_runtime = box_randomization_runtime
@@ -84,22 +86,27 @@ class GripperSimulator(LeafSystem):
         force = ExternallyAppliedSpatialForce()
 
         if motion_planner_state == 0:  # Placing --> apply gripper force
-            target_box_X_pick = self.get_input_port(2).Eval(context)
             body_poses = self.get_input_port(3).Eval(context)
-
             target_box_pose = body_poses[target_box_body_idx]
             target_box_center = RigidTransform(target_box_pose.rotation(), target_box_pose.translation() + target_box_pose.rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2]))  # Because box_pose is at the corner of the box
 
-            relative_pos = target_box_X_pick.translation() - target_box_center.translation()
+            eef_model_idx = self.plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+            eef_body_idx = self.plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+            
+            # We find the direction to apply to apply the force on the box by rotating the vector from eef to box center at pick
+            # by the amount the box has rotated since being picked up
+            force_direction = (body_poses[eef_body_idx].translation() - target_box_center.translation()) / np.linalg.norm(body_poses[eef_body_idx].translation() - target_box_center.translation())
+
+            self.meshcat.SetLine("gripper force", np.vstack((target_box_center.translation(), target_box_center.translation()+force_direction)).T, line_width=50.0, rgba=Rgba(1.0, 0.75, 0.0, 0.5))
 
             force.body_index = target_box_body_idx
-            force.p_BoBq_B = [0,0,0]
-            print(f"Applying force: {100*(relative_pos / np.linalg.norm(relative_pos))}")
-            force.F_Bq_W = SpatialForce(tau=[0,0,0], f=100*(relative_pos / np.linalg.norm(relative_pos)))
+            force.p_BoBq_B = [BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2]  # apply force at box center
+            print(f"Applying force: {400*force_direction}")
+            force.F_Bq_W = SpatialForce(tau=[0,0,0], f=400*force_direction)
 
         else:  # Remove gripper force on target box
             force.body_index = target_box_body_idx
-            force.p_BoBq_B = [0,0,0]
+            force.p_BoBq_B = [BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2]  # apply force at box center
             force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
 
         output.set_value([force])

@@ -175,7 +175,7 @@ class PickPlanner():
         Solve an IK program for the box deposit pose that is reachable
         within the solved IRIS regions.
         """
-        self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), self.robot_pose.translation() + [0.0, -0.65, 1.0])
+        self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), self.robot_pose.translation() + [0.0, -0.65, 1.25])
         AddMeshcatTriad(self.meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
         return ik(self.plant, self.plant_context, self.X_W_Deposit, regions=self.source_regions)
     
@@ -306,6 +306,7 @@ class PickPlanner():
                         self.meshcat.SetTransform(f"Pick_Poses/{box_body_idx}_{i}", X)
                         AddMeshcatTriad(self.meshcat, f"Pick_Poses/{box_body_idx}_pose_{i}", X_PT=X, opacity=0.5)
 
+        print(f"{len(pick_regions)} viable pre-pick poses found.")
         return pick_regions
 
 

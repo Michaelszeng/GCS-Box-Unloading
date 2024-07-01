@@ -139,12 +139,12 @@ builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.Ge
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka_actuation"))
 
 ### Gripper Force Simulator
-gripper_sim = builder.AddSystem(GripperSimulator(plant, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0))
+gripper_sim = builder.AddSystem(GripperSimulator(plant, meshcat, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0))
 builder.Connect(motion_planner.GetOutputPort("motion_planner_state"), gripper_sim.GetInputPort("motion_planner_state"))
 builder.Connect(motion_planner.GetOutputPort("target_box_body_idx"), gripper_sim.GetInputPort("target_box_body_idx"))
 builder.Connect(motion_planner.GetOutputPort("target_box_X_pick"), gripper_sim.GetInputPort("target_box_X_pick"))
 builder.Connect(station.GetOutputPort("body_poses"), gripper_sim.GetInputPort("body_poses"))
-builder.Connect(gripper_sim.GetOutputPort("applied_spatial_forces"), station.GetInputPort("applied_spatial_forces"))
+builder.Connect(gripper_sim.GetOutputPort("applied_spatial_force"), station.GetInputPort("applied_spatial_force"))
 
 ### Print Debugger
 if True:

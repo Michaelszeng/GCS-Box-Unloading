@@ -144,7 +144,7 @@ class MotionPlanner(LeafSystem):
             self.meshcat.SetLine(name, pos_3d_matrix)
 
 
-    def perform_gcs_traj_opt(self, q_current, target_regions):
+    def perform_gcs_traj_opt(self, q_current, target_regions, vel_lim=1.0):
         """
         Define and run a GCS Trajectory Optimization program.
 
@@ -170,7 +170,7 @@ class MotionPlanner(LeafSystem):
         gcs.AddPathLengthCost()
         gcs.AddPathContinuityConstraints(2)  # Acceleration continuity
         gcs.AddVelocityBounds(
-            self.plant.GetVelocityLowerLimits(), self.plant.GetVelocityUpperLimits()
+            self.plant.GetVelocityLowerLimits() * vel_lim, self.plant.GetVelocityUpperLimits() * vel_lim
         )
         
         options = GraphOfConvexSetsOptions()
@@ -255,7 +255,10 @@ class MotionPlanner(LeafSystem):
         if self.state == 1:  # Pre-Pick
             if self.target_regions is None:  # If program has just initialized
                 self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
-                self.traj = self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys()))
+                try:
+                    self.traj = self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys()))
+                except:
+                    pass
             # Check if robot is very close to any of the viable pre-pick positions --> assume it is ready to transition to picking
             for region, body_idx_pre_pick_pose_tuple in self.target_regions.items():
                 if np.all(np.isclose(q_current, region.x(), rtol=3e-03, atol=3e-03)):
@@ -296,11 +299,11 @@ class MotionPlanner(LeafSystem):
 
                 # Update state to placing and compute placing trajectory
                 self.state = 0
-                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, [Point(self.q_place)]), context)
+                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, [Point(self.q_place)], vel_lim=0.5), context)
         else:  # Place
             # Check if we are finished placing --> transition back to pre-pick
             if np.all(np.isclose(q_current, self.q_place, rtol=3e-03, atol=3e-03)):
-                print("GCS: Finished placing; switching to picking.")
+                print("GCS: Finished placing; switching to pre-picking.")
 
                 # # Unweld box from gripper (aka drop the box)
                 # self.original_plant.RemoveJoint(self.box_weld_joint)
@@ -346,8 +349,8 @@ class MotionPlanner(LeafSystem):
 
 
     def output_target_box_body_idx(self, context, output):
-        output.set_value(self.target_box)
+        output.set_value(self.target_box if self.target_box is not None else BodyIndex(0))
 
 
     def output_target_box_X_pick(self, context, output):
-        output.set_value(self.X_pick)
+        output.set_value(self.X_pick if self.X_pick is not None else RigidTransform())
