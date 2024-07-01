@@ -258,7 +258,7 @@ class MotionPlanner(LeafSystem):
                 self.traj = self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys()))
             # Check if robot is very close to any of the viable pre-pick positions --> assume it is ready to transition to picking
             for region, body_idx_pre_pick_pose_tuple in self.target_regions.items():
-                if np.all(np.isclose(q_current, region.x(), rtol=5e-03, atol=5e-03)):
+                if np.all(np.isclose(q_current, region.x(), rtol=3e-03, atol=3e-03)):
                     print("GCS: Reached pre-pick pose; switching to picking.")
                     # Update state to picking and compute picking trajectory
                     self.state = 2
@@ -269,7 +269,7 @@ class MotionPlanner(LeafSystem):
                     break
         elif self.state == 2:  # Picking
             # Check if we are finished picking up the box --> transition to placing
-            if np.all(np.isclose(q_current, self.q_pick, rtol=5e-03, atol=5e-03)):
+            if np.all(np.isclose(q_current, self.q_pick, rtol=3e-03, atol=3e-03)):
                 print("GCS: Finished picking; switching to placing.")
 
                 # # # Weld box to gripper
@@ -299,7 +299,7 @@ class MotionPlanner(LeafSystem):
                 self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, [Point(self.q_place)]), context)
         else:  # Place
             # Check if we are finished placing --> transition back to pre-pick
-            if np.all(np.isclose(q_current, self.q_place, rtol=5e-03, atol=5e-03)):
+            if np.all(np.isclose(q_current, self.q_place, rtol=3e-03, atol=3e-03)):
                 print("GCS: Finished placing; switching to picking.")
 
                 # # Unweld box from gripper (aka drop the box)

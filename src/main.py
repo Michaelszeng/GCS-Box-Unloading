@@ -40,6 +40,7 @@ from utils import diagram_visualize_connections
 from scenario import NUM_BOXES, scenario_yaml, robot_yaml, robot_pose, set_up_scene
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
+from gripper_sim import GripperSimulator
 from debug import Debugger
 
 
@@ -136,6 +137,14 @@ builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("es
 builder.Connect(motion_planner.GetOutputPort("kuka_desired_state"), controller.GetInputPort("desired_state"))
 builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.GetInputPort("desired_acceleration"))
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka_actuation"))
+
+### Gripper Force Simulator
+gripper_sim = builder.AddSystem(GripperSimulator(plant, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0))
+builder.Connect(motion_planner.GetOutputPort("motion_planner_state"), gripper_sim.GetInputPort("motion_planner_state"))
+builder.Connect(motion_planner.GetOutputPort("target_box_body_idx"), gripper_sim.GetInputPort("target_box_body_idx"))
+builder.Connect(motion_planner.GetOutputPort("target_box_X_pick"), gripper_sim.GetInputPort("target_box_X_pick"))
+builder.Connect(station.GetOutputPort("body_poses"), gripper_sim.GetInputPort("body_poses"))
+builder.Connect(gripper_sim.GetOutputPort("applied_spatial_forces"), station.GetInputPort("applied_spatial_forces"))
 
 ### Print Debugger
 if True:

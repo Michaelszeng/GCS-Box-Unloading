@@ -94,6 +94,7 @@ class GripperSimulator(LeafSystem):
 
             force.body_index = target_box_body_idx
             force.p_BoBq_B = [0,0,0]
+            print(f"Applying force: {100*(relative_pos / np.linalg.norm(relative_pos))}")
             force.F_Bq_W = SpatialForce(tau=[0,0,0], f=100*(relative_pos / np.linalg.norm(relative_pos)))
 
         else:  # Remove gripper force on target box
