@@ -8,12 +8,21 @@ from pydrake.all import (
     RotationMatrix,
 )
 
-
+import numpy as np
 import os
 import re
 
+NUM_BOXES = 40
+BOX_DIM = 0.5  # box edge length in m
+
+GRIPPER_DIM = 0.25  # edge length of gripper in m
+GRIPPER_THICKNESS = 0.045  # distance from gripper face to end of the last robot link
+PREPICK_MARGIN = 0.2  # how far pre-pick pose is from the box face
+
 q_nominal = [0.0, -2.5, 2.5, 0.0, 1.5, 0.0]
 # q_nominal = [0.0, -1.8, 1.5, 0.0, 0.0, 0.0]
+
+robot_pose = RigidTransform([0.0,0.0,0.58])
 
 relative_path_to_robot_base = '../data/unload-gen0/robot_base.urdf'
 relative_path_to_robot_arm = '../data/unload-gen0/robot_arm.urdf'
@@ -770,3 +779,66 @@ def get_fast_box_poses():
         box_poses.append(T)
     
     return box_poses
+
+
+def set_up_scene(plant, plant_context, simulator, randomize_boxes, box_fall_runtime, box_randomization_runtime):
+    fast_box_poses = get_fast_box_poses()  # Get pre-computed box poses
+
+    # 'Remove' Top of truck trailer
+    trailer_roof_model_idx = plant.GetModelInstanceByName("Truck_Trailer_Roof")  # ModelInstanceIndex
+    trailer_roof_body_idx = plant.GetBodyIndices(trailer_roof_model_idx)[0]  # BodyIndex
+    if randomize_boxes:
+        plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
+
+    # Move Robot to start position
+    robot_model_idx = plant.GetModelInstanceByName("robot_base")  # ModelInstanceIndex
+    robot_body_idx = plant.GetBodyIndices(robot_model_idx)[0]  # BodyIndex
+    plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), robot_pose)
+    for joint_idx in plant.GetJointIndices(robot_model_idx):
+        robot_joint = plant.get_joint(joint_idx)  # Joint object
+        robot_joint.Lock(plant_context)
+
+    # Set poses for all boxes
+    all_box_positions = []
+    for i in range(NUM_BOXES):
+        box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
+        box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+
+        if randomize_boxes:
+            i=0
+            while True:
+                box_pos_x = np.random.uniform(2.0, 3.5, 1)
+                box_pos_y = np.random.uniform(-1.2, 0.7, 1)
+                box_pos_z = np.random.uniform(0.5, 5, 1)
+
+                in_collision = False
+                for pos in all_box_positions:
+                    if abs(box_pos_x - pos[0]) < BOX_DIM and abs(box_pos_y - pos[1]) < BOX_DIM and abs(box_pos_z - pos[2]) < BOX_DIM:
+                        in_collision = True
+                        break
+                
+                if not in_collision:   
+                    all_box_positions.append((box_pos_x, box_pos_y, box_pos_z))
+                    break
+
+                i+=1
+                if (i > 100):
+                    raise Exception("Could not find box randomization configuration that does not result in collision.")
+
+            plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
+        else:
+            plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), fast_box_poses[i])
+
+    if randomize_boxes:
+        simulator.AdvanceTo(box_fall_runtime)
+
+    # Put Top of truck trailer back and lock it
+    plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
+    trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # JointIndex object
+    trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
+    trailer_roof_joint.Lock(plant_context)
+
+    if randomize_boxes:
+        simulator.AdvanceTo(box_randomization_runtime)  # During this time, the GripperSimulator should apply a force to push the boxes to the back of the truck trailer
+    else:
+        simulator.AdvanceTo(0.001)

@@ -1,34 +1,12 @@
 from pydrake.all import (
     LeafSystem,
     AbstractValue,
-    GraphOfConvexSetsOptions,
-    GcsTrajectoryOptimization,
-    Point,
-    LoadIrisRegionsYamlFile,
     RigidTransform,
-    RotationMatrix,
-    InverseKinematics,
-    DiagramBuilder,
-    AddMultibodyPlantSceneGraph,
-    Parser,
-    Solve,
-    CompositeTrajectory,
-    PiecewisePolynomial,
-    logical_or,
-    logical_and
 )
-from manipulation.meshcat_utils import AddMeshcatTriad
-from manipulation.scenarios import AddMultibodyTriad
-from manipulation.utils import ConfigureParser
 
-from scenario import scenario_yaml_for_iris
-from utils import NUM_BOXES, is_yaml_empty, SuppressOutput
+from scenario import NUM_BOXES
 
-import time
 import numpy as np
-from pathlib import Path
-import pydot
-import os
 
 class Debugger(LeafSystem):
     """
@@ -42,7 +20,7 @@ class Debugger(LeafSystem):
         kuka_state = self.DeclareVectorInputPort(name="kuka_state", size=12)  # 6 pos, 6 vel
 
         body_poses = AbstractValue.Make([RigidTransform()])
-        self.DeclareAbstractInputPort("kuka_current_pose", body_poses)
+        self.DeclareAbstractInputPort("body_poses", body_poses)
 
         kuka_actuation = self.DeclareVectorInputPort(name="kuka_actuation", size=6)
 

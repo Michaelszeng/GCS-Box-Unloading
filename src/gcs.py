@@ -15,14 +15,14 @@ from pydrake.all import (
     CompositeTrajectory,
     PiecewisePolynomial,
     PathParameterizedTrajectory,
-    WeldJoint,
+    BodyIndex,
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad
 from manipulation.utils import ConfigureParser
 
-from scenario import scenario_yaml_for_iris, q_nominal
-from utils import NUM_BOXES, PREPICK_MARGIN, is_yaml_empty, SuppressOutput
+from scenario import BOX_DIM, NUM_BOXES, PREPICK_MARGIN, scenario_yaml_for_iris, q_nominal
+from utils import is_yaml_empty, SuppressOutput
 from pick_planner import PickPlanner
 
 import time
@@ -38,13 +38,29 @@ class MotionPlanner(LeafSystem):
         kuka_state = self.DeclareVectorInputPort(name="kuka_state", size=12)  # 6 pos, 6 vel
 
         body_poses = AbstractValue.Make([RigidTransform()])
-        self.DeclareAbstractInputPort("kuka_current_pose", body_poses)
+        self.DeclareAbstractInputPort("body_poses", body_poses)
 
         self.traj_idx = self.DeclareAbstractState(
             AbstractValue.Make(CompositeTrajectory([PiecewisePolynomial.FirstOrderHold(
                                                         [0, 1],
                                                         np.array([[0, 0]])
                                                     )]))
+        )
+
+        self.DeclareVectorOutputPort(
+            "motion_planner_state", 1, self.output_motion_planner_state
+        )
+
+        self.DeclareAbstractOutputPort(
+            "target_box_body_idx",
+            lambda: AbstractValue.Make(BodyIndex()),
+            self.output_target_box_body_idx,
+        )
+
+        self.DeclareAbstractOutputPort(
+            "target_box_X_pick",
+            lambda: AbstractValue.Make(RigidTransform()),
+            self.output_target_box_X_pick,
         )
 
         self.DeclareVectorOutputPort(
@@ -90,8 +106,9 @@ class MotionPlanner(LeafSystem):
             self.box_body_indices.append(box_body_idx)
         self.pick_planner = PickPlanner(self.meshcat, self.robot_pose, self.source_regions, self.box_body_indices, self.plant, self.plant_context)
 
-        self.state = 1  # 1 for picking, 0 for placing
+        self.state = 1  # 1 for pre-picking, 2 for picking, 0 for placing
         
+        self.X_pick = None
         self.q_pick = None
         self.q_place = self.pick_planner.solve_q_place()
         self.target_regions = None
@@ -246,6 +263,7 @@ class MotionPlanner(LeafSystem):
                     # Update state to picking and compute picking trajectory
                     self.state = 2
                     self.target_box = body_idx_pre_pick_pose_tuple[0]
+                    self.X_pick = body_idx_pre_pick_pose_tuple[1]
                     self.q_pick = self.pick_planner.solve_q_pick(body_idx_pre_pick_pose_tuple[1])
                     self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pick), context)  # region.x is the configuration at the pick pose
                     break
@@ -254,16 +272,27 @@ class MotionPlanner(LeafSystem):
             if np.all(np.isclose(q_current, self.q_pick, rtol=5e-03, atol=5e-03)):
                 print("GCS: Finished picking; switching to placing.")
 
-                # Weld box to gripper
-                eef_model_idx = self.original_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
-                print(self.original_plant.GetBodyIndices(eef_model_idx))
-                eef_body_idx = self.original_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
-                # frame_parent = self.original_plant.GetBodyByName("arm_eef").body_frame()
-                frame_parent = self.original_plant.get_body(eef_body_idx).body_frame()
-                frame_child = self.original_plant.get_body(self.target_box).body_frame()
-                relative_transform = body_poses[eef_body_idx].inverse() @ body_poses[self.target_box]  # Relative transform between eef and target box
-                self.box_weld_joint = WeldJoint("gripper", frame_parent, frame_child, relative_transform)
-                self.original_plant.AddJoint(self.box_weld_joint)
+                # # # Weld box to gripper
+                # eef_model_idx = self.original_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+                # print(self.original_plant.GetBodyIndices(eef_model_idx))
+                # eef_body_idx = self.original_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+                # # frame_parent = self.original_plant.GetBodyByName("arm_eef").body_frame()
+                # frame_parent = self.original_plant.get_body(eef_body_idx).body_frame()
+                # frame_child = self.original_plant.get_body(self.target_box).body_frame()
+                # relative_transform = body_poses[eef_body_idx].inverse() @ body_poses[self.target_box]  # Relative transform between eef and target box
+                # self.box_weld_joint = WeldJoint("gripper", frame_parent, frame_child, relative_transform)
+                # self.original_plant.AddJoint(self.box_weld_joint)
+
+                # # Add massive "suction" force to adhere box to gripper
+                # eef_model_idx = self.original_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+                # print(self.original_plant.GetBodyIndices(eef_model_idx))
+                # eef_body_idx = self.original_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+                # relative_transform = body_poses[eef_body_idx].inverse() @ body_poses[self.target_box]  # Relative transform between eef and target box
+
+                # force = ExternallyAppliedSpatialForce()
+                # force.body_index = self.target_box
+                # force.p_BoBq_B = [BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2]  # Apply force at center of box
+                # force.F_Bq_W = SpatialForce(tau=[0,0,0], f=self.X_pick.translation() - )  # no torque; force toward gripper
 
                 # Update state to placing and compute placing trajectory
                 self.state = 0
@@ -273,8 +302,8 @@ class MotionPlanner(LeafSystem):
             if np.all(np.isclose(q_current, self.q_place, rtol=5e-03, atol=5e-03)):
                 print("GCS: Finished placing; switching to picking.")
 
-                # Unweld box from gripper (aka drop the box)
-                self.original_plant.RemoveJoint(self.box_weld_joint)
+                # # Unweld box from gripper (aka drop the box)
+                # self.original_plant.RemoveJoint(self.box_weld_joint)
 
                 # Update state to pre-picking and compute trajectory to a viable pre-pick pose
                 self.state = 1
@@ -310,3 +339,15 @@ class MotionPlanner(LeafSystem):
             output.SetFromVector(np.zeros((6,)))
         else:
             output.SetFromVector(traj_q.EvalDerivative(context.get_time() - self.start_planning_time, 2))
+
+
+    def output_motion_planner_state(self, context, output):
+        output.SetFromVector(np.array([self.state]))
+
+
+    def output_target_box_body_idx(self, context, output):
+        output.set_value(self.target_box)
+
+
+    def output_target_box_X_pick(self, context, output):
+        output.set_value(self.X_pick)

@@ -21,7 +21,8 @@ import time
 from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
 
-from utils import NUM_BOXES, BOX_DIM, GRIPPER_DIM, PREPICK_MARGIN, GRIPPER_THICKNESS, ik
+from scenario import NUM_BOXES, BOX_DIM, GRIPPER_DIM, PREPICK_MARGIN, GRIPPER_THICKNESS
+from utils import ik
 
 
 class BoxSelectorGraph:
@@ -270,7 +271,7 @@ class PickPlanner():
 
         # For each viable box, generate polytope of grasp poses for each face
         # Also, display the polytope in meshcat
-        pick_regions = {}  # dict mapping Points to RigidTransforms
+        pick_regions = {}  # dict mapping Points to (BodyIndex, RigidTransform) tuples
         for box_body_idx in viable_boxes:
             box_pose = box_poses[box_body_idx]
             box_center = RigidTransform(box_pose.rotation(), box_pose.translation() + box_pose.rotation() @ np.array([BOX_DIM/2, BOX_DIM/2, -BOX_DIM/2]))  # Because box_pose is at the corner of the box

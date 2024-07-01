@@ -21,7 +21,6 @@ from pydrake.all import (
 from manipulation.meshcat_utils import AddMeshcatTriad
 
 from scenario import scenario_yaml_for_iris, q_nominal
-from utils import NUM_BOXES
 
 import numpy as np
 from pathlib import Path
