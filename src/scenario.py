@@ -6,6 +6,8 @@ YAML definitions and box poses.
 from pydrake.all import (
     RigidTransform,
     RotationMatrix,
+    ExternallyAppliedSpatialForce,
+    SpatialForce,
 )
 
 import numpy as np
@@ -781,7 +783,7 @@ def get_fast_box_poses():
     return box_poses
 
 
-def set_up_scene(plant, plant_context, simulator, randomize_boxes, box_fall_runtime, box_randomization_runtime):
+def set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime, box_randomization_runtime):
     fast_box_poses = get_fast_box_poses()  # Get pre-computed box poses
 
     # 'Remove' Top of truck trailer
@@ -799,6 +801,12 @@ def set_up_scene(plant, plant_context, simulator, randomize_boxes, box_fall_runt
         robot_joint.Lock(plant_context)
 
     # Set poses for all boxes
+    # Because of added floating joints between boxes and eef, we must express free body pose relative to eef
+    eef_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+    eef_body_idx = plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+    eef_frame = plant.get_body(eef_body_idx).body_frame()  # RigidBodyFrame
+    W_X_eef = plant.CalcRelativeTransform(plant_context, eef_frame, plant.world_frame())
+    
     all_box_positions = []
     for i in range(NUM_BOXES):
         box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
@@ -825,9 +833,9 @@ def set_up_scene(plant, plant_context, simulator, randomize_boxes, box_fall_runt
                 if (i > 100):
                     raise Exception("Could not find box randomization configuration that does not result in collision.")
 
-            plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
+            plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), W_X_eef @ RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
         else:
-            plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), fast_box_poses[i])
+            plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), W_X_eef @ fast_box_poses[i])
 
     if randomize_boxes:
         simulator.AdvanceTo(box_fall_runtime)
@@ -839,6 +847,32 @@ def set_up_scene(plant, plant_context, simulator, randomize_boxes, box_fall_runt
     trailer_roof_joint.Lock(plant_context)
 
     if randomize_boxes:
-        simulator.AdvanceTo(box_randomization_runtime)  # During this time, the GripperSimulator should apply a force to push the boxes to the back of the truck trailer
+        # Applied external forces on the box to shove them to the back of the truck trailer
+        box_forces = []
+        zero_box_forces = []
+        for i in range(NUM_BOXES):
+            force = ExternallyAppliedSpatialForce()
+            zero_force = ExternallyAppliedSpatialForce()
+
+            box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
+            box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+
+            force.body_index = box_body_idx
+            force.p_BoBq_B = [0,0,0]
+            force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,0])
+            box_forces.append(force)
+
+            zero_force.body_index = box_body_idx
+            zero_force.p_BoBq_B = [0,0,0]
+            zero_force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
+            zero_box_forces.append(zero_force)
+
+        # Apply pushing force to back of truck trailer
+        station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
+        simulator.AdvanceTo(box_fall_runtime+1.0)
+
+        # Remove pushing force to back of truck trailer
+        station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
+        simulator.AdvanceTo(box_randomization_runtime)
     else:
         simulator.AdvanceTo(0.001)

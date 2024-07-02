@@ -138,14 +138,6 @@ builder.Connect(motion_planner.GetOutputPort("kuka_desired_state"), controller.G
 builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.GetInputPort("desired_acceleration"))
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka_actuation"))
 
-### Gripper Force Simulator
-gripper_sim = builder.AddSystem(GripperSimulator(plant, meshcat, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0))
-builder.Connect(motion_planner.GetOutputPort("motion_planner_state"), gripper_sim.GetInputPort("motion_planner_state"))
-builder.Connect(motion_planner.GetOutputPort("target_box_body_idx"), gripper_sim.GetInputPort("target_box_body_idx"))
-builder.Connect(motion_planner.GetOutputPort("target_box_X_pick"), gripper_sim.GetInputPort("target_box_X_pick"))
-builder.Connect(station.GetOutputPort("body_poses"), gripper_sim.GetInputPort("body_poses"))
-builder.Connect(gripper_sim.GetOutputPort("applied_spatial_force"), station.GetInputPort("applied_spatial_force"))
-
 ### Print Debugger
 if True:
     debugger = builder.AddSystem(Debugger())
@@ -190,7 +182,7 @@ simulator.set_publish_every_time_step(True)
 
 meshcat.StartRecording()
 
-set_up_scene(plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
+set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
 region_generator = IrisRegionGenerator(meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml")
 region_generator.load_and_test_regions()
