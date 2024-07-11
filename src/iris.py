@@ -221,7 +221,7 @@ class IrisRegionGenerator():
         regions, and 
         """
         collision_checker_params = dict(edge_step_size=0.125)
-        collision_checker_params["robot_model_instances"] = robot_model_instances
+        collision_checker_params["robot_model_instances"] = self.robot_model_instances
         # Must clone diagram so we don't pass ownership of the original digram to SceneGraphCollisionChecker (preventing us from ever using the digram again)
         collision_checker_params["model"] = self.diagram.Clone()
         

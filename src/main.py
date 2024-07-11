@@ -227,6 +227,24 @@ scenario_yaml_for_iris_eef_box = scenario_yaml_for_iris + f"""
     name: Boxes/Box_eef
     file: file://{absolute_path_to_box}
 """
+robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris_eef_box, ".dmd.yaml")
+robot_diagram_builder_plant = robot_diagram_builder.plant()
+robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
+robot_diagram_builder_diagram = robot_diagram_builder.Build()
+
+collision_checker_params = dict(edge_step_size=0.125)
+collision_checker_params["robot_model_instances"] = robot_model_instances
+collision_checker_params["model"] = robot_diagram_builder_diagram
+collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+
+
+
+robot_diagram_builder = RobotDiagramBuilder()
+scenario_yaml_for_iris_eef_box = scenario_yaml_for_iris + f"""
+- add_model: 
+    name: Boxes/Box_eef
+    file: file://{absolute_path_to_box}
+"""
 iris_diagram = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris_eef_box, ".dmd.yaml")
 iris_plant = robot_diagram_builder.plant()
 iris_plant_context = iris_plant.GetMyContextFromRoot(context)
@@ -237,6 +255,7 @@ box_body_idx = iris_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
 W_X_eef= get_W_X_eef(plant, plant_context)
 box_eef_pose = RigidTransform(W_X_eef.rotation(), W_X_eef.translation() + W_X_eef.rotation() @ [0.5, 0.0, 0.0])
 iris_plant.SetFreeBodyPose(iris_plant_context, iris_plant.get_body(box_body_idx), box_eef_pose)
+
 region_generator = IrisRegionGenerator(meshcat, iris_diagram, robot_pose, regions_file="../data/iris_source_regions_place.yaml")
 region_generator.generate_source_region_at_q_nominal()
 region_generator.generate_source_iris_regions(minimum_clique_size=20, 
