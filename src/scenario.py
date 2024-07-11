@@ -783,6 +783,14 @@ def get_fast_box_poses():
     return box_poses
 
 
+def get_W_X_eef(plant, plant_context):
+    eef_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+    eef_body_idx = plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+    eef_frame = plant.get_body(eef_body_idx).body_frame()  # RigidBodyFrame
+    W_X_eef = plant.CalcRelativeTransform(plant_context, eef_frame, plant.world_frame())
+    return W_X_eef
+
+
 def set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime, box_randomization_runtime):
     fast_box_poses = get_fast_box_poses()  # Get pre-computed box poses
 
@@ -802,10 +810,7 @@ def set_up_scene(station, station_context, plant, plant_context, simulator, rand
 
     # Set poses for all boxes
     # Because of added floating joints between boxes and eef, we must express free body pose relative to eef
-    eef_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
-    eef_body_idx = plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
-    eef_frame = plant.get_body(eef_body_idx).body_frame()  # RigidBodyFrame
-    W_X_eef = plant.CalcRelativeTransform(plant_context, eef_frame, plant.world_frame())
+    W_X_eef = get_W_X_eef(plant, plant_context)
     
     all_box_positions = []
     for i in range(NUM_BOXES):

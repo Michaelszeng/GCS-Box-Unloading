@@ -1,13 +1,15 @@
 from pydrake.all import (
     AddMultibodyPlantSceneGraph,
-    IrisInConfigurationSpace,
-    IrisOptions,
     Hyperellipsoid,
     HPolyhedron,
     VPolytope,
     Intersection,
     IrisFromCliqueCoverOptions,
     IrisInConfigurationSpaceFromCliqueCover,
+    FastIris,
+    FastIrisOptions,
+    IrisInConfigurationSpace,
+    IrisOptions,
     SceneGraphCollisionChecker,
     SaveIrisRegionsYamlFile,
     LoadIrisRegionsYamlFile,
@@ -20,7 +22,7 @@ from pydrake.all import (
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
-from scenario import scenario_yaml_for_iris, q_nominal
+from scenario import q_nominal
 
 import numpy as np
 from pathlib import Path
@@ -29,21 +31,13 @@ import matplotlib.pyplot as plt
 
 
 class IrisRegionGenerator():
-
-    def __init__(self, meshcat, robot_pose, regions_file="../data/iris_source_regions.yaml", DEBUG=False):
+    def __init__(self, meshcat, collision_checker, regions_file="../data/iris_source_regions.yaml", DEBUG=False):
         self.meshcat = meshcat
-        robot_diagram_builder = RobotDiagramBuilder()
-        diagram_builder = robot_diagram_builder.builder()
-
-        self.robot = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
-        self.plant = robot_diagram_builder.plant()
-
-        # scene_graph = robot_diagram_builder.scene_graph()
-        # Weld robot base in place
-        self.plant.WeldFrames(self.plant.world_frame(), self.plant.GetFrameByName("base_link", self.plant.GetModelInstanceByName("robot_base")), robot_pose)
-        self.diagram = robot_diagram_builder.Build()
-        context = self.diagram.CreateDefaultContext()
-        self.plant_context = self.plant.GetMyContextFromRoot(context)
+        self.collision_checker = collision_checker
+        self.robot_model_instances = collision_checker.robot_model_instances()  # list of ModelInstanceIndex
+        self.diagram = collision_checker.model()  # RobotDiagram
+        self.plant = collision_checker.plant()
+        self.plant_context = collision_checker.plant_context()
 
         self.regions_file = Path(regions_file)
 
@@ -132,6 +126,7 @@ class IrisRegionGenerator():
         kinematics to return from configuration space to task space.)
         """
         if not self.DEBUG:
+            print("IrisRegionGenerator: DEBUG set to False; skipping region visualization.")
             return
 
         world_frame = plant.world_frame()
@@ -201,11 +196,14 @@ class IrisRegionGenerator():
         # Explicitely set plant positions at q_nominal as as seed for IRIS
         self.plant.SetPositions(self.plant_context, q_nominal)
 
-        iris_options = IrisOptions()
-        iris_options.require_sample_point_is_contained = True
-        iris_options.random_seed = 0
+        options = FastIrisOptions()
+        options.random_seed = 0
+        domain = HPolyhedron.MakeBox(self.plant.GetPositionLowerLimits(),
+                                     self.plant.GetPositionUpperLimits())
+        kEpsilonEllipsoid = 1e-2
+        clique_ellipse = Hyperellipsoid.MakeHypersphere(kEpsilonEllipsoid, self.plant.GetPositions(self.plant_context))
+        region = FastIris(self.collision_checker, clique_ellipse, domain, options)
 
-        region = IrisInConfigurationSpace(self.plant, self.plant_context, iris_options)
         regions_dict = {f"set0" : region}
         SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
         
@@ -223,17 +221,19 @@ class IrisRegionGenerator():
         regions, and 
         """
         collision_checker_params = dict(edge_step_size=0.125)
-        collision_checker_params["robot_model_instances"] = self.robot
+        collision_checker_params["robot_model_instances"] = robot_model_instances
         # Must clone diagram so we don't pass ownership of the original digram to SceneGraphCollisionChecker (preventing us from ever using the digram again)
         collision_checker_params["model"] = self.diagram.Clone()
         
         checker = SceneGraphCollisionChecker(**collision_checker_params)
         options = IrisFromCliqueCoverOptions()
         options.num_points_per_coverage_check = 500
-        options.num_points_per_visibility_round = 250
+        options.num_points_per_visibility_round = 200
         options.coverage_termination_threshold = coverage_threshold
         options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
-        options.iteration_limit = 1  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
+        options.iteration_limit = 10  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
+        options.fast_iris_options.max_iterations = 1
+        options.use_fast_iris = True
 
         options.iris_options.random_seed = 0
 

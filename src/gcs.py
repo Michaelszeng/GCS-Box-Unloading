@@ -32,7 +32,7 @@ from pathlib import Path
 
 class MotionPlanner(LeafSystem):
 
-    def __init__(self, original_plant, meshcat, robot_pose, box_randomization_runtime):
+    def __init__(self, original_plant, meshcat, robot_pose, box_randomization_runtime, regions_file="../data/iris_source_regions.yaml", regions_place_file="../data/iris_source_regions_place.yaml"):
         LeafSystem.__init__(self)
 
         kuka_state = self.DeclareVectorInputPort(name="kuka_state", size=12)  # 6 pos, 6 vel
@@ -76,9 +76,11 @@ class MotionPlanner(LeafSystem):
         self.kuka = kuka
         self.robot_pose = robot_pose
         self.original_plant = original_plant
+        self.original_plant_context = None  # Updated later in set_context()
         self.meshcat = meshcat
 
-        self.source_regions = LoadIrisRegionsYamlFile(Path("../data/iris_source_regions.yaml"))
+        self.source_regions = LoadIrisRegionsYamlFile(Path(regions_file))
+        self.source_regions_place = LoadIrisRegionsYamlFile(Path(regions_place_file))
         self.previous_compute_result = None  # BsplineTrajectory object
         self.start_planning_time = box_randomization_runtime
         self.visualize = True
@@ -102,6 +104,10 @@ class MotionPlanner(LeafSystem):
 
         # self.DeclarePeriodicUnrestrictedUpdateEvent(0.025, 0.0, self.compute_command)
         self.DeclarePeriodicUnrestrictedUpdateEvent(1, 0.0, self.compute_command)
+
+
+    def set_context(self, context):
+        self.original_plant_context = context
 
 
     def VisualizePath(self, traj, name):
@@ -262,20 +268,20 @@ class MotionPlanner(LeafSystem):
                 # Lock joint between box and eef (aka grab the box)
                 eef_model_idx = self.original_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
                 eef_body_idx = self.original_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
-                self.original_plant.GetJointByName(f"{eef_body_idx}-{self.target_box}").Lock()
+                self.original_plant.GetJointByName(f"{eef_body_idx}-{self.target_box}").Lock(self.original_plant_context)
 
                 # Update state to placing and compute placing trajectory
                 self.state = 0
                 self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, [Point(self.q_place)], vel_lim=0.5), context)
         else:  # Place
             # Check if we are finished placing --> transition back to pre-pick
-            if np.all(np.isclose(q_current, self.q_place, rtol=3e-03, atol=3e-03)):
+            if np.all(np.isclose(q_current, self.q_place, rtol=1e-02, atol=1e-02)):
                 print("GCS: Finished placing; switching to pre-picking.")
 
                 # Unlock joint between box and eef (aka drop the box)
                 eef_model_idx = self.original_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
                 eef_body_idx = self.original_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
-                self.original_plant.GetJointByName(f"{eef_body_idx}-{self.target_box}").Unlock()
+                self.original_plant.GetJointByName(f"{eef_body_idx}-{self.target_box}").Unlock(self.original_plant_context)
 
                 # Update state to pre-picking and compute trajectory to a viable pre-pick pose
                 self.state = 1

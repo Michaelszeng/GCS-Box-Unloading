@@ -1,7 +1,6 @@
 from pydrake.all import (
     DiagramBuilder,
     StartMeshcat,
-    MeshcatVisualizer,
     Simulator,
     InverseDynamicsController,
     RigidTransform,
@@ -10,9 +9,6 @@ from pydrake.all import (
     RobotDiagramBuilder,
     Parser,
     configure_logging,
-    CollisionChecker,
-    SceneGraphCollisionChecker,
-    CollisionCheckerParams,
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -96,6 +92,11 @@ for i in range(NUM_BOXES):
     box_directives += f"""
 - add_model: 
     name: Boxes/Box_{i}
+    file: file://{absolute_path_to_box}
+"""
+box_directives += f"""
+- add_model: 
+    name: Boxes/Box_eef
     file: file://{absolute_path_to_box}
 """
 scenario = add_directives(scenario, data=box_directives)
@@ -182,72 +183,63 @@ meshcat.StartRecording()
 
 set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
-# Generate regions with no obstacles at all
-robot_diagram_builder = RobotDiagramBuilder()
-robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
-robot_diagram_builder_plant = robot_diagram_builder.plant()
-robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
-robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
-collision_checker_params = dict(edge_step_size=0.125)
-collision_checker_params["robot_model_instances"] = robot_model_instances
-collision_checker_params["model"] = robot_diagram_builder_diagram
-collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+box_model_idx = plant.GetModelInstanceByName("Boxes/Box_eef")  # ModelInstanceIndex
+box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+W_X_eef = get_W_X_eef(plant, plant_context)
+print(W_X_eef.translation())
+box_eef_pose = W_X_eef
+plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), box_eef_pose)
+simulator.AdvanceTo(0.002)
+print('moved box')
 
-region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_test_regions.yaml", DEBUG=True)
+
+# # Generate regions with no obstacles at all
+# robot_diagram_builder = RobotDiagramBuilder()
+# iris_diagram = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+# region_generator = IrisRegionGenerator(meshcat, iris_diagram, robot_pose, regions_file="../data/iris_source_regions.yaml")
 # region_generator.load_and_test_regions()
-region_generator.generate_source_region_at_q_nominal()
-region_generator.generate_source_iris_regions(minimum_clique_size=20, 
-                                              coverage_threshold=0.1, 
-                                              use_previous_saved_regions=False)
-region_generator.generate_source_iris_regions(minimum_clique_size=18, 
-                                              coverage_threshold=0.2, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=15,
-                                              coverage_threshold=0.3, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=14,
-                                              coverage_threshold=0.4, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=12,
-                                              coverage_threshold=0.5, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=10,
-                                              coverage_threshold=0.6, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=8,
-                                              coverage_threshold=0.7, 
-                                              use_previous_saved_regions=True)
+
+# region_generator.generate_source_region_at_q_nominal()
+# region_generator.generate_source_iris_regions(minimum_clique_size=20, 
+#                                               coverage_threshold=0.2, 
+#                                               use_previous_saved_regions=False)  # False --> regenerate regions from scratch
+# region_generator.generate_source_iris_regions(minimum_clique_size=15, 
+#                                               coverage_threshold=0.45, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=8,
+#                                               coverage_threshold=0.7, 
+#                                               use_previous_saved_regions=True)
 
 
-# Generate regions with box in hand
-robot_diagram_builder = RobotDiagramBuilder()
-scenario_yaml_for_iris_eef_box = scenario_yaml_for_iris + f"""
-- add_model: 
-    name: Boxes/Box_eef
-    file: file://{absolute_path_to_box}
-"""
-iris_diagram = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris_eef_box, ".dmd.yaml")
-iris_plant = robot_diagram_builder.plant()
-iris_plant_context = iris_plant.GetMyContextFromRoot(context)
+# # Generate regions with box in hand
+# robot_diagram_builder = RobotDiagramBuilder()
+# scenario_yaml_for_iris_eef_box = scenario_yaml_for_iris + f"""
+# - add_model: 
+#     name: Boxes/Box_eef
+#     file: file://{absolute_path_to_box}
+# """
+# iris_diagram = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris_eef_box, ".dmd.yaml")
+# iris_plant = robot_diagram_builder.plant()
+# iris_plant_context = iris_plant.GetMyContextFromRoot(context)
 
-# Set pose of box to be in "grabbed" position relative to eef and weld it there
-box_model_idx = iris_plant.GetModelInstanceByName("Boxes/Box_eef")  # ModelInstanceIndex
-box_body_idx = iris_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-W_X_eef= get_W_X_eef(plant, plant_context)
-box_eef_pose = RigidTransform(W_X_eef.rotation(), W_X_eef.translation() + W_X_eef.rotation() @ [0.5, 0.0, 0.0])
-iris_plant.SetFreeBodyPose(iris_plant_context, iris_plant.get_body(box_body_idx), box_eef_pose)
-region_generator = IrisRegionGenerator(meshcat, iris_diagram, robot_pose, regions_file="../data/iris_source_regions_place.yaml")
-region_generator.generate_source_region_at_q_nominal()
-region_generator.generate_source_iris_regions(minimum_clique_size=20, 
-                                              coverage_threshold=0.2, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=15, 
-                                              coverage_threshold=0.45, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=8,
-                                              coverage_threshold=0.7, 
-                                              use_previous_saved_regions=True)
+# # Set pose of box to be in "grabbed" position relative to eef and weld it there
+# box_model_idx = iris_plant.GetModelInstanceByName("Boxes/Box_eef")  # ModelInstanceIndex
+# box_body_idx = iris_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+# W_X_eef= get_W_X_eef(plant, plant_context)
+# box_eef_pose = RigidTransform(W_X_eef.rotation(), W_X_eef.translation() + W_X_eef.rotation() @ [0.0, 0.0, 0.5])
+# iris_plant.SetFreeBodyPose(iris_plant_context, iris_plant.get_body(box_body_idx), box_eef_pose)
+# region_generator = IrisRegionGenerator(meshcat, iris_diagram, robot_pose, regions_file="../data/iris_source_regions_place.yaml")
+# region_generator.generate_source_region_at_q_nominal()
+# region_generator.generate_source_iris_regions(minimum_clique_size=20, 
+#                                               coverage_threshold=0.2, 
+#                                               use_previous_saved_regions=False)  # False --> regenerate regions from scratch
+# region_generator.generate_source_iris_regions(minimum_clique_size=15, 
+#                                               coverage_threshold=0.45, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=8,
+#                                               coverage_threshold=0.7, 
+#                                               use_previous_saved_regions=True)
 
 # Get box poses to pass to pick planner to select a box to pick first
 box_poses = {}
