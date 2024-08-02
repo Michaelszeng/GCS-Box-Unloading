@@ -2,6 +2,7 @@ from pydrake.all import (
     DiagramBuilder,
     StartMeshcat,
     MeshcatVisualizer,
+    AddDefaultVisualization,
     Simulator,
     InverseDynamicsController,
     RigidTransform,
@@ -10,9 +11,8 @@ from pydrake.all import (
     RobotDiagramBuilder,
     Parser,
     configure_logging,
-    CollisionChecker,
     SceneGraphCollisionChecker,
-    CollisionCheckerParams,
+    WeldJoint,
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -33,7 +33,7 @@ import logging
 import datetime
 
 from utils import diagram_visualize_connections
-from scenario import NUM_BOXES, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
 from gripper_sim import GripperSimulator
@@ -182,42 +182,42 @@ meshcat.StartRecording()
 
 set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
-# Generate regions with no obstacles at all
-robot_diagram_builder = RobotDiagramBuilder()
-robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
-robot_diagram_builder_plant = robot_diagram_builder.plant()
-robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
-robot_diagram_builder_diagram = robot_diagram_builder.Build()
+# # Generate regions with no obstacles at all
+# robot_diagram_builder = RobotDiagramBuilder()
+# robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+# robot_diagram_builder_plant = robot_diagram_builder.plant()
+# robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
+# robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
-collision_checker_params = dict(edge_step_size=0.125)
-collision_checker_params["robot_model_instances"] = robot_model_instances
-collision_checker_params["model"] = robot_diagram_builder_diagram
-collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+# collision_checker_params = dict(edge_step_size=0.125)
+# collision_checker_params["robot_model_instances"] = robot_model_instances
+# collision_checker_params["model"] = robot_diagram_builder_diagram
+# collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 
-region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_test_regions.yaml", DEBUG=True)
-# region_generator.load_and_test_regions()
-region_generator.generate_source_region_at_q_nominal()
-region_generator.generate_source_iris_regions(minimum_clique_size=20, 
-                                              coverage_threshold=0.1, 
-                                              use_previous_saved_regions=False)
-region_generator.generate_source_iris_regions(minimum_clique_size=18, 
-                                              coverage_threshold=0.2, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=15,
-                                              coverage_threshold=0.3, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=14,
-                                              coverage_threshold=0.4, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=12,
-                                              coverage_threshold=0.5, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=10,
-                                              coverage_threshold=0.6, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=8,
-                                              coverage_threshold=0.7, 
-                                              use_previous_saved_regions=True)
+# region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_test_regions.yaml", DEBUG=True)
+# # region_generator.load_and_test_regions()
+# region_generator.generate_source_region_at_q_nominal()
+# region_generator.generate_source_iris_regions(minimum_clique_size=20, 
+#                                               coverage_threshold=0.1, 
+#                                               use_previous_saved_regions=False)
+# region_generator.generate_source_iris_regions(minimum_clique_size=18, 
+#                                               coverage_threshold=0.2, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=15,
+#                                               coverage_threshold=0.3, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=14,
+#                                               coverage_threshold=0.4, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=12,
+#                                               coverage_threshold=0.5, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=10,
+#                                               coverage_threshold=0.6, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=8,
+#                                               coverage_threshold=0.7, 
+#                                               use_previous_saved_regions=True)
 
 
 # Generate regions with box in hand
@@ -228,44 +228,57 @@ scenario_yaml_for_iris_eef_box = scenario_yaml_for_iris + f"""
     file: file://{absolute_path_to_box}
 """
 robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris_eef_box, ".dmd.yaml")
+robot_diagram_builder_scene_graph = robot_diagram_builder.scene_graph()
 robot_diagram_builder_plant = robot_diagram_builder.plant()
+
+# Set pose of box to be in "grabbed" position relative to eef and weld it there
 robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
+eef_model_idx = robot_diagram_builder_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+eef_body_idx = robot_diagram_builder_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+frame_parent = robot_diagram_builder_plant.get_body(eef_body_idx).body_frame()
+# frame_parent = robot_diagram_builder_plant.GetBodyByName("arm_eef").body_frame()  # Equivalent
+box_model_idx = robot_diagram_builder_plant.GetModelInstanceByName("Boxes/Box_eef")  # ModelInstanceIndex
+box_body_idx = robot_diagram_builder_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+frame_child = robot_diagram_builder_plant.get_body(box_body_idx).body_frame()
+robot_diagram_builder_plant.AddJoint(WeldJoint("box-eef", frame_parent, frame_child, RigidTransform([-BOX_DIM/2, -BOX_DIM/2, BOX_DIM*1.3])))
+robot_diagram_builder_plant.Finalize()
+
+print("IRIS Scene Meshcat:")
+iris_meshcat = StartMeshcat()
+AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=iris_meshcat)
+
 robot_diagram_builder_diagram = robot_diagram_builder.Build()
+
+simulator = Simulator(robot_diagram_builder_diagram)
+iris_meshcat.StartRecording()
+simulator.AdvanceTo(0.001)
+iris_meshcat.PublishRecording()
+time.sleep(5)
+
+# Visualize IRIS scene
+# print("IRIS Scene Meshcat:")
+# iris_meshcat = StartMeshcat()
+# iris_meshcat_builder = DiagramBuilder()
+# robot_diagram_builder_diagram_clone = robot_diagram_builder_diagram.Clone()
+# robot_diagram = iris_meshcat_builder.AddSystem(robot_diagram_builder_diagram)
+# MeshcatVisualizer.AddToBuilder(iris_meshcat_builder, robot_diagram.GetOutputPort("scene_graph_query"), iris_meshcat)
+# iris_meshcat_diagram = iris_meshcat_builder.Build()
+# iris_meshcat_simulator = Simulator(iris_meshcat_diagram)
+# iris_meshcat_simulator.Initialize()
+# iris_meshcat_simulator.AdvanceTo(0.001)
 
 collision_checker_params = dict(edge_step_size=0.125)
 collision_checker_params["robot_model_instances"] = robot_model_instances
 collision_checker_params["model"] = robot_diagram_builder_diagram
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True)  # Filter collision between eef and box so IRIS doesn't fail immediately
 
+robot_diagram_builder_plant.SetPositions(collision_checker.plant_context(), q_nominal)
 
-
-robot_diagram_builder = RobotDiagramBuilder()
-scenario_yaml_for_iris_eef_box = scenario_yaml_for_iris + f"""
-- add_model: 
-    name: Boxes/Box_eef
-    file: file://{absolute_path_to_box}
-"""
-iris_diagram = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris_eef_box, ".dmd.yaml")
-iris_plant = robot_diagram_builder.plant()
-iris_plant_context = iris_plant.GetMyContextFromRoot(context)
-
-# Set pose of box to be in "grabbed" position relative to eef and weld it there
-box_model_idx = iris_plant.GetModelInstanceByName("Boxes/Box_eef")  # ModelInstanceIndex
-box_body_idx = iris_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-W_X_eef= get_W_X_eef(plant, plant_context)
-box_eef_pose = RigidTransform(W_X_eef.rotation(), W_X_eef.translation() + W_X_eef.rotation() @ [0.5, 0.0, 0.0])
-iris_plant.SetFreeBodyPose(iris_plant_context, iris_plant.get_body(box_body_idx), box_eef_pose)
-
-region_generator = IrisRegionGenerator(meshcat, iris_diagram, robot_pose, regions_file="../data/iris_source_regions_place.yaml")
+region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions_place.yaml")
 region_generator.generate_source_region_at_q_nominal()
 region_generator.generate_source_iris_regions(minimum_clique_size=20, 
                                               coverage_threshold=0.2, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=15, 
-                                              coverage_threshold=0.45, 
-                                              use_previous_saved_regions=True)
-region_generator.generate_source_iris_regions(minimum_clique_size=8,
-                                              coverage_threshold=0.7, 
                                               use_previous_saved_regions=True)
 
 # Get box poses to pass to pick planner to select a box to pick first

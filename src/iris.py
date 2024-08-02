@@ -198,9 +198,10 @@ class IrisRegionGenerator():
 
         options = FastIrisOptions()
         options.random_seed = 0
+        options.verbose = True
         domain = HPolyhedron.MakeBox(self.plant.GetPositionLowerLimits(),
                                      self.plant.GetPositionUpperLimits())
-        kEpsilonEllipsoid = 1e-2
+        kEpsilonEllipsoid = 1e-5
         clique_ellipse = Hyperellipsoid.MakeHypersphere(kEpsilonEllipsoid, self.plant.GetPositions(self.plant_context))
         region = FastIris(self.collision_checker, clique_ellipse, domain, options)
 
@@ -233,9 +234,9 @@ class IrisRegionGenerator():
         options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
         options.iteration_limit = 10  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
         options.fast_iris_options.max_iterations = 1
+        options.fast_iris_options.random_seed = 0
+        options.fast_iris_options.verbose = True
         options.use_fast_iris = True
-
-        options.iris_options.random_seed = 0
 
         if use_previous_saved_regions:
             print("Using saved iris regions.")

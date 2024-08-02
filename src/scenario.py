@@ -21,7 +21,7 @@ GRIPPER_DIM = 0.25  # edge length of gripper in m
 GRIPPER_THICKNESS = 0.045  # distance from gripper face to end of the last robot link
 PREPICK_MARGIN = 0.2  # how far pre-pick pose is from the box face
 
-q_nominal = [0.0, -2.5, 2.5, 0.0, 1.5, 0.0]
+q_nominal = [0.0, -2.5, 2.5, 0.0, 1.5, 0.0]  # Neutral "pulled back" position
 # q_nominal = [0.0, -1.8, 1.5, 0.0, 0.0, 0.0]
 
 robot_pose = RigidTransform([0.0,0.0,0.58])
@@ -880,4 +880,5 @@ def set_up_scene(station, station_context, plant, plant_context, simulator, rand
         station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
         simulator.AdvanceTo(box_randomization_runtime)
     else:
-        simulator.AdvanceTo(0.001)
+        # simulator.AdvanceTo(0.001)
+        pass

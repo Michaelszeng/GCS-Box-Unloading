@@ -226,6 +226,7 @@ class PickPlanner():
 
         # Render 2D projections in Meshcat
         if self.DEBUG:
+            print("Box Projection Visualization Meshcat:")
             meshcat = StartMeshcat()
             meshcat.Set2dRenderMode(RigidTransform([0, 0, 1]), -4, 4, -4, 4)
             meshcat.SetProperty("/Axes", "visible", True)
@@ -235,7 +236,6 @@ class PickPlanner():
                 z = box_poses[box_body_idx].translation()[2]
                 meshcat.SetLine(f"vpoly_{ctr}", points, 2.0, Rgba(*(plt.cm.viridis(z / 2.0))))
                 ctr += 1
-            # time.sleep(4)  # Give time to load in browser before everything is unrendered
 
         # Now, determine which boxes vertically overlap and remove any boxes that are in lower layers
         viable_boxes = list(box_poses.keys())
