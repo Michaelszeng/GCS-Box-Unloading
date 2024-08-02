@@ -243,6 +243,7 @@ frame_child = robot_diagram_builder_plant.get_body(box_body_idx).body_frame()
 robot_diagram_builder_plant.AddJoint(WeldJoint("box-eef", frame_parent, frame_child, RigidTransform([-BOX_DIM/2, -BOX_DIM/2, BOX_DIM*1.3])))
 robot_diagram_builder_plant.Finalize()
 
+# Visualize IRIS scene
 print("IRIS Scene Meshcat:")
 iris_meshcat = StartMeshcat()
 AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=iris_meshcat)
@@ -250,22 +251,8 @@ AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=iris_meshcat)
 robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
 simulator = Simulator(robot_diagram_builder_diagram)
-iris_meshcat.StartRecording()
 simulator.AdvanceTo(0.001)
-iris_meshcat.PublishRecording()
 time.sleep(5)
-
-# Visualize IRIS scene
-# print("IRIS Scene Meshcat:")
-# iris_meshcat = StartMeshcat()
-# iris_meshcat_builder = DiagramBuilder()
-# robot_diagram_builder_diagram_clone = robot_diagram_builder_diagram.Clone()
-# robot_diagram = iris_meshcat_builder.AddSystem(robot_diagram_builder_diagram)
-# MeshcatVisualizer.AddToBuilder(iris_meshcat_builder, robot_diagram.GetOutputPort("scene_graph_query"), iris_meshcat)
-# iris_meshcat_diagram = iris_meshcat_builder.Build()
-# iris_meshcat_simulator = Simulator(iris_meshcat_diagram)
-# iris_meshcat_simulator.Initialize()
-# iris_meshcat_simulator.AdvanceTo(0.001)
 
 collision_checker_params = dict(edge_step_size=0.125)
 collision_checker_params["robot_model_instances"] = robot_model_instances

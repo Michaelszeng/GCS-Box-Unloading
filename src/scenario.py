@@ -21,7 +21,7 @@ GRIPPER_DIM = 0.25  # edge length of gripper in m
 GRIPPER_THICKNESS = 0.045  # distance from gripper face to end of the last robot link
 PREPICK_MARGIN = 0.2  # how far pre-pick pose is from the box face
 
-q_nominal = [0.0, -2.5, 2.5, 0.0, 1.5, 0.0]  # Neutral "pulled back" position
+q_nominal = [0.0, -2.2, 2.2, 0.0, 1.57, 0.0]  # Neutral "pulled back" position
 # q_nominal = [0.0, -1.8, 1.5, 0.0, 0.0, 0.0]
 
 robot_pose = RigidTransform([0.0,0.0,0.58])
