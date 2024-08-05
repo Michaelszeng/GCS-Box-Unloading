@@ -1,22 +1,18 @@
 from pydrake.all import (
     DiagramBuilder,
     StartMeshcat,
+    MeshcatVisualizer,
+    AddDefaultVisualization,
     Simulator,
-    Box,
-    ModelInstanceIndex,
     InverseDynamicsController,
-    PidController,
     RigidTransform,
     MultibodyPlant,
-    RotationMatrix,
-    RollPitchYaw,
-    SpatialVelocity,
-    SpatialForce,
-    ExternallyAppliedSpatialForce,
-    ConstantVectorSource,
-    AbstractValue,
     ContactModel,
+    RobotDiagramBuilder,
     Parser,
+    configure_logging,
+    SceneGraphCollisionChecker,
+    WeldJoint,
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -33,32 +29,55 @@ import os
 import time
 import argparse
 import yaml
+import logging
+import datetime
 
 from utils import diagram_visualize_connections
-from scenario import scenario_yaml, robot_yaml
-from iris import generate_source_iris_regions
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
+from iris import IrisRegionGenerator
+from gcs import MotionPlanner
+from gripper_sim import GripperSimulator
+from debug import Debugger
+
+
+# Set logging level in drake to DEBUG
+configure_logging()
+log = logging.getLogger("drake")
+# log.setLevel("DEBUG")
+log.setLevel("INFO")
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--fast', default='T', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
 args = parser.parse_args()
 
 seed = int(args.randomization)
+randomize_boxes = (args.fast == 'F')
 
     
-##### Settings #####
+#####################
+###    Settings   ###
+#####################
 close_button_str = "Close"
 this_drake_module_name = "cwd"
-box_randomization_runtime = 1.15
-sim_runtime = box_randomization_runtime + 4.0
-NUM_BOXES = 40
+
+if randomize_boxes:
+    box_fall_runtime = 0.95
+    box_randomization_runtime = box_fall_runtime + 17
+    sim_runtime = box_randomization_runtime + 10
+else:
+    sim_runtime = 10
 
 np.random.seed(seed)
+
 
 #####################
 ### Meshcat Setup ###
 #####################
 meshcat = StartMeshcat()
 meshcat.AddButton(close_button_str)
+# meshcat.SetProperty("/drake/contact_forces", "visible", False)  # Doesn't work for some reason
+
 
 #####################
 ### Diagram Setup ###
@@ -76,7 +95,7 @@ for i in range(NUM_BOXES):
 
     box_directives += f"""
 - add_model: 
-    name: Box_{i}
+    name: Boxes/Box_{i}
     file: file://{absolute_path_to_box}
 """
 scenario = add_directives(scenario, data=box_directives)
@@ -94,27 +113,39 @@ station = builder.AddSystem(MakeHardwareStation(
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
 
+# Plot Triad at end effector
+AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
 
+### GCS Motion Planer
+motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat, robot_pose, box_randomization_runtime if randomize_boxes else 0))
+builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("body_poses"))
+builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort("kuka_state"))
+
+### Controller
 controller_plant = MultibodyPlant(time_step=0.001)
 parser = Parser(plant)
 ConfigureParser(parser)
 Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
 num_robot_positions = controller_plant.num_positions()
-controller = builder.AddSystem(InverseDynamicsController(controller_plant, [300]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))
-builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka.actuation"))
+controller = builder.AddSystem(InverseDynamicsController(controller_plant, [150]*num_robot_positions, [50]*num_robot_positions, [50]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
 builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
+builder.Connect(motion_planner.GetOutputPort("kuka_desired_state"), controller.GetInputPort("desired_state"))
+builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.GetInputPort("desired_acceleration"))
+builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka_actuation"))
 
-# TEMPORARY
-builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("desired_state"))
-# builder.Connect(motion_planner.GetOutputPort("SOMETHING"), controller.GetInputPort("desired_acceleration"))
-
+### Print Debugger
+if True:
+    debugger = builder.AddSystem(Debugger())
+    builder.Connect(station.GetOutputPort("kuka_state"), debugger.GetInputPort("kuka_state"))
+    builder.Connect(station.GetOutputPort("body_poses"), debugger.GetInputPort("body_poses"))
+    builder.Connect(controller.GetOutputPort("generalized_force"), debugger.GetInputPort("kuka_actuation"))
 
 ### Finalizing diagram setup
 diagram = builder.Build()
 context = diagram.CreateDefaultContext()
 diagram.set_name("Box Unloader")
-diagram_visualize_connections(diagram, "diagram.svg")
+diagram_visualize_connections(diagram, "../diagram.svg")
 
 
 ########################
@@ -126,88 +157,131 @@ station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 
+motion_planner.set_context(plant_context)
+
+### TESTING
+# controller.GetInputPort("estimated_state").FixValue(controller_context, np.append(
+#     [0.0, -2.5, 2.8, 0.0, 1.2, 0.0],
+#     np.zeros((6,)),
+# )) # TESTING
+# controller.GetInputPort("desired_state").FixValue(controller_context, np.append(
+#     [0.0, -2.5, 2.8, 0.0, 1.2, 0.0],
+#     np.zeros((6,)),
+# )) # TESTING
+# controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(6)) # TESTING
+# station.GetInputPort("kuka_actuation").FixValue(station_context, -1000*np.ones(6))
+
 
 ####################################
 ### Running Simulation & Meshcat ###
 ####################################
 simulator.set_target_realtime_rate(1)
 simulator.set_publish_every_time_step(True)
-plt.show()
-
-# TEMPORARY
-controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(num_robot_positions))
-
 
 meshcat.StartRecording()
 
-# 'Remove' Top of truck trailer
-trailer_roof_model_idx = plant.GetModelInstanceByName("Truck_Trailer_Roof")  # ModelInstanceIndex
-trailer_roof_body_idx = plant.GetBodyIndices(trailer_roof_model_idx)[0]  # BodyIndex
-plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
+set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
-# Move Robot to start position
-robot_model_idx = plant.GetModelInstanceByName("robot_base")  # ModelInstanceIndex
-robot_body_idx = plant.GetBodyIndices(robot_model_idx)[0]  # BodyIndex
-robot_pose = RigidTransform([-1.0,0.0,0.58])
-plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), robot_pose)
-for joint_idx in plant.GetJointIndices(robot_model_idx):
-    robot_joint = plant.get_joint(joint_idx)  # Joint object
-    robot_joint.Lock(plant_context)
+# # Generate regions with no obstacles at all
+# robot_diagram_builder = RobotDiagramBuilder()
+# robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+# robot_diagram_builder_plant = robot_diagram_builder.plant()
+# robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
+# robot_diagram_builder_diagram = robot_diagram_builder.Build()
+
+# collision_checker_params = dict(edge_step_size=0.125)
+# collision_checker_params["robot_model_instances"] = robot_model_instances
+# collision_checker_params["model"] = robot_diagram_builder_diagram
+# collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+
+# region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_test_regions.yaml", DEBUG=True)
+# # region_generator.load_and_test_regions()
+# region_generator.generate_source_region_at_q_nominal(q_nominal)
+# region_generator.generate_source_iris_regions(minimum_clique_size=20, 
+#                                               coverage_threshold=0.1, 
+#                                               use_previous_saved_regions=False)
+# region_generator.generate_source_iris_regions(minimum_clique_size=18, 
+#                                               coverage_threshold=0.2, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=15,
+#                                               coverage_threshold=0.3, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=14,
+#                                               coverage_threshold=0.4, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=12,
+#                                               coverage_threshold=0.5, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=10,
+#                                               coverage_threshold=0.6, 
+#                                               use_previous_saved_regions=True)
+# region_generator.generate_source_iris_regions(minimum_clique_size=8,
+#                                               coverage_threshold=0.7, 
+#                                               use_previous_saved_regions=True)
 
 
-generate_source_iris_regions(meshcat, robot_pose)
+# Generate regions with box in eef
+robot_diagram_builder = RobotDiagramBuilder()
+scenario_yaml_for_iris_eef_box = scenario_yaml_for_iris + f"""
+- add_model: 
+    name: Boxes/Box_eef
+    file: file://{absolute_path_to_box}
+"""
+robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris_eef_box, ".dmd.yaml")
+robot_diagram_builder_scene_graph = robot_diagram_builder.scene_graph()
+robot_diagram_builder_plant = robot_diagram_builder.plant()
 
+# Set pose of box to be in "grabbed" position relative to eef and weld it there
+robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
+eef_model_idx = robot_diagram_builder_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+eef_body_idx = robot_diagram_builder_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+frame_parent = robot_diagram_builder_plant.get_body(eef_body_idx).body_frame()
+# frame_parent = robot_diagram_builder_plant.GetBodyByName("arm_eef").body_frame()  # Equivalent
+box_model_idx = robot_diagram_builder_plant.GetModelInstanceByName("Boxes/Box_eef")  # ModelInstanceIndex
+box_body_idx = robot_diagram_builder_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+frame_child = robot_diagram_builder_plant.get_body(box_body_idx).body_frame()
+robot_diagram_builder_plant.AddJoint(WeldJoint("box-eef", frame_parent, frame_child, RigidTransform([-BOX_DIM/2, -BOX_DIM/2, BOX_DIM*1.3])))
+robot_diagram_builder_plant.Finalize()
 
-# Set poses for all boxes
+# Visualize IRIS scene
+print("IRIS Scene Meshcat:")
+iris_meshcat = StartMeshcat()
+AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=iris_meshcat)
+
+robot_diagram_builder_diagram = robot_diagram_builder.Build()
+
+iris_simulator = Simulator(robot_diagram_builder_diagram)
+iris_simulator.AdvanceTo(0.001)
+
+collision_checker_params = dict(edge_step_size=0.125)
+collision_checker_params["robot_model_instances"] = robot_model_instances
+collision_checker_params["model"] = robot_diagram_builder_diagram
+collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True)  # Filter collision between eef and box so IRIS doesn't fail immediately
+
+robot_diagram_builder_plant.SetPositions(collision_checker.plant_context(), q_nominal)
+
+region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions_place.yaml", DEBUG=True)
+# region_generator.load_and_test_regions()
+region_generator.generate_source_region_at_q_nominal(q_place_nominal)
+for i in range(10):
+    region_generator.generate_source_iris_regions(minimum_clique_size=7,
+                                                  coverage_threshold=0.1, 
+                                                  num_points_per_visibility_round=i*75 + 50,
+                                                  use_previous_saved_regions=True)
+
+# Get box poses to pass to pick planner to select a box to pick first
+box_poses = {}
 for i in range(NUM_BOXES):
-    box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
+    box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
     box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-
-    box_pos_x = np.random.uniform(-1, 1.3, 1)
-    box_pos_y = np.random.uniform(-0.95, 0.95, 1)
-    box_pos_z = np.random.uniform(0, 8, 1)
-
-    plant.SetFreeBodyPose(plant_context, plant.get_body(box_body_idx), RigidTransform([box_pos_x[0], box_pos_y[0], box_pos_z[0]]))
-
-simulator.AdvanceTo(box_randomization_runtime)
-
-# Put Top of truck trailer back and lock it
-plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
-trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # JointIndex object
-trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
-trailer_roof_joint.Lock(plant_context)
-
-# Applied external forces on the box to shove them to the back of the truck trailer
-box_forces = []
-zero_box_forces = []
-for i in range(NUM_BOXES):
-    force = ExternallyAppliedSpatialForce()
-    zero_force = ExternallyAppliedSpatialForce()
-
-    box_model_idx = plant.GetModelInstanceByName(f"Box_{i}")  # ModelInstanceIndex
-    box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-
-    force.body_index = box_body_idx
-    force.p_BoBq_B = [0,0,0]
-    force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[1000,0,0])
-    box_forces.append(force)
-
-    zero_force.body_index = box_body_idx
-    zero_force.p_BoBq_B = [0,0,0]
-    zero_force.F_Bq_W = SpatialForce(tau=[0,0,0], f=[0,0,0])
-    zero_box_forces.append(zero_force)
-
-# Apply pushing force to back of truck trailer
-station.GetInputPort("applied_spatial_force").FixValue(station_context, box_forces)
-simulator.AdvanceTo(box_randomization_runtime+1.5)
-
-# Remove pushing force to back of truck trailer
-station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
+    box_poses[box_body_idx] = plant.GetFreeBodyPose(plant_context, plant.get_body(box_body_idx))
 
 simulator.AdvanceTo(sim_runtime)
 
 meshcat.PublishRecording()
-print(f"{meshcat.web_url()}/download")
+date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+print(f"{date}: {meshcat.web_url()}/download")
 
 while not meshcat.GetButtonClicks(close_button_str):
     pass

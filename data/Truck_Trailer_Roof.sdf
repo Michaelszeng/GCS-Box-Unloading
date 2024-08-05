@@ -20,8 +20,14 @@
           <mesh>
             <uri>Truck_Trailer_Roof.obj</uri>
             <scale>0.001 0.001 0.001</scale>
+            <drake:declare_convex/>
           </mesh>
         </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient> <!-- White color, fully opaque -->
+          <diffuse>1 1 1 0.1</diffuse> <!-- White color, 0.1 opacity -->
+          <specular>1 1 1 0.1</specular> <!-- Specular highlight color with 0.1 opacity -->
+        </material>
       </visual>
       <collision name='collision'>
         <pose>-6 -1.2954 0 1.57079632679 0 1.57079632679</pose>
@@ -29,6 +35,7 @@
           <mesh>
             <uri>Truck_Trailer_Roof.obj</uri>
             <scale>0.001 0.001 0.001</scale>
+            <drake:declare_convex/>
           </mesh>
         </geometry>
         <!-- The proximity properties immediately below enable the hydroelastic
@@ -37,10 +44,10 @@
         <drake:proximity_properties>
           <drake:mu_dynamic>0.5</drake:mu_dynamic>
           <drake:mu_static>0.5</drake:mu_static>
-          <!-- <drake:compliant_hydroelastic/>
+          <drake:compliant_hydroelastic/>
           <drake:mesh_resolution_hint>0.1</drake:mesh_resolution_hint>
           <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>
-          <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation> -->
+          <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
         </drake:proximity_properties>
       </collision>
     </link>
