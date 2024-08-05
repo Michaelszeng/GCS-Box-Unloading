@@ -176,7 +176,7 @@ class MotionPlanner(LeafSystem):
 
         if not result.is_success():
             print("GCS: GCS Fail.")
-            IrisRegionGenerator.visualize_connectivity(gcs_regions)
+            IrisRegionGenerator.visualize_connectivity(gcs_regions.regions())
             print("Connectivity Graph for GCS fail saved to '../iris_connectivity.svg'.")
             return traj
 

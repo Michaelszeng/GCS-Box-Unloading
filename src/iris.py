@@ -44,6 +44,8 @@ class IrisRegionGenerator():
     def visualize_connectivity(iris_regions):
         """
         Create and save SVG graph of IRIS Region connectivity.
+
+        iris_regions is a list of ConvexSets.
         """
         numEdges = 0
         numNodes = 0
@@ -219,7 +221,7 @@ class IrisRegionGenerator():
         regions, and 
         """
         options = IrisFromCliqueCoverOptions()
-        options.num_points_per_coverage_check = 1000
+        options.num_points_per_coverage_check = 500
         options.num_points_per_visibility_round = num_points_per_visibility_round
         options.coverage_termination_threshold = coverage_threshold
         options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
@@ -237,7 +239,7 @@ class IrisRegionGenerator():
 
             # Scale down previous regions and use as obstacles in new round of Clique Covers
             # Encourages exploration while still allowing small degree of region overlap
-            region_obstacles = [hpolyhedron.Scale(0.975) for hpolyhedron in regions]
+            region_obstacles = [hpolyhedron.Scale(0.99) for hpolyhedron in regions]
 
             # Set previous regions as obstacles to encourage exploration
             options.iris_options.configuration_obstacles = region_obstacles

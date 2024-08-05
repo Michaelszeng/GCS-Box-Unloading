@@ -192,6 +192,7 @@ set_up_scene(station, station_context, plant, plant_context, simulator, randomiz
 # collision_checker_params = dict(edge_step_size=0.125)
 # collision_checker_params["robot_model_instances"] = robot_model_instances
 # collision_checker_params["model"] = robot_diagram_builder_diagram
+# collision_checker_params["edge_step_size"] = 0.25
 # collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 
 # region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_test_regions.yaml", DEBUG=True)
@@ -256,6 +257,7 @@ iris_simulator.AdvanceTo(0.001)
 collision_checker_params = dict(edge_step_size=0.125)
 collision_checker_params["robot_model_instances"] = robot_model_instances
 collision_checker_params["model"] = robot_diagram_builder_diagram
+collision_checker_params["edge_step_size"] = 0.25
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True)  # Filter collision between eef and box so IRIS doesn't fail immediately
 
@@ -264,7 +266,7 @@ robot_diagram_builder_plant.SetPositions(collision_checker.plant_context(), q_no
 region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions_place.yaml", DEBUG=True)
 # region_generator.load_and_test_regions()
 region_generator.generate_source_region_at_q_nominal(q_place_nominal)
-for i in range(10):
+for i in range(50):
     region_generator.generate_source_iris_regions(minimum_clique_size=7,
                                                   coverage_threshold=0.1, 
                                                   num_points_per_visibility_round=i*75 + 50,
