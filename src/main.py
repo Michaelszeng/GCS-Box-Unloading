@@ -33,7 +33,7 @@ import logging
 import datetime
 
 from utils import diagram_visualize_connections
-from scenario import NUM_BOXES, BOX_DIM, q_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
 from gripper_sim import GripperSimulator
@@ -128,7 +128,7 @@ ConfigureParser(parser)
 Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
 num_robot_positions = controller_plant.num_positions()
-controller = builder.AddSystem(InverseDynamicsController(controller_plant, [100]*num_robot_positions, [1]*num_robot_positions, [20]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
+controller = builder.AddSystem(InverseDynamicsController(controller_plant, [150]*num_robot_positions, [50]*num_robot_positions, [50]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
 builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
 builder.Connect(motion_planner.GetOutputPort("kuka_desired_state"), controller.GetInputPort("desired_state"))
 builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.GetInputPort("desired_acceleration"))
@@ -196,7 +196,7 @@ set_up_scene(station, station_context, plant, plant_context, simulator, randomiz
 
 # region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_test_regions.yaml", DEBUG=True)
 # # region_generator.load_and_test_regions()
-# region_generator.generate_source_region_at_q_nominal()
+# region_generator.generate_source_region_at_q_nominal(q_nominal)
 # region_generator.generate_source_iris_regions(minimum_clique_size=20, 
 #                                               coverage_threshold=0.1, 
 #                                               use_previous_saved_regions=False)
@@ -220,7 +220,7 @@ set_up_scene(station, station_context, plant, plant_context, simulator, randomiz
 #                                               use_previous_saved_regions=True)
 
 
-# Generate regions with box in hand
+# Generate regions with box in eef
 robot_diagram_builder = RobotDiagramBuilder()
 scenario_yaml_for_iris_eef_box = scenario_yaml_for_iris + f"""
 - add_model: 
@@ -250,9 +250,8 @@ AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=iris_meshcat)
 
 robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
-simulator = Simulator(robot_diagram_builder_diagram)
-simulator.AdvanceTo(0.001)
-time.sleep(5)
+iris_simulator = Simulator(robot_diagram_builder_diagram)
+iris_simulator.AdvanceTo(0.001)
 
 collision_checker_params = dict(edge_step_size=0.125)
 collision_checker_params["robot_model_instances"] = robot_model_instances
@@ -262,11 +261,14 @@ collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True) 
 
 robot_diagram_builder_plant.SetPositions(collision_checker.plant_context(), q_nominal)
 
-region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions_place.yaml")
-region_generator.generate_source_region_at_q_nominal()
-region_generator.generate_source_iris_regions(minimum_clique_size=20, 
-                                              coverage_threshold=0.2, 
-                                              use_previous_saved_regions=True)
+region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions_place.yaml", DEBUG=True)
+# region_generator.load_and_test_regions()
+region_generator.generate_source_region_at_q_nominal(q_place_nominal)
+for i in range(10):
+    region_generator.generate_source_iris_regions(minimum_clique_size=7,
+                                                  coverage_threshold=0.1, 
+                                                  num_points_per_visibility_round=i*75 + 50,
+                                                  use_previous_saved_regions=True)
 
 # Get box poses to pass to pick planner to select a box to pick first
 box_poses = {}

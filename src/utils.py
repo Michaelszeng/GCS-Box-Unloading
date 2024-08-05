@@ -90,9 +90,10 @@ class SuppressOutput:
 def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, regions=None):
     """
     Use Inverse Kinematics to solve for a configuration that satisfies a
-    task space pose. If regions is not None, this function also ensures the
-    configuration is reachable within one of the regions (or return None if this
-    is not possible).
+    task-space pose. 
+    
+    If regions is not None, this function also ensures the configuration is
+    reachable within one of the regions (or return None if this isn't possible).
     """
     satisfy_regions_constraint = regions is not None
     if regions is None:  # Make regions not None so that the for loop below runs at least once

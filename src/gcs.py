@@ -24,6 +24,7 @@ from manipulation.utils import ConfigureParser
 from scenario import BOX_DIM, NUM_BOXES, PREPICK_MARGIN, scenario_yaml_for_iris, q_nominal
 from utils import is_yaml_empty, SuppressOutput
 from pick_planner import PickPlanner
+from iris import IrisRegionGenerator
 
 import time
 import numpy as np
@@ -90,13 +91,14 @@ class MotionPlanner(LeafSystem):
             box_model_idx = original_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
             box_body_idx = original_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
             self.box_body_indices.append(box_body_idx)
-        self.pick_planner = PickPlanner(self.meshcat, self.robot_pose, self.source_regions, self.box_body_indices, self.plant, self.plant_context)
+        self.pick_planner = PickPlanner(self.meshcat, self.robot_pose, self.box_body_indices, self.plant, self.plant_context)
 
-        self.state = 1  # 1 for pre-picking, 2 for picking, 0 for placing
+        self.state = 1  # 1 for pre-picking, 2 for picking, 3 for post-picking, 0 for placing
         
         self.X_pick = None
         self.q_pick = None
-        self.q_place = self.pick_planner.solve_q_place()
+        self.q_pre_pick = None
+        self.q_place = self.pick_planner.solve_q_place(self.source_regions)
         self.target_regions = None
         self.target_box = None  # BodyIndex object; note that this value is only updated after the robot reaches the pre-pick position for this box
         self.box_weld_joint = None
@@ -134,17 +136,18 @@ class MotionPlanner(LeafSystem):
             self.meshcat.SetLine(name, pos_3d_matrix)
 
 
-    def perform_gcs_traj_opt(self, q_current, target_regions, vel_lim=1.0):
+    def perform_gcs_traj_opt(self, q_current, target_regions, gcs_regions, vel_lim=1.0):
         """
         Define and run a GCS Trajectory Optimization program.
 
-        q-current is a 7D np array containing the robot's current configuration.
+        q_current is a 7D np array containing the robot's current configuration.
 
         target_regions is a list of ConvexSet objects containing the desired set
         of end configurations for the trajectory optimization.
+
+        gcs_regions is a dictionary mapping convex set names to convex sets.
         """
         # Define GCS Program
-        gcs_regions = self.source_regions.copy()
         gcs_regions["start"] = Point(q_current)
 
         edges = []
@@ -160,7 +163,8 @@ class MotionPlanner(LeafSystem):
         gcs.AddPathLengthCost()
         gcs.AddPathContinuityConstraints(2)  # Acceleration continuity
         gcs.AddVelocityBounds(
-            self.plant.GetVelocityLowerLimits() * vel_lim, self.plant.GetVelocityUpperLimits() * vel_lim
+            self.plant.GetVelocityLowerLimits() * vel_lim, 
+            self.plant.GetVelocityUpperLimits() * vel_lim
         )
         
         options = GraphOfConvexSetsOptions()
@@ -172,12 +176,9 @@ class MotionPlanner(LeafSystem):
 
         if not result.is_success():
             print("GCS: GCS Fail.")
-            return
-
-        # for edge in gcs.graph_of_convex_sets().Edges():
-            # print(edge.phi())
-            # print(result)
-            # print(result.GetSolution(edge.phi()))
+            IrisRegionGenerator.visualize_connectivity(gcs_regions)
+            print("Connectivity Graph for GCS fail saved to '../iris_connectivity.svg'.")
+            return traj
 
         self.VisualizePath(traj, f"GCS Traj")
 
@@ -241,38 +242,47 @@ class MotionPlanner(LeafSystem):
         for box_body_idx in self.box_body_indices:
             box_poses[box_body_idx] = body_poses[box_body_idx]
             
-        # Plan path either to pick or to placing pose
+        # State machine for planning paths to each pick/pre-pick/post-pick/place position
         if self.state == 1:  # Pre-Pick
             if self.target_regions is None:  # If program has just initialized
-                self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
+                self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses, self.source_regions)  # List of Point objects in Configuration Space
                 try:
-                    self.traj = self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys()))
+                    # Plan trajectory to pre-pick pose
+                    self.traj = self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys()), self.source_regions.copy())
                 except:
                     pass
             # Check if robot is very close to any of the viable pre-pick positions --> assume it is ready to transition to picking
             for region, body_idx_pre_pick_pose_tuple in self.target_regions.items():
-                if np.all(np.isclose(q_current, region.x(), rtol=3e-03, atol=3e-03)):
+                if np.all(np.isclose(q_current, region.x(), rtol=1e-02, atol=1e-02)):
                     print("GCS: Reached pre-pick pose; switching to picking.")
                     # Update state to picking and compute picking trajectory
                     self.state = 2
                     self.target_box = body_idx_pre_pick_pose_tuple[0]
                     self.X_pick = body_idx_pre_pick_pose_tuple[1]
                     self.q_pick = self.pick_planner.solve_q_pick(body_idx_pre_pick_pose_tuple[1])
-                    self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pick), context)  # region.x is the configuration at the pick pose
-                    break
+                    self.q_pre_pick = q_current
+                    self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pick), context)
         elif self.state == 2:  # Picking
-            # Check if we are finished picking up the box --> transition to placing
-            if np.all(np.isclose(q_current, self.q_pick, rtol=3e-03, atol=3e-03)):
-                print("GCS: Finished picking; switching to placing.")
+            # Check if we are finished picking up the box --> transition to post-picking
+            if np.all(np.isclose(q_current, self.q_pick, rtol=1e-02, atol=1e-02)):
+                print("GCS: Finished picking; switching to post-picking.")
 
                 # Lock joint between box and eef (aka grab the box)
                 eef_model_idx = self.original_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
                 eef_body_idx = self.original_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
                 self.original_plant.GetJointByName(f"{eef_body_idx}-{self.target_box}").Lock(self.original_plant_context)
 
+                # Update state to post-picking and compute post-picking trajectory
+                self.state = 3
+                self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pre_pick), context)
+        elif self.state == 3:  # Post-Picking
+            # Check if we are close to the post-pick position --> transition to placing
+            if np.all(np.isclose(q_current, self.q_pre_pick, rtol=3e-02, atol=3e-02)):
+                print("GCS: Finished post-picking; switching to placing.")
+
                 # Update state to placing and compute placing trajectory
                 self.state = 0
-                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, [Point(self.q_place)], vel_lim=0.5), context)
+                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, [Point(self.q_place)], self.source_regions_place.copy()), context)
         else:  # Place
             # Check if we are finished placing --> transition back to pre-pick
             if np.all(np.isclose(q_current, self.q_place, rtol=1e-02, atol=1e-02)):
@@ -285,8 +295,8 @@ class MotionPlanner(LeafSystem):
 
                 # Update state to pre-picking and compute trajectory to a viable pre-pick pose
                 self.state = 1
-                self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses)  # List of Point objects in Configuration Space
-                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys())), context)
+                self.target_regions = self.pick_planner.get_viable_pick_poses(box_poses, self.source_regions)  # List of Point objects in Configuration Space
+                self.traj = self.correct_traj_time(self.perform_gcs_traj_opt(q_current, list(self.target_regions.keys()), self.source_regions.copy()), context)
 
         state.get_mutable_abstract_state(int(self.traj_idx)).set_value(self.traj)
 

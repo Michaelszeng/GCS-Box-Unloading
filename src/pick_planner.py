@@ -128,10 +128,9 @@ class PickPlanner():
     A class to manage all picking logic, i.e. selecting which boxes are viable
     to be picked at the current time.
     """
-    def __init__(self, meshcat, robot_pose, source_regions, box_body_indices, ik_plant, ik_plant_context, DEBUG=True):
+    def __init__(self, meshcat, robot_pose, box_body_indices, ik_plant, ik_plant_context, DEBUG=True):
         self.meshcat = meshcat
         self.robot_pose = robot_pose
-        self.source_regions = source_regions
         self.box_body_indices = box_body_indices
         self.plant = ik_plant
         self.plant_context = ik_plant_context
@@ -170,28 +169,29 @@ class PickPlanner():
         return ordered_coordinates
     
 
-    def solve_q_place(self):
+    def solve_q_place(self, source_regions_place):
         """
         Solve an IK program for the box deposit pose that is reachable
         within the solved IRIS regions.
         """
         self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), self.robot_pose.translation() + [0.0, -0.65, 1.25])
         AddMeshcatTriad(self.meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
-        return ik(self.plant, self.plant_context, self.X_W_Deposit, regions=self.source_regions)
+        return ik(self.plant, self.plant_context, self.X_W_Deposit, regions=source_regions_place)
     
 
     def solve_q_pick(self, pre_pick_pose):
         """
         Solve an IK program for the box pre-pick pose.
 
-        pre_pick_pose is a RigidTransforms
+        pre_pick_pose is a RigidTransform and is shifted to generate the pick 
+        pose.
         """
         # Offset the pre-pick pose by the PREPICK_MARGIN toward the box to get the pick pose
         pick_pose = RigidTransform(pre_pick_pose.rotation(), pre_pick_pose.translation() + pre_pick_pose.rotation() @ [0, 0, PREPICK_MARGIN - GRIPPER_THICKNESS])
         return ik(self.plant, self.plant_context, pick_pose)
 
 
-    def get_viable_pick_poses(self, box_poses):
+    def get_viable_pick_poses(self, box_poses, source_regions):
         """
         Return a dictionary mapping regions in configuration that are viable
         pick poses to tuples containing the corresponding box BodyIndex and pick
@@ -298,7 +298,7 @@ class PickPlanner():
                     R = box_center.rotation()
 
                 X = RigidTransform(R, p)
-                q = ik(self.plant, self.plant_context, X, regions=self.source_regions)
+                q = ik(self.plant, self.plant_context, X, regions=source_regions)
                 if q is not None:
                     pick_regions[Point(q)] = (box_body_idx, X)
                     if self.DEBUG:

@@ -22,8 +22,6 @@ from pydrake.all import (
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
-from scenario import q_nominal
-
 import numpy as np
 from pathlib import Path
 import pydot
@@ -34,14 +32,39 @@ class IrisRegionGenerator():
     def __init__(self, meshcat, collision_checker, regions_file="../data/iris_source_regions.yaml", DEBUG=False):
         self.meshcat = meshcat
         self.collision_checker = collision_checker
-        self.robot_model_instances = collision_checker.robot_model_instances()  # list of ModelInstanceIndex
-        self.diagram = collision_checker.model()  # RobotDiagram
         self.plant = collision_checker.plant()
         self.plant_context = collision_checker.plant_context()
 
         self.regions_file = Path(regions_file)
 
         self.DEBUG = DEBUG
+
+
+    @staticmethod
+    def visualize_connectivity(iris_regions):
+        """
+        Create and save SVG graph of IRIS Region connectivity.
+        """
+        numEdges = 0
+        numNodes = 0
+
+        graph = pydot.Dot("IRIS region connectivity")
+        for i in range(len(iris_regions)):
+            numNodes += 1
+            graph.add_node(pydot.Node(i))
+            v1 = iris_regions[i]
+            for j in range(i + 1, len(iris_regions)):
+                v2 = iris_regions[j]
+                if v1.IntersectsWith(v2):
+                    numEdges += 1
+                    graph.add_edge(pydot.Edge(i, j, dir="both"))
+
+        svg = graph.create_svg()
+
+        with open('../iris_connectivity.svg', 'wb') as svg_file:
+            svg_file.write(svg)
+
+        return numNodes, numEdges
 
 
     def generate_overlap_histogram(self, plant, regions, num_samples=10000, seed=42):
@@ -90,34 +113,7 @@ class IrisRegionGenerator():
             for bar in bars:
                 height = bar.get_height()
                 plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height}', ha='center', va='bottom')
-            plt.show()
-
-
-
-    def visualize_connectivity(self, iris_regions):
-        """
-        Create and save SVG graph of IRIS Region connectivity.
-        """
-        numEdges = 0
-        numNodes = 0
-
-        graph = pydot.Dot("IRIS region connectivity")
-        for i in range(len(iris_regions)):
-            numNodes += 1
-            graph.add_node(pydot.Node(i))
-            v1 = iris_regions[i]
-            for j in range(i + 1, len(iris_regions)):
-                v2 = iris_regions[j]
-                if v1.IntersectsWith(v2):
-                    numEdges += 1
-                    graph.add_edge(pydot.Edge(i, j, dir="both"))
-
-        svg = graph.create_svg()
-
-        with open('../iris_connectivity.svg', 'wb') as svg_file:
-            svg_file.write(svg)
-
-        return numNodes, numEdges
+            plt.show(block=False)
 
 
     def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=50000, colors=None):
@@ -175,9 +171,10 @@ class IrisRegionGenerator():
             pc.mutable_xyzs()[:] = xyzs.T
             meshcat.SetObject(f"regions/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
-        num_nodes, num_edges = self.visualize_connectivity(regions)
+        num_nodes, num_edges = IrisRegionGenerator.visualize_connectivity(regions)
         print("Connectivity graph saved to ../iris_connectivity.svg.")
         print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
+        print("\n\n")
 
         self.generate_overlap_histogram(plant, regions)
 
@@ -188,13 +185,13 @@ class IrisRegionGenerator():
         self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
 
 
-    def generate_source_region_at_q_nominal(self):
+    def generate_source_region_at_q_nominal(self, q):
         """
-        Generate a region around q_nominal so we guarantee good coverage around 
-        nominal pose.
+        Generate a region around a nominal position so we guarantee good
+        coverage around that position.
         """
-        # Explicitely set plant positions at q_nominal as as seed for IRIS
-        self.plant.SetPositions(self.plant_context, q_nominal)
+        # Explicitely set plant positions at q as as seed for IRIS
+        self.plant.SetPositions(self.plant_context, q)
 
         options = FastIrisOptions()
         options.random_seed = 0
@@ -212,7 +209,7 @@ class IrisRegionGenerator():
         self.test_iris_region(self.plant, self.plant_context, self.meshcat, [region], colors=[Rgba(0.0,0.0,0.0,0.5)])
 
 
-    def generate_source_iris_regions(self, minimum_clique_size=12, coverage_threshold=0.35, use_previous_saved_regions=True):
+    def generate_source_iris_regions(self, minimum_clique_size=12, coverage_threshold=0.35, num_points_per_visibility_round=500, use_previous_saved_regions=True):
         """
         Source IRIS regions are defined as the regions considering only self-
         collision with the robot, and collision with the walls of the empty truck
@@ -221,19 +218,14 @@ class IrisRegionGenerator():
         This function automatically searches the regions_file for existing
         regions, and 
         """
-        collision_checker_params = dict(edge_step_size=0.125)
-        collision_checker_params["robot_model_instances"] = self.robot_model_instances
-        # Must clone diagram so we don't pass ownership of the original digram to SceneGraphCollisionChecker (preventing us from ever using the digram again)
-        collision_checker_params["model"] = self.diagram.Clone()
-        
-        checker = SceneGraphCollisionChecker(**collision_checker_params)
         options = IrisFromCliqueCoverOptions()
-        options.num_points_per_coverage_check = 500
-        options.num_points_per_visibility_round = 200
+        options.num_points_per_coverage_check = 1000
+        options.num_points_per_visibility_round = num_points_per_visibility_round
         options.coverage_termination_threshold = coverage_threshold
         options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
-        options.iteration_limit = 10  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
+        options.iteration_limit = 1  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
         options.fast_iris_options.max_iterations = 1
+        options.fast_iris_options.mixing_steps = 10
         options.fast_iris_options.random_seed = 0
         options.fast_iris_options.verbose = True
         options.use_fast_iris = True
@@ -253,7 +245,7 @@ class IrisRegionGenerator():
             regions = []
 
         regions = IrisInConfigurationSpaceFromCliqueCover(
-            checker=checker, options=options, generator=RandomGenerator(42), sets=regions
+            checker=self.collision_checker, options=options, generator=RandomGenerator(42), sets=regions
         )  # List of HPolyhedrons
 
         regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
