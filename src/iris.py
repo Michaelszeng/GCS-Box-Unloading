@@ -227,7 +227,7 @@ class IrisRegionGenerator():
         options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
         options.iteration_limit = 1  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
         options.fast_iris_options.max_iterations = 1
-        options.fast_iris_options.mixing_steps = 10
+        options.fast_iris_options.mixing_steps = 25  # default 50
         options.fast_iris_options.random_seed = 0
         options.fast_iris_options.verbose = True
         options.use_fast_iris = True
