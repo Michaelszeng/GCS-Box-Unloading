@@ -69,34 +69,31 @@ class IrisRegionGenerator():
         return numNodes, numEdges
 
 
-    def generate_overlap_histogram(self, plant, regions, num_samples=10000, seed=42):
+    def generate_overlap_histogram(self, regions, seed=42):
         """
-        Measure region overlap by randomly sampling over union of all sets, and
-        creating a histogram of how many sets of sample falls in. The fewer, the
-        better.
+        Measure region overlap by randomly sampling 100 points in each region
+        and checking how many other regions that sample also falls in.
+        Generally, the less overlap the better.
         """
         rng = RandomGenerator(seed)
 
-        sampling_domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
-
         data = {}
 
-        last_sample = sampling_domain.UniformSample(rng)
-        for i in range(num_samples):
-            last_sample = sampling_domain.UniformSample(rng, last_sample)
-            last_sample_num_regions = 0
-            # Count the number of sets the sample appears in
-            for r in regions:
-                if r.PointInSet(last_sample):
-                    last_sample_num_regions += 1
-            
-            if last_sample_num_regions == 0:
-                continue
+        for r in regions:
+            last_sample = r.UniformSample(rng, mixing_steps=5)
+            for _ in range(100):
+                last_sample = r.UniformSample(rng, last_sample, mixing_steps=5)
+                last_sample_num_regions = 0
 
-            if last_sample_num_regions in data.keys():
-                data[last_sample_num_regions] += 1
-            else:
-                data[last_sample_num_regions] = 0
+                # Count the number of sets the sample appears in
+                for r_ in regions:
+                    if r_.PointInSet(last_sample):
+                        last_sample_num_regions += 1
+
+                if last_sample_num_regions in data.keys():
+                    data[last_sample_num_regions] += 1
+                else:
+                    data[last_sample_num_regions] = 0
 
         # Plot data
         num_regions = list(data.keys())
@@ -127,15 +124,15 @@ class IrisRegionGenerator():
         if not self.DEBUG:
             print("IrisRegionGenerator: DEBUG set to False; skipping region visualization.")
             return
-        
-        self.generate_source_iris_regions(coverage_check_only=True)  # clique covers will just print the coverage estimate then terminate
+
+        self.generate_overlap_histogram(regions)
 
         num_nodes, num_edges = IrisRegionGenerator.visualize_connectivity(regions)
         print("Connectivity graph saved to ../iris_connectivity.svg.")
         print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
         print("\n\n")
 
-        self.generate_overlap_histogram(plant, regions)
+        self.generate_source_iris_regions(coverage_check_only=True)  # clique covers will just print the coverage estimate then terminate
 
         world_frame = plant.world_frame()
         ee_frame = plant.GetFrameByName("arm_eef")
