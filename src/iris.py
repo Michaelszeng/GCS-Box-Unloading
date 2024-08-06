@@ -187,7 +187,10 @@ class IrisRegionGenerator():
     def load_and_test_regions(self):
         regions = LoadIrisRegionsYamlFile(self.regions_file)
         regions = [hpolyhedron for hpolyhedron in regions.values()]
-        self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
+        regions = [r.ReduceInequalities() for r in regions]
+        regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
+        SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
+        # self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
 
 
     def generate_source_region_at_q_nominal(self, q):
@@ -256,6 +259,9 @@ class IrisRegionGenerator():
         regions = IrisInConfigurationSpaceFromCliqueCover(
             checker=self.collision_checker, options=options, generator=RandomGenerator(42), sets=regions
         )  # List of HPolyhedrons
+
+        # Remove redundant hyperplanes
+        regions = [r.ReduceInequalities() for r in regions]
 
         if not coverage_check_only:
             regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
