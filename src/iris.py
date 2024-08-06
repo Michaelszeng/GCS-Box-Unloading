@@ -115,7 +115,8 @@ class IrisRegionGenerator():
             for bar in bars:
                 height = bar.get_height()
                 plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height}', ha='center', va='bottom')
-            plt.show(block=False)
+            plt.show()
+            # plt.show(block=False)
 
 
     def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=50000, colors=None):
@@ -126,6 +127,15 @@ class IrisRegionGenerator():
         if not self.DEBUG:
             print("IrisRegionGenerator: DEBUG set to False; skipping region visualization.")
             return
+        
+        self.generate_source_iris_regions(coverage_check_only=True)  # clique covers will just print the coverage estimate then terminate
+
+        num_nodes, num_edges = IrisRegionGenerator.visualize_connectivity(regions)
+        print("Connectivity graph saved to ../iris_connectivity.svg.")
+        print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
+        print("\n\n")
+
+        self.generate_overlap_histogram(plant, regions)
 
         world_frame = plant.world_frame()
         ee_frame = plant.GetFrameByName("arm_eef")
@@ -173,13 +183,6 @@ class IrisRegionGenerator():
             pc.mutable_xyzs()[:] = xyzs.T
             meshcat.SetObject(f"regions/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
-        num_nodes, num_edges = IrisRegionGenerator.visualize_connectivity(regions)
-        print("Connectivity graph saved to ../iris_connectivity.svg.")
-        print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
-        print("\n\n")
-
-        self.generate_overlap_histogram(plant, regions)
-
 
     def load_and_test_regions(self):
         regions = LoadIrisRegionsYamlFile(self.regions_file)
@@ -211,29 +214,33 @@ class IrisRegionGenerator():
         self.test_iris_region(self.plant, self.plant_context, self.meshcat, [region], colors=[Rgba(0.0,0.0,0.0,0.5)])
 
 
-    def generate_source_iris_regions(self, minimum_clique_size=12, coverage_threshold=0.35, num_points_per_visibility_round=500, use_previous_saved_regions=True):
+    def generate_source_iris_regions(self, minimum_clique_size=12, coverage_threshold=0.35, num_points_per_visibility_round=500, use_previous_saved_regions=True, coverage_check_only=False):
         """
         Source IRIS regions are defined as the regions considering only self-
         collision with the robot, and collision with the walls of the empty truck
         trailer (excluding the back wall).
 
         This function automatically searches the regions_file for existing
-        regions, and 
+        regions, and begins with those.
         """
         options = IrisFromCliqueCoverOptions()
-        options.num_points_per_coverage_check = 500
+        options.num_points_per_coverage_check = 1000
         options.num_points_per_visibility_round = num_points_per_visibility_round
         options.coverage_termination_threshold = coverage_threshold
         options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
         options.iteration_limit = 1  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
         options.fast_iris_options.max_iterations = 1
+        options.fast_iris_options.require_sample_point_is_contained = True
         options.fast_iris_options.mixing_steps = 25  # default 50
         options.fast_iris_options.random_seed = 0
         options.fast_iris_options.verbose = True
         options.use_fast_iris = True
 
-        if use_previous_saved_regions:
-            print("Using saved iris regions.")
+        if coverage_check_only:
+            options.iteration_limit = 0
+            regions = LoadIrisRegionsYamlFile(self.regions_file)
+            regions = [hpolyhedron for hpolyhedron in regions.values()]
+        elif use_previous_saved_regions:
             regions = LoadIrisRegionsYamlFile(self.regions_file)
             regions = [hpolyhedron for hpolyhedron in regions.values()]
 
@@ -250,8 +257,9 @@ class IrisRegionGenerator():
             checker=self.collision_checker, options=options, generator=RandomGenerator(42), sets=regions
         )  # List of HPolyhedrons
 
-        regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
-        SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
+        if not coverage_check_only:
+            regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
+            SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
 
-        self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
+            self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
         

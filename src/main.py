@@ -174,7 +174,6 @@ motion_planner.set_context(plant_context)
 ####################################
 ### Running Simulation & Meshcat ###
 ####################################
-simulator.set_target_realtime_rate(1)
 simulator.set_publish_every_time_step(True)
 
 meshcat.StartRecording()
@@ -199,25 +198,25 @@ set_up_scene(station, station_context, plant, plant_context, simulator, randomiz
 # region_generator.generate_source_region_at_q_nominal(q_nominal)
 # region_generator.generate_source_iris_regions(minimum_clique_size=20, 
 #                                               coverage_threshold=0.1, 
-#                                               use_previous_saved_regions=False)
+#                                               use_previous_saved_regions_as_obs=False)
 # region_generator.generate_source_iris_regions(minimum_clique_size=18, 
 #                                               coverage_threshold=0.2, 
-#                                               use_previous_saved_regions=True)
+#                                               use_previous_saved_regions_as_obs=True)
 # region_generator.generate_source_iris_regions(minimum_clique_size=15,
 #                                               coverage_threshold=0.3, 
-#                                               use_previous_saved_regions=True)
+#                                               use_previous_saved_regions_as_obs=True)
 # region_generator.generate_source_iris_regions(minimum_clique_size=14,
 #                                               coverage_threshold=0.4, 
-#                                               use_previous_saved_regions=True)
+#                                               use_previous_saved_regions_as_obs=True)
 # region_generator.generate_source_iris_regions(minimum_clique_size=12,
 #                                               coverage_threshold=0.5, 
-#                                               use_previous_saved_regions=True)
+#                                               use_previous_saved_regions_as_obs=True)
 # region_generator.generate_source_iris_regions(minimum_clique_size=10,
 #                                               coverage_threshold=0.6, 
-#                                               use_previous_saved_regions=True)
+#                                               use_previous_saved_regions_as_obs=True)
 # region_generator.generate_source_iris_regions(minimum_clique_size=8,
 #                                               coverage_threshold=0.7, 
-#                                               use_previous_saved_regions=True)
+#                                               use_previous_saved_regions_as_obs=True)
 
 
 # Generate regions with box in eef
@@ -263,13 +262,13 @@ collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True) 
 robot_diagram_builder_plant.SetPositions(collision_checker.plant_context(), q_nominal)
 
 region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions_place.yaml", DEBUG=True)
-# region_generator.load_and_test_regions()
-region_generator.generate_source_region_at_q_nominal(q_place_nominal)
-for i in range(50):
-    region_generator.generate_source_iris_regions(minimum_clique_size=7,
-                                                  coverage_threshold=0.1, 
-                                                  num_points_per_visibility_round=i*75 + 50,
-                                                  use_previous_saved_regions=True)
+region_generator.load_and_test_regions()
+# region_generator.generate_source_region_at_q_nominal(q_place_nominal)
+# for i in range(50):
+#     region_generator.generate_source_iris_regions(minimum_clique_size=7,
+#                                                   coverage_threshold=0.1, 
+#                                                   num_points_per_visibility_round=i*75 + 50,
+#                                                   use_previous_saved_regions_as_obs=True)
 
 # Get box poses to pass to pick planner to select a box to pick first
 box_poses = {}

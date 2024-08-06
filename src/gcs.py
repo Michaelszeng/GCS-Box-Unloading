@@ -16,6 +16,7 @@ from pydrake.all import (
     PiecewisePolynomial,
     PathParameterizedTrajectory,
     BodyIndex,
+    CommonSolverOption,
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad
@@ -168,6 +169,7 @@ class MotionPlanner(LeafSystem):
         )
         
         options = GraphOfConvexSetsOptions()
+        options.solver_options.SetOption(CommonSolverOption.kPrintToConsole, 1)
         options.preprocessing = True
         options.max_rounded_paths = 5  # Max number of distinct paths to compare during random rounding; only the lowest cost path is returned.
         start_time = time.time()
