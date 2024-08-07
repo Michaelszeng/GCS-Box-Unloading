@@ -139,7 +139,8 @@ class Scenario:
     # Plant configuration (time step and contact parameters).
     plant_config: MultibodyPlantConfig = MultibodyPlantConfig(
         discrete_contact_solver="sap",
-        time_step=0.001
+        # time_step=0.001
+        time_step=0.005
     )
 
     # All of the fully deterministic elements of the simulation.

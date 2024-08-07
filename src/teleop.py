@@ -238,8 +238,11 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 ####################################
 ### Running Simulation & Meshcat ###
 ####################################
-simulator.set_publish_every_time_step(True)
-simulator.Initialize()
+# simulator.set_publish_every_time_step(False)  # Disable publishing at every time step
+# simulator.set_publish_every_time_step(True)
+
+# simulator.get_mutable_integrator().set_maximum_step_size(0.01)  # Increase max step size
+# simulator.get_mutable_integrator().set_target_accuracy(1e-3)  # Set target accuracy
 
 set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
