@@ -116,25 +116,6 @@ class IrisRegionGenerator():
             plt.pause(1)  # Allow the plot to be displayed
             print("Histogram displayed.")
 
-            # def plot_histogram(num_regions, samples):
-            #     plt.figure(figsize=(10, 6))
-            #     bars = plt.bar(num_regions, samples, color='blue', edgecolor='black')
-            #     plt.xlabel('Number of Regions Sample Appears In')
-            #     plt.ylabel('Number of Samples')
-            #     plt.title('Histogram of Sample Distribution Across Regions')
-            #     plt.xticks(num_regions)  # Ensure all x-axis labels are shown
-            #     plt.grid(axis='y', linestyle='--', alpha=0.7)
-            #     # Add text annotations on top of each bar
-            #     for bar in bars:
-            #         height = bar.get_height()
-            #         plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height}', ha='center', va='bottom')
-            #     print("Histogram displaying.")
-            #     plt.show()
-
-            # # Create a thread to run the plot function
-            # plot_thread = threading.Thread(target=plot_histogram, args=(num_regions, samples))
-            # plot_thread.start()
-
 
     def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=50000, colors=None):
         """

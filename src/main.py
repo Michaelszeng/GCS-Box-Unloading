@@ -57,7 +57,6 @@ randomize_boxes = (args.fast == 'F')
 #####################
 ###    Settings   ###
 #####################
-close_button_str = "Close"
 this_drake_module_name = "cwd"
 
 if randomize_boxes:
@@ -74,7 +73,7 @@ np.random.seed(seed)
 ### Meshcat Setup ###
 #####################
 meshcat = StartMeshcat()
-meshcat.AddButton(close_button_str)
+meshcat.AddButton("Close")
 # meshcat.SetProperty("/drake/contact_forces", "visible", False)  # Doesn't work for some reason
 
 
@@ -283,5 +282,5 @@ meshcat.PublishRecording()
 date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 print(f"{date}: {meshcat.web_url()}/download")
 
-while not meshcat.GetButtonClicks(close_button_str):
+while not meshcat.GetButtonClicks("Close"):
     pass
