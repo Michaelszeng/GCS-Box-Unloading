@@ -134,8 +134,6 @@ def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, reg
         if ik_result.is_success():
             q = ik_result.GetSolution(q_variables)  # (6,) np array
             print(f"IK solve succeeded. q: {q}")
-            print(pose.translation())
-            print(pose.rotation())
             solve_success = True
             break
         # else:
