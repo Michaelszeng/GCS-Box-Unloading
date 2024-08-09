@@ -149,6 +149,32 @@ directives:
 """
 
 
+def set_hydroelastic(enable_hydroelastic, sdf_path='../data/Box_0_5_0_5_0_5.sdf'):
+    """
+    Trade off simulation accuracy for speed.
+    """
+    with open(sdf_path, 'r') as file:
+        sdf_content = file.read()
+
+    if enable_hydroelastic:
+        # Uncomment hydroelastic line if it is commented out
+        sdf_content = re.sub(
+            r'<!--\s*<drake:compliant_hydroelastic\s*/>\s*-->',
+            r'<drake:compliant_hydroelastic/>',
+            sdf_content
+        )
+    else:
+        # Comment out hydroelastic line if it is uncommented
+        sdf_content = re.sub(
+            r'(?<!<!--)\s*<drake:compliant_hydroelastic\s*/>(?!\s*-->)',
+            r'\n\t\t\t\t\t<!-- <drake:compliant_hydroelastic/> -->',
+            sdf_content
+        )
+
+    with open(sdf_path, 'w') as file:
+        file.write(sdf_content)
+
+
 def get_fast_box_poses():
     box_poses_string = """
     {BodyIndex(31): RigidTransform(

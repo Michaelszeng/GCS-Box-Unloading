@@ -33,7 +33,7 @@ import logging
 import datetime
 
 from utils import diagram_visualize_connections
-from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
 from debug import Debugger
@@ -48,10 +48,12 @@ log.setLevel("INFO")
 parser = argparse.ArgumentParser()
 parser.add_argument('--fast', default='T', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
+parser.add_argument('--enable_hydroelastic', default='F', help="T/F; whether or not to enable hydroelastic contact in the SDF file.")
 args = parser.parse_args()
 
 seed = int(args.randomization)
 randomize_boxes = (args.fast == 'F')
+set_hydroelastic(args.enable_hydroelastic == 'T')
 
     
 #####################
@@ -179,21 +181,21 @@ meshcat.StartRecording()
 
 set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
-# # Generate regions with no obstacles at all
-# robot_diagram_builder = RobotDiagramBuilder()
-# robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
-# robot_diagram_builder_plant = robot_diagram_builder.plant()
-# robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
-# robot_diagram_builder_diagram = robot_diagram_builder.Build()
+# Generate regions with no obstacles at all
+robot_diagram_builder = RobotDiagramBuilder()
+robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+robot_diagram_builder_plant = robot_diagram_builder.plant()
+robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
+robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
-# collision_checker_params = dict(edge_step_size=0.125)
-# collision_checker_params["robot_model_instances"] = robot_model_instances
-# collision_checker_params["model"] = robot_diagram_builder_diagram
-# collision_checker_params["edge_step_size"] = 0.25
-# collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+collision_checker_params = dict(edge_step_size=0.125)
+collision_checker_params["robot_model_instances"] = robot_model_instances
+collision_checker_params["model"] = robot_diagram_builder_diagram
+collision_checker_params["edge_step_size"] = 0.25
+collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 
-# region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions.yaml", DEBUG=True)
-# # region_generator.load_and_test_regions()
+region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions.yaml", DEBUG=True)
+# region_generator.load_and_test_regions()
 # region_generator.generate_source_region_at_q_nominal(q_nominal)
 # region_generator.generate_source_iris_regions(minimum_clique_size=20, 
 #                                               coverage_threshold=0.1, 
@@ -261,7 +263,7 @@ collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True) 
 robot_diagram_builder_plant.SetPositions(collision_checker.plant_context(), q_nominal)
 
 region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions_place.yaml", DEBUG=True)
-region_generator.load_and_test_regions()
+# region_generator.load_and_test_regions(name="regions_place")
 # region_generator.generate_source_region_at_q_nominal(q_place_nominal)
 # for i in range(50):
 #     region_generator.generate_source_iris_regions(minimum_clique_size=7,

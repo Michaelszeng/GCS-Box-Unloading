@@ -202,8 +202,11 @@ with open('output.txt', 'w') as f:
 
     # Now perform your operations that include C++ calls
     try:
+        for r in LoadIrisRegionsYamlFile(Path("../data/iris_source_regions_place.yaml")).values():
+            print(r.PointInSet([0.12356533, -1.40739024, 2.09985568, 1.07190375, 1.11510457, -0.50773938]))
+
         motion_planner.perform_gcs_traj_opt(
-            [0.33963791, -1.15984273, 1.84730515, 1.43385643, 0.52772698, -0.11899367],
+            [0.12356533, -1.40739024, 2.09985568, 1.07190375, 1.11510457, -0.50773938],
             [Point(q_place_nominal)],
             LoadIrisRegionsYamlFile(Path("../data/iris_source_regions_place.yaml")),
             vel_lim=1.0

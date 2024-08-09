@@ -45,21 +45,27 @@ class IrisRegionGenerator():
         """
         Create and save SVG graph of IRIS Region connectivity.
 
-        iris_regions is a list of ConvexSets.
+        iris_regions can be a list of ConvexSets or a dictionary with keys as
+        labels and values as ConvexSets.
         """
         numEdges = 0
         numNodes = 0
 
         graph = pydot.Dot("IRIS region connectivity")
-        for i in range(len(iris_regions)):
+
+        if isinstance(iris_regions, dict):
+            items = list(iris_regions.items())
+        else:
+            items = list(enumerate(iris_regions))
+
+        for i, (label1, v1) in enumerate(items):
             numNodes += 1
-            graph.add_node(pydot.Node(i))
-            v1 = iris_regions[i]
-            for j in range(i + 1, len(iris_regions)):
-                v2 = iris_regions[j]
+            graph.add_node(pydot.Node(label1))
+            for j in range(i + 1, len(items)):
+                label2, v2 = items[j]
                 if v1.IntersectsWith(v2):
                     numEdges += 1
-                    graph.add_edge(pydot.Edge(i, j, dir="both"))
+                    graph.add_edge(pydot.Edge(label1, label2, dir="both"))
 
         svg = graph.create_svg()
 
@@ -114,10 +120,9 @@ class IrisRegionGenerator():
                 plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height}', ha='center', va='bottom')
             plt.show(block=False)
             plt.pause(1)  # Allow the plot to be displayed
-            print("Histogram displayed.")
 
 
-    def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=50000, colors=None):
+    def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=10000, colors=None, name="regions"):
         """
         Plot small spheres in the volume of each region. (we are using forward
         kinematics to return from configuration space to task space.)
@@ -179,13 +184,13 @@ class IrisRegionGenerator():
             xyzs = np.array(xyzs)
             pc = PointCloud(len(xyzs))
             pc.mutable_xyzs()[:] = xyzs.T
-            meshcat.SetObject(f"regions/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
+            meshcat.SetObject(f"{name}/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
 
-    def load_and_test_regions(self):
+    def load_and_test_regions(self, name="regions"):
         regions = LoadIrisRegionsYamlFile(self.regions_file)
         regions = [hpolyhedron for hpolyhedron in regions.values()]
-        self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
+        self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions, name)
 
 
     def generate_source_region_at_q_nominal(self, q):

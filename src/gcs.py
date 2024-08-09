@@ -23,7 +23,7 @@ from manipulation.scenarios import AddMultibodyTriad
 from manipulation.utils import ConfigureParser
 
 from scenario import BOX_DIM, NUM_BOXES, PREPICK_MARGIN, scenario_yaml_for_iris, q_nominal
-from utils import is_yaml_empty, SuppressOutput
+from utils import ik
 from pick_planner import PickPlanner
 from iris import IrisRegionGenerator
 
@@ -137,7 +137,7 @@ class MotionPlanner(LeafSystem):
             self.meshcat.SetLine(name, pos_3d_matrix)
 
 
-    def perform_gcs_traj_opt(self, q_current, target_regions, gcs_regions, vel_lim=1.0):
+    def perform_gcs_traj_opt(self, q_current, target_regions, gcs_regions, vel_lim=1.0, DETAILED_LOGS=False):
         """
         Define and run a GCS Trajectory Optimization program.
 
@@ -148,7 +148,6 @@ class MotionPlanner(LeafSystem):
 
         gcs_regions is a dictionary mapping convex set names to convex sets.
         """
-        # Define GCS Program
         gcs_regions["start"] = Point(q_current)
 
         edges = []
@@ -169,7 +168,8 @@ class MotionPlanner(LeafSystem):
         )
         
         options = GraphOfConvexSetsOptions()
-        options.solver_options.SetOption(CommonSolverOption.kPrintToConsole, 1)
+        if (DETAILED_LOGS):
+            options.solver_options.SetOption(CommonSolverOption.kPrintToConsole, 1)
         options.preprocessing = True
         options.max_rounded_paths = 5  # Max number of distinct paths to compare during random rounding; only the lowest cost path is returned.
         start_time = time.time()
@@ -178,7 +178,9 @@ class MotionPlanner(LeafSystem):
 
         if not result.is_success():
             print("GCS: GCS Fail.")
-            IrisRegionGenerator.visualize_connectivity(gcs_regions.regions())
+            IrisRegionGenerator.visualize_connectivity({**{f"{i}": obj for i, obj in enumerate(gcs_regions.regions(), 1)},
+                                                        **{f"source{i}": obj for i, obj in enumerate(source.regions(), 1)},
+                                                        **{f"target{i}": obj for i, obj in enumerate(target.regions(), 1)}})  # merge dictionaries
             print("Connectivity Graph for GCS fail saved to '../iris_connectivity.svg'.")
             return traj
 
@@ -187,19 +189,19 @@ class MotionPlanner(LeafSystem):
         return traj
     
 
-    def generate_pick_traj(self, q_current, q_dot_current, q_pick):
+    def generate_line_traj(self, q_current, q_dot_current, q_target):
         """
-        Compute simply trajectory starting from a pre-pick pose (q_current) to
-        a pick pose (q_pick).
+        Compute simple linear trajectory from a start pose (q_current) to
+        a target pose (q_target).
 
         q_current is a 6D numpy vector.
 
         q_dot_current is a 6D numpy vector.
 
-        q_pick is a 6D numpy vector.
+        q_target is a 6D numpy vector.
         """
         breaks = [0, 1]  # allocate 1 second to go from pre-pick to pick
-        samples = np.hstack((q_current.reshape(-1, 1), q_pick.reshape(-1, 1)))
+        samples = np.hstack((q_current.reshape(-1, 1), q_target.reshape(-1, 1)))
         sample_dot_at_start = q_dot_current
         sample_dot_at_end = np.zeros(6)
         traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(breaks, samples, sample_dot_at_start, sample_dot_at_end)
@@ -263,7 +265,7 @@ class MotionPlanner(LeafSystem):
                     self.X_pick = body_idx_pre_pick_pose_tuple[1]
                     self.q_pick = self.pick_planner.solve_q_pick(body_idx_pre_pick_pose_tuple[1])
                     self.q_pre_pick = q_current
-                    self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pick), context)
+                    self.traj = self.correct_traj_time(self.generate_line_traj(q_current, q_dot_current, self.q_pick), context)
         elif self.state == 2:  # Picking
             # Check if we are finished picking up the box --> transition to post-picking
             if np.all(np.isclose(q_current, self.q_pick, rtol=1e-02, atol=1e-02)):
@@ -274,12 +276,15 @@ class MotionPlanner(LeafSystem):
                 eef_body_idx = self.original_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
                 self.original_plant.GetJointByName(f"{eef_body_idx}-{self.target_box}").Lock(self.original_plant_context)
 
+                # Compute post-pick pose, a few cm above the pick pose
+                self.q_post_pick = ik(self.plant, self.plant_context, RigidTransform(self.X_pick.rotation(), self.X_pick.translation() + [0, 0, 0.05]), regions=self.source_regions_place)
+
                 # Update state to post-picking and compute post-picking trajectory
                 self.state = 3
-                self.traj = self.correct_traj_time(self.generate_pick_traj(q_current, q_dot_current, self.q_pre_pick), context)
+                self.traj = self.correct_traj_time(self.generate_line_traj(q_current, q_dot_current, self.q_post_pick), context)
         elif self.state == 3:  # Post-Picking
             # Check if we are close to the post-pick position --> transition to placing
-            if np.all(np.isclose(q_current, self.q_pre_pick, rtol=3e-02, atol=3e-02)):
+            if np.all(np.isclose(q_current, self.q_post_pick, rtol=3e-02, atol=3e-02)):
                 print("GCS: Finished post-picking; switching to placing.")
 
                 # Update state to placing and compute placing trajectory
