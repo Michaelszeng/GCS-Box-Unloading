@@ -15,7 +15,6 @@ import os
 import re
 
 NUM_BOXES = 40
-# NUM_BOXES = 1
 BOX_DIM = 0.5  # box edge length in m
 
 GRIPPER_DIM = 0.25  # edge length of gripper in m

@@ -33,11 +33,7 @@ import yaml
 import logging
 import datetime
 
-from utils import diagram_visualize_connections
 from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
-from iris import IrisRegionGenerator
-from gcs import MotionPlanner
-from debug import Debugger
 
 
 class MeshcatSliderSource(LeafSystem):
@@ -98,7 +94,7 @@ class InverseKinematicsSystem(LeafSystem):
         else:
             print("ik fail; defaulting to zero state.")
             desired_state = np.zeros(12)
-        
+            
         output.SetFromVector(desired_state)
 
     def CalculateDesiredAcceleration(self, context, output):

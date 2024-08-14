@@ -87,13 +87,22 @@ class SuppressOutput:
         os.close(self.devnull)
 
 
-def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, regions=None):
+def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True):
     """
     Use Inverse Kinematics to solve for a configuration that satisfies a
     task-space pose. 
     
     If regions is not None, this function also ensures the configuration is
     reachable within one of the regions (or return None if this isn't possible).
+
+    pose_as_constraint can be set to False if there is a meaningful chance the
+    ik program will not be able to find a viable solution for the given pose,
+    i.e. if the regions passed in don't have perfect coverage. Then, the IK
+    program will strictly ensure the returned solution falls within one of the
+    regions but do its best on the desired pose.
+
+    Returns the result of the IK program and a boolean for whether the program
+    and all constraint were successfully solved.
     """
     satisfy_regions_constraint = regions is not None
     if regions is None:  # Make regions not None so that the for loop below runs at least once
@@ -107,27 +116,38 @@ def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, reg
         q_variables = ik.q()  # Get variables for MathematicalProgram
         ik_prog = ik.get_mutable_prog()
 
-        ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_nominal, q_variables)
-
         # q_variables must be within half-plane for every half-plane in region
         if satisfy_regions_constraint:
             ik_prog.AddConstraint(logical_and(*[expr <= const for expr, const in zip(region.A() @ q_variables, region.b())]))
 
-        # Pose constraint
-        ik.AddPositionConstraint(
-            frameA=plant.world_frame(),
-            frameB=plant.GetFrameByName("arm_eef"),
-            p_BQ=[0, 0, 0.1],
-            p_AQ_lower=pose.translation() - translation_error,
-            p_AQ_upper=pose.translation() + translation_error,
-        )
-        ik.AddOrientationConstraint(
-            frameAbar=plant.world_frame(),
-            R_AbarA=pose.rotation(),
-            frameBbar=plant.GetFrameByName("arm_eef"),
-            R_BbarB=RotationMatrix(),
-            theta_bound=rotation_error,
-        )
+        if pose_as_constraint:
+            ik.AddPositionConstraint(
+                frameA=plant.world_frame(),
+                frameB=plant.GetFrameByName("arm_eef"),
+                p_BQ=[0, 0, 0],
+                p_AQ_lower=pose.translation() - translation_error,
+                p_AQ_upper=pose.translation() + translation_error,
+            )
+            ik.AddOrientationConstraint(
+                frameAbar=plant.world_frame(),
+                R_AbarA=pose.rotation(),
+                frameBbar=plant.GetFrameByName("arm_eef"),
+                R_BbarB=RotationMatrix(),
+                theta_bound=rotation_error,
+            )
+            ik_prog.AddQuadraticErrorCost(np.identity(len(q_variables)), q_nominal, q_variables)
+        else:
+            # Add costs instead of constraints for pose
+            ik.AddPositionCost(plant.world_frame(),
+                               pose.translation(),
+                               plant.GetFrameByName("arm_eef"),
+                               [0, 0, 0],
+                               np.identity(3))
+            ik.AddOrientationCost(plant.world_frame(),
+                                  pose.rotation(),
+                                  plant.GetFrameByName("arm_eef"),
+                                  RotationMatrix(),
+                                  1)
 
         ik_prog.SetInitialGuess(q_variables, q_nominal)
         ik_result = Solve(ik_prog)
@@ -142,7 +162,7 @@ def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, reg
     # print(f"IK Runtime: {time.time() - ik_start}")
 
     if solve_success == False:
-        # print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}.")
-        return None
+        print(f"ERROR: IK fail: {ik_result.get_solver_id().name()}. Returning Best Guess.")
+        return ik_result.GetSolution(q_variables), False
     
-    return q
+    return q, True

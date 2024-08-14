@@ -29,9 +29,9 @@ import matplotlib.pyplot as plt
 
 
 class IrisRegionGenerator():
-    def __init__(self, meshcat, collision_checker, regions_file="../data/iris_source_regions.yaml", DEBUG=False):
+    def __init__(self, meshcat, collision_checker, regions_file, DEBUG=False):
         self.meshcat = meshcat
-        self.collision_checker = collision_checker
+        self.collision_checker = collision_checker  # ConfigurationObstacleCollisionChecker
         self.plant = collision_checker.plant()
         self.plant_context = collision_checker.plant_context()
 
@@ -190,7 +190,7 @@ class IrisRegionGenerator():
     def load_and_test_regions(self, name="regions"):
         regions = LoadIrisRegionsYamlFile(self.regions_file)
         regions = [hpolyhedron for hpolyhedron in regions.values()]
-        self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions, name)
+        self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions, name=name)
 
 
     def generate_source_region_at_q_nominal(self, q):
@@ -234,7 +234,7 @@ class IrisRegionGenerator():
         options.iteration_limit = 1  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
         options.fast_iris_options.max_iterations = 1
         options.fast_iris_options.require_sample_point_is_contained = True
-        options.fast_iris_options.mixing_steps = 25  # default 50
+        options.fast_iris_options.mixing_steps = 10  # default 50
         options.fast_iris_options.random_seed = 0
         options.fast_iris_options.verbose = True
         options.use_fast_iris = True
@@ -249,10 +249,11 @@ class IrisRegionGenerator():
 
             # Scale down previous regions and use as obstacles in new round of Clique Covers
             # Encourages exploration while still allowing small degree of region overlap
-            region_obstacles = [hpolyhedron.Scale(0.99) for hpolyhedron in regions]
+            region_obstacles = [hpolyhedron.Scale(0.995) for hpolyhedron in regions]
 
             # Set previous regions as obstacles to encourage exploration
-            options.iris_options.configuration_obstacles = region_obstacles
+            # options.iris_options.configuration_obstacles = region_obstacles  # No longer needed bc of the line below
+            self.collision_checker.SetConfigurationSpaceObstacles(region_obstacles)  # Set config. space obstacles in collision checker so FastIRIS will also respect them
         else:
             regions = []
 

@@ -12,6 +12,7 @@ from pydrake.all import (
     Parser,
     configure_logging,
     SceneGraphCollisionChecker,
+    ConfigurationSpaceObstacleCollisionChecker,
     WeldJoint,
 )
 
@@ -117,7 +118,7 @@ plant = station.GetSubsystemByName("plant")
 AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
 
 ### GCS Motion Planer
-motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat, robot_pose, box_randomization_runtime if randomize_boxes else 0))
+motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat, robot_pose, box_randomization_runtime if randomize_boxes else 0, "../data/iris_source_regions.yaml", "../data/iris_source_regions_place.yaml"))
 builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("body_poses"))
 builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort("kuka_state"))
 
@@ -181,20 +182,20 @@ meshcat.StartRecording()
 
 set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
-# Generate regions with no obstacles at all
-robot_diagram_builder = RobotDiagramBuilder()
-robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
-robot_diagram_builder_plant = robot_diagram_builder.plant()
-robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
-robot_diagram_builder_diagram = robot_diagram_builder.Build()
+# # Generate regions with no obstacles at all
+# robot_diagram_builder = RobotDiagramBuilder()
+# robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+# robot_diagram_builder_plant = robot_diagram_builder.plant()
+# robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
+# robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
-collision_checker_params = dict(edge_step_size=0.125)
-collision_checker_params["robot_model_instances"] = robot_model_instances
-collision_checker_params["model"] = robot_diagram_builder_diagram
-collision_checker_params["edge_step_size"] = 0.25
-collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+# collision_checker_params = dict(edge_step_size=0.125)
+# collision_checker_params["robot_model_instances"] = robot_model_instances
+# collision_checker_params["model"] = robot_diagram_builder_diagram
+# collision_checker_params["edge_step_size"] = 0.25
+# collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 
-region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, collision_checker, "../data/iris_source_regions_v2.yaml", DEBUG=True)
 # region_generator.load_and_test_regions()
 # region_generator.generate_source_region_at_q_nominal(q_nominal)
 # region_generator.generate_source_iris_regions(minimum_clique_size=20, 
@@ -259,17 +260,16 @@ collision_checker_params["model"] = robot_diagram_builder_diagram
 collision_checker_params["edge_step_size"] = 0.25
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True)  # Filter collision between eef and box so IRIS doesn't fail immediately
+config_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
-robot_diagram_builder_plant.SetPositions(collision_checker.plant_context(), q_nominal)
-
-region_generator = IrisRegionGenerator(meshcat, collision_checker, regions_file="../data/iris_source_regions_place.yaml", DEBUG=True)
+region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_place_v2.yaml", DEBUG=True)
 # region_generator.load_and_test_regions(name="regions_place")
-# region_generator.generate_source_region_at_q_nominal(q_place_nominal)
-# for i in range(50):
-#     region_generator.generate_source_iris_regions(minimum_clique_size=7,
-#                                                   coverage_threshold=0.1, 
-#                                                   num_points_per_visibility_round=i*75 + 50,
-#                                                   use_previous_saved_regions_as_obs=True)
+region_generator.generate_source_region_at_q_nominal(q_place_nominal)
+for i in range(50):
+    region_generator.generate_source_iris_regions(minimum_clique_size=7,
+                                                  coverage_threshold=0.1, 
+                                                  num_points_per_visibility_round=i*75 + 50,
+                                                  use_previous_saved_regions=True)
 
 # Get box poses to pass to pick planner to select a box to pick first
 box_poses = {}

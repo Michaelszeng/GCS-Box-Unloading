@@ -116,7 +116,7 @@ plant = station.GetSubsystemByName("plant")
 AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
 
 ### GCS Motion Planer
-motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat, robot_pose, box_randomization_runtime if randomize_boxes else 0))
+motion_planner = builder.AddSystem(MotionPlanner(plant, meshcat, robot_pose, box_randomization_runtime if randomize_boxes else 0, "../data/iris_source_regions.yaml", "../data/iris_source_regions_place.yaml"))
 builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("body_poses"))
 builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort("kuka_state"))
 
@@ -158,18 +158,6 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 
 motion_planner.set_context(plant_context)
 
-### TESTING
-# controller.GetInputPort("estimated_state").FixValue(controller_context, np.append(
-#     [0.0, -2.5, 2.8, 0.0, 1.2, 0.0],
-#     np.zeros((6,)),
-# )) # TESTING
-# controller.GetInputPort("desired_state").FixValue(controller_context, np.append(
-#     [0.0, -2.5, 2.8, 0.0, 1.2, 0.0],
-#     np.zeros((6,)),
-# )) # TESTING
-# controller.GetInputPort("desired_acceleration").FixValue(controller_context, np.zeros(6)) # TESTING
-# station.GetInputPort("kuka_actuation").FixValue(station_context, -1000*np.ones(6))
-
 
 ####################################
 ### Running Simulation & Meshcat ###
@@ -179,7 +167,6 @@ simulator.set_publish_every_time_step(True)
 meshcat.StartRecording()
 
 set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
-
 
 
 from pydrake.all import (
@@ -202,6 +189,7 @@ with open('output.txt', 'w') as f:
 
     # Now perform your operations that include C++ calls
     try:
+        # to ensure the target position is in one of the IRIS regions
         for r in LoadIrisRegionsYamlFile(Path("../data/iris_source_regions_place.yaml")).values():
             print(r.PointInSet([0.12356533, -1.40739024, 2.09985568, 1.07190375, 1.11510457, -0.50773938]))
 

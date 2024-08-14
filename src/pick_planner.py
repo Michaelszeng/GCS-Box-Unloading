@@ -176,7 +176,8 @@ class PickPlanner():
         """
         self.X_W_Deposit = RigidTransform(RotationMatrix.MakeXRotation(3.14159265), self.robot_pose.translation() + [0.0, -0.65, 1.25])
         AddMeshcatTriad(self.meshcat, "X_W_Deposit", X_PT=self.X_W_Deposit, opacity=0.5)
-        return ik(self.plant, self.plant_context, self.X_W_Deposit, regions=source_regions_place)
+        q, _ = ik(self.plant, self.plant_context, self.X_W_Deposit, regions=source_regions_place)
+        return q
     
 
     def solve_q_pick(self, pre_pick_pose):
@@ -188,7 +189,8 @@ class PickPlanner():
         """
         # Offset the pre-pick pose by the PREPICK_MARGIN toward the box to get the pick pose
         pick_pose = RigidTransform(pre_pick_pose.rotation(), pre_pick_pose.translation() + pre_pick_pose.rotation() @ [0, 0, PREPICK_MARGIN - GRIPPER_THICKNESS])
-        return ik(self.plant, self.plant_context, pick_pose)
+        q, _ = ik(self.plant, self.plant_context, pick_pose)
+        return q
 
 
     def get_viable_pick_poses(self, box_poses, source_regions):
@@ -298,8 +300,8 @@ class PickPlanner():
                     R = box_center.rotation()
 
                 X = RigidTransform(R, p)
-                q = ik(self.plant, self.plant_context, X, regions=source_regions)
-                if q is not None:
+                q, ik_success = ik(self.plant, self.plant_context, X, regions=source_regions, pose_as_constraint=False)
+                if ik_success:
                     pick_regions[Point(q)] = (box_body_idx, X)
                     if self.DEBUG:
                         self.meshcat.SetObject(f"Pick_Poses/{box_body_idx}_{i}", Sphere(0.03), Rgba(0.75, 0.0, 0.0))

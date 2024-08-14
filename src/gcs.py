@@ -34,7 +34,7 @@ from pathlib import Path
 
 class MotionPlanner(LeafSystem):
 
-    def __init__(self, original_plant, meshcat, robot_pose, box_randomization_runtime, regions_file="../data/iris_source_regions.yaml", regions_place_file="../data/iris_source_regions_place.yaml"):
+    def __init__(self, original_plant, meshcat, robot_pose, box_randomization_runtime, regions_file, regions_place_file):
         LeafSystem.__init__(self)
 
         kuka_state = self.DeclareVectorInputPort(name="kuka_state", size=12)  # 6 pos, 6 vel
@@ -137,7 +137,7 @@ class MotionPlanner(LeafSystem):
             self.meshcat.SetLine(name, pos_3d_matrix)
 
 
-    def perform_gcs_traj_opt(self, q_current, target_regions, gcs_regions, vel_lim=1.0, DETAILED_LOGS=False):
+    def perform_gcs_traj_opt(self, q_current, target_regions, gcs_regions, vel_lim=1.0, DETAILED_LOGS=True):
         """
         Define and run a GCS Trajectory Optimization program.
 
@@ -170,7 +170,8 @@ class MotionPlanner(LeafSystem):
         options = GraphOfConvexSetsOptions()
         if (DETAILED_LOGS):
             options.solver_options.SetOption(CommonSolverOption.kPrintToConsole, 1)
-        options.preprocessing = True
+        # options.preprocessing = True
+        options.preprocessing = False
         options.max_rounded_paths = 5  # Max number of distinct paths to compare during random rounding; only the lowest cost path is returned.
         start_time = time.time()
         traj, result = gcs.SolvePath(source, target, options)
@@ -277,7 +278,7 @@ class MotionPlanner(LeafSystem):
                 self.original_plant.GetJointByName(f"{eef_body_idx}-{self.target_box}").Lock(self.original_plant_context)
 
                 # Compute post-pick pose, a few cm above the pick pose
-                self.q_post_pick = ik(self.plant, self.plant_context, RigidTransform(self.X_pick.rotation(), self.X_pick.translation() + [0, 0, 0.05]), regions=self.source_regions_place)
+                self.q_post_pick, _ = ik(self.plant, self.plant_context, RigidTransform(self.X_pick.rotation(), self.X_pick.translation() + [0, 0, 0.075]), regions=self.source_regions_place, pose_as_constraint=False)
 
                 # Update state to post-picking and compute post-picking trajectory
                 self.state = 3
