@@ -84,10 +84,6 @@ class MotionPlanner(LeafSystem):
         self.source_regions = LoadIrisRegionsYamlFile(Path(regions_file))
         self.source_regions_place = LoadIrisRegionsYamlFile(Path(regions_place_file))
 
-        print("------")
-        self.source_regions_place = IrisRegionGenerator.post_process_iris_regions(self.source_regions_place)
-        print("========================================================")
-
         self.previous_compute_result = None  # BsplineTrajectory object
         self.start_planning_time = box_randomization_runtime
         self.visualize = True
@@ -142,7 +138,7 @@ class MotionPlanner(LeafSystem):
             self.meshcat.SetLine(name, pos_3d_matrix)
 
 
-    def perform_gcs_traj_opt(self, q_current, target_regions, gcs_regions, vel_lim=1.0, DETAILED_LOGS=True):
+    def perform_gcs_traj_opt(self, q_current, target_regions, gcs_regions, vel_lim=1.0, DETAILED_LOGS=False):
         """
         Define and run a GCS Trajectory Optimization program.
 

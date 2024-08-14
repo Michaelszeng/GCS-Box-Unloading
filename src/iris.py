@@ -73,6 +73,31 @@ class IrisRegionGenerator():
             svg_file.write(svg)
 
         return numNodes, numEdges
+    
+
+    def estimate_coverage(self, plant, regions, num_samples=100000, seed=42):
+        rng = RandomGenerator(seed)
+        sampling_domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
+        last_sample = sampling_domain.UniformSample(rng)
+
+        self.collision_checker.SetConfigurationSpaceObstacles([])  # We don't want to account for any c-space obstacles during the coverge estimate
+
+        num_samples_in_regions = 0
+        num_samples_collision_free = 0
+        for _ in range(num_samples):
+            last_sample = sampling_domain.UniformSample(rng, last_sample)
+
+            # Check if sample is in collision
+            if self.collision_checker.CheckConfigCollisionFree(last_sample):
+                num_samples_collision_free += 1
+
+                # If sample is collsion-free, check if sample falls in regions
+                for r in regions:
+                    if r.PointInSet(last_sample):
+                        num_samples_in_regions += 1
+                        break
+
+        return num_samples_in_regions / num_samples_collision_free
 
 
     def generate_overlap_histogram(self, regions, seed=42):
@@ -126,6 +151,8 @@ class IrisRegionGenerator():
         """
         Plot small spheres in the volume of each region. (we are using forward
         kinematics to return from configuration space to task space.)
+
+        regions is a list of ConvexSets.
         """
         if not self.DEBUG:
             print("IrisRegionGenerator: DEBUG set to False; skipping region visualization.")
@@ -138,6 +165,8 @@ class IrisRegionGenerator():
         print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
         print("\n\n")
 
+        coverage = self.estimate_coverage(plant, regions)
+        print(f"Estimated region coverage fraction: {coverage}")
         self.generate_source_iris_regions(coverage_check_only=True)  # clique covers will just print the coverage estimate then terminate
 
         world_frame = plant.world_frame()
@@ -243,6 +272,7 @@ class IrisRegionGenerator():
             options.iteration_limit = 0
             regions = LoadIrisRegionsYamlFile(self.regions_file)
             regions = [hpolyhedron for hpolyhedron in regions.values()]
+            self.collision_checker.SetConfigurationSpaceObstacles([])  # We don't want to account for any c-space obstacles during the coverge estimate
         elif use_previous_saved_regions:
             regions = LoadIrisRegionsYamlFile(self.regions_file)
             regions = [hpolyhedron for hpolyhedron in regions.values()]
