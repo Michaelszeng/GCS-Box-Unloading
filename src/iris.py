@@ -41,7 +41,7 @@ class IrisRegionGenerator():
 
 
     @staticmethod
-    def visualize_connectivity(iris_regions):
+    def visualize_connectivity(iris_regions, output_file='../iris_connectivity.svg'):
         """
         Create and save SVG graph of IRIS Region connectivity.
 
@@ -69,7 +69,7 @@ class IrisRegionGenerator():
 
         svg = graph.create_svg()
 
-        with open('../iris_connectivity.svg', 'wb') as svg_file:
+        with open(output_file, 'wb') as svg_file:
             svg_file.write(svg)
 
         return numNodes, numEdges
@@ -270,3 +270,61 @@ class IrisRegionGenerator():
 
             self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
         
+    
+    @staticmethod
+    def post_process_iris_regions(regions_dict, edge_count_threshold=0.75):
+        """
+        Simplify IRIS regions using SimplifyByIncrementalFaceTranslation()
+        procedure. This reduces the number of faces on the HPolyhedron which
+        potentially removes region intersections. This function is meant to be
+        used in line with any calls to `LoadIrisRegionsYamlFile()`.
+
+        Note: we intentionally do not saved the simplified HPolytopes to file
+        since we want to keep the detailed original polyhedrons.
+
+        regions_dict is a dictionary that maps region names to regions.
+
+        edge_count_threshold is a tunable value that controls what fraction of
+        edges relative to the average warrants allowing that vertex's edges
+        to be removed. Lower --> more edges are removed.
+        """
+        # First find number of edges on each region
+        edge_counts = {}
+        for s, r in regions_dict.items():
+            for s_, r_ in regions_dict.items():
+                if r.IntersectsWith(r_):
+                    if s not in edge_counts.keys():
+                        edge_counts[s] = 0.5  # Add 0.5 instead of 1 since we're going to double count every edge
+                    else:
+                        edge_counts[s] += 0.5
+                    
+                    if s_ not in edge_counts.keys():
+                        edge_counts[s_] = 0.5
+                    else:
+                        edge_counts[s_] += 0.5
+
+        avg_edge_count = sum(ct for ct in edge_counts.values()) / len(edge_counts)
+        print(f"IRIS region avg_edge_count: {avg_edge_count}")
+                    
+        # Then perform simplifications on each HPolyhedron
+        output_regions = {}
+        for s, r in regions_dict.items():
+            intersecting_polytopes = []
+            for s_, r_ in regions_dict.items():
+                if r.IntersectsWith(r_) and edge_counts[s_] < avg_edge_count * edge_count_threshold:
+                    intersecting_polytopes.append(r_)
+
+            r_simplified = r.SimplifyByIncrementalFaceTranslation(min_volume_ratio=0.1,
+                                                                  max_iterations=1,
+                                                                  intersecting_polytopes=intersecting_polytopes,
+                                                                  random_seed=42)
+            print("finished call to SimplifyByIncrementalFaceTranslation.")
+            
+            output_regions[s] = r_simplified
+        
+        # FOR TESTING ONLY
+        SaveIrisRegionsYamlFile("../data/TEMPORARY.yaml", output_regions)
+        IrisRegionGenerator.visualize_connectivity(output_regions, output_file='../TEMPORARY.svg')
+
+        return output_regions
+

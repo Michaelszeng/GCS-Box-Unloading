@@ -83,6 +83,11 @@ class MotionPlanner(LeafSystem):
 
         self.source_regions = LoadIrisRegionsYamlFile(Path(regions_file))
         self.source_regions_place = LoadIrisRegionsYamlFile(Path(regions_place_file))
+
+        print("------")
+        self.source_regions_place = IrisRegionGenerator.post_process_iris_regions(self.source_regions_place)
+        print("========================================================")
+
         self.previous_compute_result = None  # BsplineTrajectory object
         self.start_planning_time = box_randomization_runtime
         self.visualize = True

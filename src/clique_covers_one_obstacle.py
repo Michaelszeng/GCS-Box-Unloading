@@ -23,7 +23,6 @@ from pydrake.all import (
     CommonSolverOption,
     GurobiSolver,
     SaveIrisRegionsYamlFile,
-    LoadIrisRegionsYamlFile,
     RandomGenerator,
     PointCloud,
     RobotDiagramBuilder,
