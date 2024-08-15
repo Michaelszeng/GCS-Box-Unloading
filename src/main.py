@@ -263,14 +263,22 @@ collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True) 
 config_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_place_v2.yaml", DEBUG=True)
-region_generator.load_and_test_regions(name="regions_place")
+# region_generator.load_and_test_regions(name="regions_place")
 # region_generator.generate_source_region_at_q_nominal(q_place_nominal)
-# for i in range(50):
-#     print(f"Beginning Clique Covers Iteration {i}.")
-#     region_generator.generate_source_iris_regions(minimum_clique_size=7,
-#                                                   coverage_threshold=0.1, 
-#                                                   num_points_per_visibility_round=i*75 + 50,
-#                                                   use_previous_saved_regions=True)
+for i in range(22, 50):
+    print(f"Beginning Clique Covers Iteration {i}.")
+
+    if i == 22:
+        region_generator.generate_source_iris_regions(minimum_clique_size=7,
+                                                    coverage_threshold=0.1, 
+                                                    num_points_per_visibility_round=3000,
+                                                    use_previous_saved_regions=True)
+        continue
+
+    region_generator.generate_source_iris_regions(minimum_clique_size=7,
+                                                  coverage_threshold=0.1, 
+                                                  num_points_per_visibility_round=i*75 + 50,
+                                                  use_previous_saved_regions=True)
 
 # Get box poses to pass to pick planner to select a box to pick first
 box_poses = {}

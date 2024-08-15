@@ -67,6 +67,10 @@ class IrisRegionGenerator():
                     numEdges += 1
                     graph.add_edge(pydot.Edge(label1, label2, dir="both"))
 
+        # Add text annotations for numNodes and numEdges
+        annotation = f"Nodes: {numNodes}, Edges: {numEdges}"
+        graph.add_node(pydot.Node("annotation", label=annotation, shape="none", fontsize="12", pos="0,-1!", margin="0"))
+
         svg = graph.create_svg()
 
         with open(output_file, 'wb') as svg_file:
