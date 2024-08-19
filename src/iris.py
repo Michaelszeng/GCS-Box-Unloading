@@ -27,6 +27,7 @@ from pathlib import Path
 import pydot
 import matplotlib.pyplot as plt
 import matplotlib
+import time
 matplotlib.use("tkagg")
 
 
@@ -106,7 +107,7 @@ class IrisRegionGenerator():
         return num_samples_in_regions / num_samples_collision_free
 
 
-    def visualize_cspace(self, num_samples=10000, seed=42):
+    def visualize_cspace(self, num_samples=20000, seed=42):
         rng = RandomGenerator(seed)
         cspace_dim = self.plant.num_positions()
         sampling_domain = HPolyhedron.MakeBox(self.plant.GetPositionLowerLimits(), self.plant.GetPositionUpperLimits())
@@ -125,19 +126,20 @@ class IrisRegionGenerator():
                 else:
                     collision_free_samples = np.vstack((collision_free_samples, last_sample))
 
-        print(np.shape(collision_free_samples))
         print(f"Collision free fraction: {np.shape(collision_free_samples)[0] / num_samples}")
 
         if (cspace_dim == 6):  # 6 choose 3 = 20; make a 4x5 grid of plots
-            # Create a figure and a grid of subplots (4x5)
-            fig = plt.figure(figsize=(19, 15))
+            import plotly.graph_objs as go
+            from plotly.subplots import make_subplots
 
-            # Loop through each subplot position
-            for i in range(1, 21):  # 20 plots in total
-                ax = fig.add_subplot(4, 5, i, projection='3d')
+            fig = make_subplots(rows=5, cols=5, specs=[[{'type': 'scatter3d'}]*5]*5)
+
+            for i in range(20):  # 20 plots in total
+                row = i // 5 + 1
+                col = i % 5 + 1
 
                 # Update the index each axis of the current plot represents so each of the (cspace_dim choose 3) plots is unique
-                if i == 1:
+                if i == 0:
                     x_idx = 0
                     y_idx = 1
                     z_idx = 2
@@ -152,24 +154,34 @@ class IrisRegionGenerator():
                         y_idx = x_idx + 1
                         z_idx = y_idx + 1
 
-                # Set axis labels
-                ax.set_xlabel(f'idx={x_idx}')
-                ax.set_ylabel(f'idx={y_idx}')
-                ax.set_zlabel(f'idx={z_idx}')
+                trace = go.Scatter3d(
+                    x=collision_free_samples[:, x_idx],
+                    y=collision_free_samples[:, y_idx],
+                    z=collision_free_samples[:, z_idx],
+                    mode='markers',
+                    marker=dict(size=2),
+                    showlegend=False
+                )
 
-                # Plot the data
-                ax.scatter(collision_free_samples[:, x_idx], collision_free_samples[:, y_idx], collision_free_samples[:, z_idx], s=5)
-                ax.grid(False)  # Disable grid
+                # Add the trace to the corresponding subplot
+                fig.add_trace(trace, row=row, col=col)
 
-                ax.set_xlim(-3.15, 3.15)
-                ax.set_ylim(-3.15, 3.15)
-                ax.set_zlim(-3.15, 3.15)
+                fig.update_layout(**{
+                    f'scene{i+1}': dict(
+                        xaxis=dict(title_text=f'idx={x_idx}', range=[-3.15, 3.15]),
+                        yaxis=dict(title_text=f'idx={y_idx}', range=[-3.15, 3.15]),
+                        zaxis=dict(title_text=f'idx={z_idx}', range=[-3.15, 3.15]),
+                        camera=dict(eye=dict(x=1.5, y=1.5, z=1.5))  # Zoom out by adjusting the 'eye' position
+                    )
+                })
 
-            # Adjust layout to avoid overlap
-            plt.tight_layout()
+            # # Update layout to avoid overlap
+            # fig.update_layout(
+            #     height=1500, width=1900,
+            #     showlegend=False
+            # )
 
-            # Display the plots
-            plt.show()
+            fig.show()
 
 
     def generate_overlap_histogram(self, regions, seed=42):
