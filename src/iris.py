@@ -107,7 +107,7 @@ class IrisRegionGenerator():
         return num_samples_in_regions / num_samples_collision_free
 
 
-    def visualize_cspace(self, num_samples=20000, seed=42):
+    def visualize_cspace(self, num_samples=100000, seed=42):
         rng = RandomGenerator(seed)
         cspace_dim = self.plant.num_positions()
         sampling_domain = HPolyhedron.MakeBox(self.plant.GetPositionLowerLimits(), self.plant.GetPositionUpperLimits())
@@ -126,18 +126,14 @@ class IrisRegionGenerator():
                 else:
                     collision_free_samples = np.vstack((collision_free_samples, last_sample))
 
-        print(f"Collision free fraction: {np.shape(collision_free_samples)[0] / num_samples}")
+        # print(f"Collision-free fraction: {np.shape(collision_free_samples)[0] / num_samples}")  # ~11%
 
         if (cspace_dim == 6):  # 6 choose 3 = 20; make a 4x5 grid of plots
-            import plotly.graph_objs as go
-            from plotly.subplots import make_subplots
+            import pyvista as pv
 
-            fig = make_subplots(rows=5, cols=5, specs=[[{'type': 'scatter3d'}]*5]*5)
+            plotter = pv.Plotter(shape=(4, 5), notebook=False)
 
-            for i in range(20):  # 20 plots in total
-                row = i // 5 + 1
-                col = i % 5 + 1
-
+            for i in range(20):
                 # Update the index each axis of the current plot represents so each of the (cspace_dim choose 3) plots is unique
                 if i == 0:
                     x_idx = 0
@@ -154,34 +150,30 @@ class IrisRegionGenerator():
                         y_idx = x_idx + 1
                         z_idx = y_idx + 1
 
-                trace = go.Scatter3d(
-                    x=collision_free_samples[:, x_idx],
-                    y=collision_free_samples[:, y_idx],
-                    z=collision_free_samples[:, z_idx],
-                    mode='markers',
-                    marker=dict(size=2),
-                    showlegend=False
+                plotter.subplot(i // 5, i % 5)
+
+                plotter.add_mesh(pv.PolyData(collision_free_samples[:, [x_idx, y_idx, z_idx]]), 
+                                render_points_as_spheres=True, point_size=2.5)
+                
+                plotter.camera_position = 'xy'
+                plotter.camera.azimuth = 45
+                plotter.camera.elevation = 45
+                plotter.zoom_camera=0.5
+                plotter.show_grid()
+                plotter.show_bounds(
+                    grid='back',
+                    axes_ranges=[-3.15, 3.15, -3.15, 3.15, -3.15, 3.15],
+                    location='outer',
+                    ticks='both',
+                    show_xlabels=False,
+                    show_ylabels=False,
+                    show_zlabels=False,
+                    xtitle=f"idx={x_idx}",
+                    ytitle=f"idx={y_idx}",
+                    ztitle=f"idx={z_idx}",
                 )
 
-                # Add the trace to the corresponding subplot
-                fig.add_trace(trace, row=row, col=col)
-
-                fig.update_layout(**{
-                    f'scene{i+1}': dict(
-                        xaxis=dict(title_text=f'idx={x_idx}', range=[-3.15, 3.15]),
-                        yaxis=dict(title_text=f'idx={y_idx}', range=[-3.15, 3.15]),
-                        zaxis=dict(title_text=f'idx={z_idx}', range=[-3.15, 3.15]),
-                        camera=dict(eye=dict(x=1.5, y=1.5, z=1.5))  # Zoom out by adjusting the 'eye' position
-                    )
-                })
-
-            # # Update layout to avoid overlap
-            # fig.update_layout(
-            #     height=1500, width=1900,
-            #     showlegend=False
-            # )
-
-            fig.show()
+            plotter.show()
 
 
     def generate_overlap_histogram(self, regions, seed=42):
