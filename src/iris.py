@@ -26,6 +26,8 @@ import numpy as np
 from pathlib import Path
 import pydot
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("tkagg")
 
 
 class IrisRegionGenerator():
@@ -41,7 +43,7 @@ class IrisRegionGenerator():
 
 
     @staticmethod
-    def visualize_connectivity(iris_regions, output_file='../iris_connectivity.svg'):
+    def visualize_connectivity(iris_regions, coverage, output_file='../iris_connectivity.svg'):
         """
         Create and save SVG graph of IRIS Region connectivity.
 
@@ -68,7 +70,7 @@ class IrisRegionGenerator():
                     graph.add_edge(pydot.Edge(label1, label2, dir="both"))
 
         # Add text annotations for numNodes and numEdges
-        annotation = f"Nodes: {numNodes}, Edges: {numEdges}"
+        annotation = f"Nodes: {numNodes}, Edges: {numEdges}, Coverage: {coverage}"
         graph.add_node(pydot.Node("annotation", label=annotation, shape="none", fontsize="12", pos="0,-1!", margin="0"))
 
         svg = graph.create_svg()
@@ -79,9 +81,9 @@ class IrisRegionGenerator():
         return numNodes, numEdges
     
 
-    def estimate_coverage(self, plant, regions, num_samples=100000, seed=42):
+    def estimate_coverage(self, regions, num_samples=10000, seed=42):
         rng = RandomGenerator(seed)
-        sampling_domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
+        sampling_domain = HPolyhedron.MakeBox(self.plant.GetPositionLowerLimits(), self.plant.GetPositionUpperLimits())
         last_sample = sampling_domain.UniformSample(rng)
 
         self.collision_checker.SetConfigurationSpaceObstacles([])  # We don't want to account for any c-space obstacles during the coverge estimate
@@ -102,6 +104,72 @@ class IrisRegionGenerator():
                         break
 
         return num_samples_in_regions / num_samples_collision_free
+
+
+    def visualize_cspace(self, num_samples=10000, seed=42):
+        rng = RandomGenerator(seed)
+        cspace_dim = self.plant.num_positions()
+        sampling_domain = HPolyhedron.MakeBox(self.plant.GetPositionLowerLimits(), self.plant.GetPositionUpperLimits())
+        last_sample = sampling_domain.UniformSample(rng)
+
+        self.collision_checker.SetConfigurationSpaceObstacles([])  # We don't want to account for any c-space obstacles during this visualization
+
+        collision_free_samples = None  # N x cspace_dim array
+        for _ in range(num_samples):
+            last_sample = sampling_domain.UniformSample(rng, last_sample)
+
+            # Check if the sample is in collision
+            if self.collision_checker.CheckConfigCollisionFree(last_sample):
+                if collision_free_samples is None:
+                    collision_free_samples = last_sample[np.newaxis, :]
+                else:
+                    collision_free_samples = np.vstack((collision_free_samples, last_sample))
+
+        print(np.shape(collision_free_samples))
+        print(f"Collision free fraction: {np.shape(collision_free_samples)[0] / num_samples}")
+
+        if (cspace_dim == 6):  # 6 choose 3 = 20; make a 4x5 grid of plots
+            # Create a figure and a grid of subplots (4x5)
+            fig = plt.figure(figsize=(19, 15))
+
+            # Loop through each subplot position
+            for i in range(1, 21):  # 20 plots in total
+                ax = fig.add_subplot(4, 5, i, projection='3d')
+
+                # Update the index each axis of the current plot represents so each of the (cspace_dim choose 3) plots is unique
+                if i == 1:
+                    x_idx = 0
+                    y_idx = 1
+                    z_idx = 2
+                else:
+                    if z_idx != cspace_dim-1:
+                        z_idx += 1
+                    elif y_idx != cspace_dim-2:  # and z_idx == cspace_dim-1
+                        y_idx += 1
+                        z_idx = y_idx + 1
+                    else:  # and z_idx == cspace_dim-1 and y_idx == cspace_dim-2
+                        x_idx += 1
+                        y_idx = x_idx + 1
+                        z_idx = y_idx + 1
+
+                # Set axis labels
+                ax.set_xlabel(f'idx={x_idx}')
+                ax.set_ylabel(f'idx={y_idx}')
+                ax.set_zlabel(f'idx={z_idx}')
+
+                # Plot the data
+                ax.scatter(collision_free_samples[:, x_idx], collision_free_samples[:, y_idx], collision_free_samples[:, z_idx], s=5)
+                ax.grid(False)  # Disable grid
+
+                ax.set_xlim(-3.15, 3.15)
+                ax.set_ylim(-3.15, 3.15)
+                ax.set_zlim(-3.15, 3.15)
+
+            # Adjust layout to avoid overlap
+            plt.tight_layout()
+
+            # Display the plots
+            plt.show()
 
 
     def generate_overlap_histogram(self, regions, seed=42):
@@ -161,17 +229,16 @@ class IrisRegionGenerator():
         if not self.DEBUG:
             print("IrisRegionGenerator: DEBUG set to False; skipping region visualization.")
             return
+        
+        coverage = self.estimate_coverage(regions)
+        print(f"Estimated region coverage fraction: {coverage}")
 
         self.generate_overlap_histogram(regions)
 
-        num_nodes, num_edges = IrisRegionGenerator.visualize_connectivity(regions)
+        num_nodes, num_edges = IrisRegionGenerator.visualize_connectivity(regions, coverage)
         print("Connectivity graph saved to ../iris_connectivity.svg.")
         print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
         print("\n\n")
-
-        coverage = self.estimate_coverage(plant, regions)
-        print(f"Estimated region coverage fraction: {coverage}")
-        self.generate_source_iris_regions(coverage_check_only=True)  # clique covers will just print the coverage estimate then terminate
 
         world_frame = plant.world_frame()
         ee_frame = plant.GetFrameByName("arm_eef")
@@ -223,6 +290,12 @@ class IrisRegionGenerator():
     def load_and_test_regions(self, name="regions"):
         regions = LoadIrisRegionsYamlFile(self.regions_file)
         regions = [hpolyhedron for hpolyhedron in regions.values()]
+
+        volumes = []
+        for r in regions:
+            volumes.append(r.CalcVolumeViaSampling(RandomGenerator(0), desired_rel_accuracy=0.01, max_num_samples=1000000).volume)
+        print("volumes:", volumes)
+
         self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions, name=name)
 
 
@@ -250,7 +323,13 @@ class IrisRegionGenerator():
         self.test_iris_region(self.plant, self.plant_context, self.meshcat, [region], colors=[Rgba(0.0,0.0,0.0,0.5)])
 
 
-    def generate_source_iris_regions(self, minimum_clique_size=12, coverage_threshold=0.35, num_points_per_visibility_round=500, use_previous_saved_regions=True, coverage_check_only=False):
+    def generate_source_iris_regions(self, 
+                                     minimum_clique_size=12, 
+                                     coverage_threshold=0.35, 
+                                     num_points_per_visibility_round=500, 
+                                     clique_covers_seed=0, 
+                                     use_previous_saved_regions=True, 
+                                     coverage_check_only=False):
         """
         Source IRIS regions are defined as the regions considering only self-
         collision with the robot, and collision with the walls of the empty truck
@@ -292,7 +371,7 @@ class IrisRegionGenerator():
             regions = []
 
         regions = IrisInConfigurationSpaceFromCliqueCover(
-            checker=self.collision_checker, options=options, generator=RandomGenerator(42), sets=regions
+            checker=self.collision_checker, options=options, generator=RandomGenerator(clique_covers_seed), sets=regions
         )  # List of HPolyhedrons
 
         # Remove redundant hyperplanes
@@ -358,7 +437,7 @@ class IrisRegionGenerator():
         
         # FOR TESTING ONLY
         SaveIrisRegionsYamlFile("../data/TEMPORARY.yaml", output_regions)
-        IrisRegionGenerator.visualize_connectivity(output_regions, output_file='../TEMPORARY.svg')
+        IrisRegionGenerator.visualize_connectivity(output_regions, "n/a", output_file='../TEMPORARY.svg')
 
         return output_regions
 
