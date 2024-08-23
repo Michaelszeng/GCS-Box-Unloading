@@ -3,7 +3,6 @@
   <model name='Box_0_5_0_5_0_5'>
     <link name='Box_0_5_0_5_0_5'>
       <inertial>
-        <!-- <pose>2 -0.25 1 0 0 0</pose> -->
         <pose>0 0 0 0 0 0</pose>
         <mass>10</mass>
         <inertia>
@@ -16,25 +15,29 @@
         </inertia>
       </inertial>
       <visual name='visual'>
-        <!-- <pose>2 -0.25 1 0 0 0</pose> -->
-        <pose>0 0 0 0 0 0</pose>
+        <pose>0.25 0.25 -0.25 0 0 0</pose>
         <geometry>
-          <mesh>
+          <!-- <mesh>
             <uri>Box_0_5_0_5_0_5.obj</uri>
             <scale>0.001 0.001 0.001</scale>
             <drake:declare_convex/>
-          </mesh>
+          </mesh> -->
+          <box>
+            <size>0.5 0.5 0.5</size>
+          </box>
         </geometry>
       </visual>
       <collision name='collision'>
-        <!-- <pose>2 -0.25 1 0 0 0</pose> -->
-        <pose>0 0 0 0 0 0</pose>
+        <pose>0.25 0.25 -0.25 0 0 0</pose>
         <geometry>
-          <mesh>
+          <!-- <mesh>
             <uri>Box_0_5_0_5_0_5.obj</uri>
             <scale>0.001 0.001 0.001</scale>
             <drake:declare_convex/>
-          </mesh>
+          </mesh> -->
+          <box>
+            <size>0.5 0.5 0.5</size>
+          </box>
         </geometry>
         <!-- The proximity properties immediately below enable the hydroelastic
              contact model for this body. To use point contact instead, delete
