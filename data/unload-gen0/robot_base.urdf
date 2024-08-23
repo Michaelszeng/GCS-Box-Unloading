@@ -35,12 +35,12 @@
     </link>
 
     <link name="base_front_left">
-        <collision>
+        <!-- <collision>
             <origin xyz="-2.58 -1.64 -0.5" rpy="0 -0 0" />
             <geometry>
                 <mesh filename="Base_split_mid_block.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="1e-9" />
@@ -95,12 +95,12 @@
     </joint>
 
     <link name="base_rear_left">
-        <collision>
+        <!-- <collision>
             <origin xyz="-0.13 -1.5 -0.08" rpy="0 -0 0" />
             <geometry>
                 <mesh filename="Base_split_control_box.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="1e-9" />
@@ -117,12 +117,12 @@
     </joint>
 
     <link name="base_top">
-        <collision>
+        <!-- <collision>
             <origin xyz="-2.2 -0.98 -2.165" rpy="0 -0 0" />
             <geometry>
                 <mesh filename="Base_split_top_mid.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="1e-9" />
@@ -180,12 +180,12 @@
     </joint>
 
     <link name="caster_center">
-        <collision>
+        <!-- <collision>
             <origin xyz="-0.4 -1.15 -0.075" rpy="0 -0 0" />
             <geometry>
                 <mesh filename="Base_split_light.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="1e-9" />
@@ -202,12 +202,12 @@
     </joint>
 
     <link name="mobile_base">
-        <collision>
+        <!-- <collision>
             <origin xyz="-2.335 -0.8225 -0.126" rpy="0 -0 0" />
             <geometry>
                 <mesh filename="Base_split_estop.obj" />
             </geometry>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="1e-9" />
@@ -250,7 +250,7 @@
                     rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
             </material>
         </visual>
-        <collision>
+        <!-- <collision>
             <origin xyz="0.12992859999999994969 0.41559400000000012998 -0.66749269999999971681"
                 rpy="1.570796326794896558 -0 3.141592653589793116" />
             <geometry>
@@ -260,7 +260,7 @@
                 <drake:mu_dynamic value="0.85"/>
                 <drake:mu_static value="0.85"/>
             </drake:proximity_properties>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="1" />

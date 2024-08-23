@@ -906,5 +906,5 @@ def set_up_scene(station, station_context, plant, plant_context, simulator, rand
         station.GetInputPort("applied_spatial_force").FixValue(station_context, zero_box_forces)
         simulator.AdvanceTo(box_randomization_runtime)
     else:
-        # simulator.AdvanceTo(0.001)
-        pass
+        simulator.AdvanceTo(0.001)
+        # pass

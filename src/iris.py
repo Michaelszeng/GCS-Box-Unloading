@@ -44,7 +44,7 @@ class IrisRegionGenerator():
 
 
     @staticmethod
-    def visualize_connectivity(iris_regions, coverage, output_file='../iris_connectivity.svg'):
+    def visualize_connectivity(iris_regions, coverage, output_file='../iris_connectivity.svg', skip_svg=False):
         """
         Create and save SVG graph of IRIS Region connectivity.
 
@@ -74,10 +74,11 @@ class IrisRegionGenerator():
         annotation = f"Nodes: {numNodes}, Edges: {numEdges}, Coverage: {coverage}"
         graph.add_node(pydot.Node("annotation", label=annotation, shape="none", fontsize="12", pos="0,-1!", margin="0"))
 
-        svg = graph.create_svg()
+        if not skip_svg:
+            svg = graph.create_svg()
 
-        with open(output_file, 'wb') as svg_file:
-            svg_file.write(svg)
+            with open(output_file, 'wb') as svg_file:
+                svg_file.write(svg)
 
         return numNodes, numEdges
     
@@ -158,7 +159,6 @@ class IrisRegionGenerator():
                 plotter.camera_position = 'xy'
                 plotter.camera.azimuth = 45
                 plotter.camera.elevation = 45
-                plotter.zoom_camera=0.5
                 plotter.show_grid()
                 plotter.show_bounds(
                     grid='back',
@@ -223,7 +223,7 @@ class IrisRegionGenerator():
             plt.pause(1)  # Allow the plot to be displayed
 
 
-    def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=10000, colors=None, name="regions"):
+    def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=10000, colors=None, name="regions", coverage=True, histogram=True, connectivity=True, svg=True, task_space_render=True):
         """
         Plot small spheres in the volume of each region. (we are using forward
         kinematics to return from configuration space to task space.)
@@ -234,65 +234,76 @@ class IrisRegionGenerator():
             print("IrisRegionGenerator: DEBUG set to False; skipping region visualization.")
             return
         
-        coverage = self.estimate_coverage(regions)
-        print(f"Estimated region coverage fraction: {coverage}")
+        if coverage:
+            coverage = self.estimate_coverage(regions)
+            print(f"Estimated region coverage fraction: {coverage}")
 
-        self.generate_overlap_histogram(regions)
+        if histogram:
+            self.generate_overlap_histogram(regions)
+        
+        if connectivity:
+            num_nodes, num_edges = IrisRegionGenerator.visualize_connectivity(regions, coverage, skip_svg=(not svg))
+            if svg:
+                print("Connectivity graph saved to ../iris_connectivity.svg.")
+            print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
+            print("\n\n")
 
-        num_nodes, num_edges = IrisRegionGenerator.visualize_connectivity(regions, coverage)
-        print("Connectivity graph saved to ../iris_connectivity.svg.")
-        print(f"Number of nodes and edges: {num_nodes}, {num_edges}")
-        print("\n\n")
+        if task_space_render:
+            world_frame = plant.world_frame()
+            ee_frame = plant.GetFrameByName("arm_eef")
 
-        world_frame = plant.world_frame()
-        ee_frame = plant.GetFrameByName("arm_eef")
+            rng = RandomGenerator(seed)
 
-        rng = RandomGenerator(seed)
+            # Allow caller to input custom colors
+            if colors is None:
+                colors = [
+                    Rgba(0.5,0.0,0.0,0.5),
+                    Rgba(0.0,0.5,0.0,0.5),
+                    Rgba(0.0,0.0,0.5,0.5),
+                    Rgba(0.5,0.5,0.0,0.5),
+                    Rgba(0.5,0.0,0.5,0.5),
+                    Rgba(0.0,0.5,0.5,0.5),
+                    Rgba(0.2,0.2,0.2,0.5),
+                    Rgba(0.5,0.2,0.0,0.5),
+                    Rgba(0.2,0.5,0.0,0.5),
+                    Rgba(0.5,0.0,0.2,0.5),
+                    Rgba(0.2,0.0,0.5,0.5),
+                    Rgba(0.0,0.5,0.2,0.5),
+                    Rgba(0.0,0.2,0.5,0.5),
+                ]
 
-        # Allow caller to input custom colors
-        if colors is None:
-            colors = [Rgba(0.5,0.0,0.0,0.5),
-                      Rgba(0.0,0.5,0.0,0.5),
-                      Rgba(0.0,0.0,0.5,0.5),
-                      Rgba(0.5,0.5,0.0,0.5),
-                      Rgba(0.5,0.0,0.5,0.5),
-                      Rgba(0.0,0.5,0.5,0.5),
-                      Rgba(0.2,0.2,0.2,0.5),
-                      Rgba(0.5,0.2,0.0,0.5),
-                      Rgba(0.2,0.5,0.0,0.5),
-                      Rgba(0.5,0.0,0.2,0.5),
-                      Rgba(0.2,0.0,0.5,0.5),
-                      Rgba(0.0,0.5,0.2,0.5),
-                      Rgba(0.0,0.2,0.5,0.5),
-                     ]
+            for i in range(len(regions)):
+                region = regions[i]
 
-        for i in range(len(regions)):
-            region = regions[i]
+                xyzs = []  # List to hold XYZ positions of configurations in the IRIS region
 
-            xyzs = []  # List to hold XYZ positions of configurations in the IRIS region
-
-            q_sample = region.UniformSample(rng)
-            prev_sample = q_sample
-
-            plant.SetPositions(plant_context, q_sample)
-            xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
-
-            for _ in range(num_sample-1):
-                q_sample = region.UniformSample(rng, prev_sample)
+                q_sample = region.UniformSample(rng)
                 prev_sample = q_sample
 
                 plant.SetPositions(plant_context, q_sample)
                 xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
-            
-            # Create pointcloud from sampled point in IRIS region in order to plot in Meshcat
-            xyzs = np.array(xyzs)
-            pc = PointCloud(len(xyzs))
-            pc.mutable_xyzs()[:] = xyzs.T
-            meshcat.SetObject(f"{name}/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
+
+                for _ in range(num_sample-1):
+                    q_sample = region.UniformSample(rng, prev_sample)
+                    prev_sample = q_sample
+
+                    plant.SetPositions(plant_context, q_sample)
+                    xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
+                
+                # Create pointcloud from sampled point in IRIS region in order to plot in Meshcat
+                xyzs = np.array(xyzs)
+                pc = PointCloud(len(xyzs))
+                pc.mutable_xyzs()[:] = xyzs.T
+                meshcat.SetObject(f"{name}/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
 
     def load_and_test_regions(self, name="regions"):
         regions = LoadIrisRegionsYamlFile(self.regions_file)
+
+        # To control how many sets to evaluate
+        # num_sets = 120
+        # regions = {k: v for k, v in regions.items() if k.startswith("set") and k[3:].isdigit() and 0 <= int(k[3:]) <= num_sets}
+
         regions = [hpolyhedron for hpolyhedron in regions.values()]
 
         volumes = []
@@ -324,7 +335,7 @@ class IrisRegionGenerator():
         SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
         
         # This source region will be drawn in black
-        self.test_iris_region(self.plant, self.plant_context, self.meshcat, [region], colors=[Rgba(0.0,0.0,0.0,0.5)])
+        self.test_iris_region(self.plant, self.plant_context, self.meshcat, [region], colors=[Rgba(0.0,0.0,0.0,0.5)], coverage=True, histogram=False, connectivity=False, svg=False, task_space_render=False)
 
 
     def generate_source_iris_regions(self, 
@@ -366,7 +377,8 @@ class IrisRegionGenerator():
 
             # Scale down previous regions and use as obstacles in new round of Clique Covers
             # Encourages exploration while still allowing small degree of region overlap
-            region_obstacles = [hpolyhedron.Scale(0.995) for hpolyhedron in regions]
+            region_obstacles = [hpolyhedron.Scale(0.9) for hpolyhedron in regions]
+            # region_obstacles = [hpolyhedron.MaximumVolumeInscribedEllipsoid() for hpolyhedron in regions]
 
             # Set previous regions as obstacles to encourage exploration
             # options.iris_options.configuration_obstacles = region_obstacles  # No longer needed bc of the line below
@@ -385,7 +397,7 @@ class IrisRegionGenerator():
             regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
             SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
 
-            self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions)
+            self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions, coverage=True, histogram=False, connectivity=True, svg=False, task_space_render=False)
         
     
     @staticmethod

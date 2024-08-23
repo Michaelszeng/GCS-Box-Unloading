@@ -182,44 +182,45 @@ meshcat.StartRecording()
 
 set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
-# # Generate regions with no obstacles at all
-# robot_diagram_builder = RobotDiagramBuilder()
-# robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
-# robot_diagram_builder_plant = robot_diagram_builder.plant()
-# robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
-# robot_diagram_builder_diagram = robot_diagram_builder.Build()
+# Generate regions with no obstacles at all
+robot_diagram_builder = RobotDiagramBuilder()
+robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+robot_diagram_builder_plant = robot_diagram_builder.plant()
+robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
+robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
-# collision_checker_params = dict(edge_step_size=0.125)
-# collision_checker_params["robot_model_instances"] = robot_model_instances
-# collision_checker_params["model"] = robot_diagram_builder_diagram
-# collision_checker_params["edge_step_size"] = 0.25
-# collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+collision_checker_params = {}
+collision_checker_params["robot_model_instances"] = robot_model_instances
+collision_checker_params["model"] = robot_diagram_builder_diagram
+collision_checker_params["edge_step_size"] = 0.25
+collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+config_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
-# region_generator = IrisRegionGenerator(meshcat, collision_checker, "../data/iris_source_regions_v2.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_v2.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_classic_clique_covers_baseline.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_10x_obstacle_inflation_test.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions.yaml", DEBUG=True)
+region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_num_points_per_visibility_round=10000.yaml", DEBUG=True)
 # region_generator.load_and_test_regions()
 # region_generator.generate_source_region_at_q_nominal(q_nominal)
-# region_generator.generate_source_iris_regions(minimum_clique_size=20, 
-#                                               coverage_threshold=0.1, 
-#                                               use_previous_saved_regions_as_obs=False)
-# region_generator.generate_source_iris_regions(minimum_clique_size=18, 
-#                                               coverage_threshold=0.2, 
-#                                               use_previous_saved_regions_as_obs=True)
-# region_generator.generate_source_iris_regions(minimum_clique_size=15,
-#                                               coverage_threshold=0.3, 
-#                                               use_previous_saved_regions_as_obs=True)
-# region_generator.generate_source_iris_regions(minimum_clique_size=14,
-#                                               coverage_threshold=0.4, 
-#                                               use_previous_saved_regions_as_obs=True)
-# region_generator.generate_source_iris_regions(minimum_clique_size=12,
-#                                               coverage_threshold=0.5, 
-#                                               use_previous_saved_regions_as_obs=True)
 # region_generator.generate_source_iris_regions(minimum_clique_size=10,
-#                                               coverage_threshold=0.6, 
-#                                               use_previous_saved_regions_as_obs=True)
-# region_generator.generate_source_iris_regions(minimum_clique_size=8,
-#                                               coverage_threshold=0.7, 
-#                                               use_previous_saved_regions_as_obs=True)
+#                                                 coverage_threshold=0.5, 
+#                                                 num_points_per_visibility_round=1000,
+#                                                 use_previous_saved_regions=True)
 
+# for i in range(100):
+#     print(f"Beginning Clique Covers Iteration {i}.")
+#     region_generator.generate_source_iris_regions(minimum_clique_size=10,
+#                                                   coverage_threshold=0.1, 
+#                                                   num_points_per_visibility_round=i*75 + 50,
+#                                                   use_previous_saved_regions=True)
+
+# for i in range(10):
+#     print(f"Beginning Clique Covers Iteration {i}.")
+#     region_generator.generate_source_iris_regions(minimum_clique_size=10,
+#                                                   coverage_threshold=0.1, 
+#                                                   num_points_per_visibility_round=1000,
+#                                                   use_previous_saved_regions=True)
 
 # Generate regions with box in eef
 robot_diagram_builder = RobotDiagramBuilder()
@@ -263,8 +264,6 @@ collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True) 
 config_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_place_v2.yaml", DEBUG=True)
-region_generator.visualize_cspace()
-
 # region_generator.load_and_test_regions(name="regions_place")
 # region_generator.generate_source_region_at_q_nominal(q_place_nominal)
 # for i in range(100):
