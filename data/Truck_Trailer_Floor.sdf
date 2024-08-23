@@ -15,23 +15,19 @@
         </inertia>
       </inertial>
       <visual name='visual'>
-        <pose>-6 -1.2954 0 1.57079632679 0 1.57079632679</pose>
+        <pose>-1 0 0.012855 0 0 0</pose>
         <geometry>
-          <mesh>
-            <uri>Truck_Trailer_Floor.obj</uri>
-            <scale>0.001 0.001 0.001</scale>
-            <drake:declare_convex/>
-          </mesh>
+          <box>
+            <size>10 2.54 0.02571</size>
+          </box>
         </geometry>
       </visual>
       <collision name='collision'>
-        <pose>-6 -1.2954 0 1.57079632679 0 1.57079632679</pose>
+        <pose>-1 0 0.012855 0 0 0</pose>
         <geometry>
-          <mesh>
-            <uri>Truck_Trailer_Floor.obj</uri>
-            <scale>0.001 0.001 0.001</scale>
-            <drake:declare_convex/>
-          </mesh>
+          <box>
+            <size>10 2.54 0.02571</size>
+          </box>
         </geometry>
         <!-- The proximity properties immediately below enable the hydroelastic
              contact model for this body. To use point contact instead, delete

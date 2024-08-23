@@ -30,13 +30,11 @@
         </material>
       </visual>
       <collision name='collision'>
-        <pose>-6 -1.2954 0 1.57079632679 0 1.57079632679</pose>
+        <pose>1.5 0 2.7813 0 0 0</pose>
         <geometry>
-          <mesh>
-            <uri>Truck_Trailer_Roof.obj</uri>
-            <scale>0.001 0.001 0.001</scale>
-            <drake:declare_convex/>
-          </mesh>
+          <box>
+            <size>5 2.540 0.0254</size>
+          </box>
         </geometry>
         <!-- The proximity properties immediately below enable the hydroelastic
              contact model for this body. To use point contact instead, delete
