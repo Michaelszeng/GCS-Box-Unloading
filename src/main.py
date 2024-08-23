@@ -200,7 +200,7 @@ config_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(c
 # region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_classic_clique_covers_baseline.yaml", DEBUG=True)
 # region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_10x_obstacle_inflation_test.yaml", DEBUG=True)
 # region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions.yaml", DEBUG=True)
-region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_num_points_per_visibility_round=10000.yaml", DEBUG=True)
+region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_modified_algorithm_num_points_per_visibility_round=1000.yaml", DEBUG=True)
 # region_generator.load_and_test_regions()
 # region_generator.generate_source_region_at_q_nominal(q_nominal)
 # region_generator.generate_source_iris_regions(minimum_clique_size=10,
@@ -215,12 +215,12 @@ region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checke
 #                                                   num_points_per_visibility_round=i*75 + 50,
 #                                                   use_previous_saved_regions=True)
 
-# for i in range(10):
-#     print(f"Beginning Clique Covers Iteration {i}.")
-#     region_generator.generate_source_iris_regions(minimum_clique_size=10,
-#                                                   coverage_threshold=0.1, 
-#                                                   num_points_per_visibility_round=1000,
-#                                                   use_previous_saved_regions=True)
+for i in range(10):
+    print(f"Beginning Clique Covers Iteration {i}.")
+    region_generator.generate_source_iris_regions(minimum_clique_size=10,
+                                                  coverage_threshold=0.1, 
+                                                  num_points_per_visibility_round=1000,
+                                                  use_previous_saved_regions=True)
 
 # Generate regions with box in eef
 robot_diagram_builder = RobotDiagramBuilder()
