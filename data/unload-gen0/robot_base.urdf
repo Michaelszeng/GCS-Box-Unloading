@@ -19,9 +19,10 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-2.20211 -0.98 -0.54244" rpy="0 -0 0" />
+            <origin xyz="-0.82 0.17 -0.15" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="Base_split_main.obj" />
+                <!-- <mesh filename="Base_split_main.obj" /> -->
+                <box size="2.4173 0.99 0.246" />
             </geometry>
         </collision>
         <inertial>
@@ -58,9 +59,10 @@
 
     <link name="conveyor_front_right">
         <collision>
-            <origin xyz="-2.59293 0 -0.51643" rpy="0 -0 0" />
+            <origin xyz="-1.3 0.317 -0.255" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="Base_split_conveyor.obj" />
+                <!-- <mesh filename="Base_split_conveyor.obj" /> -->
+                <box size="2.6 0.6336 0.5164" />
             </geometry>
         </collision>
         <inertial>
@@ -139,9 +141,10 @@
 
     <link name="base_top_right">
         <collision>
-            <origin xyz="-2.2 -0.98 -2.165" rpy="0 -0 0" />
+            <origin xyz="-1.091 -0.771 -0.1775" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="Base_split_top_right.obj" />
+                <!-- <mesh filename="Base_split_top_right.obj" /> -->
+                <box size="1.1257 0.18 0.35757" />
             </geometry>
         </collision>
         <inertial>
@@ -160,9 +163,10 @@
 
     <link name="base_top_left">
         <collision>
-            <origin xyz="-2.2 -0.98 -2.165" rpy="0 -0 0" />
+            <origin xyz="-1.171 0.597 -0.1775" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="Base_split_top_left.obj" />
+                <!-- <mesh filename="Base_split_top_left.obj" /> -->
+                <box size="0.9657 0.18 0.35757" />
             </geometry>
         </collision>
         <inertial>
@@ -307,7 +311,7 @@
                     rgba="0.30196078431372547213 0.30196078431372547213 0.30196078431372547213 1.0" />
             </material>
         </visual>
-        <collision>
+        <!-- <collision>
             <origin xyz="0.12992859999999994969 0.41559400000000018549 -0.66749269999999982783"
                 rpy="1.570796326794896558 -0 -3.141592653589793116" />
             <geometry>
@@ -317,7 +321,7 @@
                 <drake:mu_dynamic value="0.85"/>
                 <drake:mu_static value="0.85"/>
             </drake:proximity_properties>
-        </collision>
+        </collision> -->
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <mass value="1" />
