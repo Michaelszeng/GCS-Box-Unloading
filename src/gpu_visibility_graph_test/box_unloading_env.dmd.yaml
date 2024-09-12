@@ -2,15 +2,21 @@ directives:
 
 - add_model:
     name: robot_base
-    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/unload-gen0/robot_base.urdf
+    file: package://environment/unload-gen0/robot_base.urdf
+
+- add_frame:
+    name: robot_base_offset
+    X_PF:
+      base_frame: robot_base::base_link
+      translation: [0, 0, -0.58]
 
 - add_weld:
     parent: world
-    child: robot_base::base_link
+    child: robot_base_offset
 
 - add_model:
     name: kuka
-    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/unload-gen0/robot_arm.urdf
+    file: package://environment/unload-gen0/robot_arm.urdf
 
 - add_weld:
     parent: robot_base::base
@@ -18,7 +24,7 @@ directives:
 
 - add_model: 
     name: Truck_Trailer_Floor
-    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Floor.urdf
+    file: package://environment/Truck_Trailer_Floor.urdf
 
 - add_weld:
     parent: world
@@ -26,7 +32,7 @@ directives:
 
 - add_model: 
     name: Truck_Trailer_Right_Side
-    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Right_Side.urdf
+    file: package://environment/Truck_Trailer_Right_Side.urdf
 
 - add_weld:
     parent: world
@@ -34,7 +40,7 @@ directives:
 
 - add_model: 
     name: Truck_Trailer_Left_Side
-    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Left_Side.urdf
+    file: package://environment/Truck_Trailer_Left_Side.urdf
 
 - add_weld:
     parent: world
@@ -42,7 +48,7 @@ directives:
     
 - add_model: 
     name: Truck_Trailer_Roof
-    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Roof.urdf
+    file: package://environment/Truck_Trailer_Roof.urdf
 
 - add_weld:
     parent: world
@@ -50,7 +56,7 @@ directives:
 
 - add_model: 
     name: Truck_Trailer_Back
-    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Back.urdf
+    file: package://environment/Truck_Trailer_Back.urdf
 
 - add_weld:
     parent: world

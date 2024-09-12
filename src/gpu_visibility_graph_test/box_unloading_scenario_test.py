@@ -7,8 +7,12 @@ import pycuci_bindings as pycuci
 print(f"{dir(pycuci)}\n")
 
 
+yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/box_unloading_env.dmd.yaml"
+
+
 cuci_parser = pycuci.URDFParser()
-cuci_parser.parse_directives("/home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/src/gpu_visibility_graph_test/box_unloading_env.yaml")
+cuci_parser.register_package("environment", os.path.dirname(os.path.abspath(__file__)) +"/../../data")
+cuci_parser.parse_directives("/home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/src/gpu_visibility_graph_test/box_unloading_env_pycuci.dmd.yaml")
 
 pl = cuci_parser.build_plant()
 kt = pl.getKinematicTree()
@@ -36,11 +40,32 @@ print(f"found {nodes.shape[1]} collision-free nodes")
 from pydrake.all import (
     RobotDiagramBuilder,
     SceneGraphCollisionChecker,
+    StartMeshcat,
+    AddDefaultVisualization,
+    Simulator,
+    LoadModelDirectives,
+    ProcessModelDirectives,
 )
 
 robot_diagram_builder = RobotDiagramBuilder()
-robot_model_instances = robot_diagram_builder.parser().AddModels("/home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/src/gpu_visibility_graph_test/box_unloading_env.dmd.yaml")
+plant = robot_diagram_builder.plant()
+parser = robot_diagram_builder.parser()
+parser.package_map().Add("environment", os.path.dirname(os.path.abspath(__file__)) +"/../../data")
+
+# directives = LoadModelDirectives(yaml_file)  # ModelDirectives Object
+# ProcessModelDirectives(directives, plant, parser)
+
+robot_model_instances = robot_diagram_builder.parser().AddModels(yaml_file)
+plant.Finalize()
+
+print("IRIS Scene Meshcat:")
+iris_meshcat = StartMeshcat()
+AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=iris_meshcat)
+
 robot_diagram_builder_diagram = robot_diagram_builder.Build()
+
+iris_simulator = Simulator(robot_diagram_builder_diagram)
+iris_simulator.AdvanceTo(0.001)
 
 collision_checker_params = dict(edge_step_size=0.125)
 collision_checker_params["robot_model_instances"] = robot_model_instances
@@ -51,13 +76,12 @@ ground_truth_is_col_free = collision_checker.CheckConfigsCollisionFree(nodes_sam
 print(is_col_free[:20])
 print(ground_truth_is_col_free[:20])
 
-print(np.equal(is_col_free, ground_truth_is_col_free)[:20])
+# compare is_col_free and ground_truth_is_col_free
+print(np.sum(np.equal(is_col_free, ground_truth_is_col_free))/np.size(is_col_free))
 
 print(nodes[:,0])
 print(nodes[:,1])
 print(nodes[:,2])
-
-# compare is_col_free and ground_truth_is_col_free
 
 
 
@@ -106,4 +130,4 @@ for i in range(20):
         ztitle=f"idx={z_idx}",
     )
 
-# plotter.show()
+plotter.show()

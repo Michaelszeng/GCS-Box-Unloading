@@ -2,15 +2,18 @@ directives:
 
 - add_model:
     name: robot_base
-    file: /home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/unload-gen0/robot_base.urdf
+    file: package://environment/unload-gen0/robot_base.urdf
 
 - add_weld:
     parent: world
     child: robot_base::base_link
+    X_PF:
+        translation: [0, 0, -0.58]
+        rotation: !Rpy { deg: [0, 90, 0] }
 
 - add_model:
     name: kuka
-    file: /home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/unload-gen0/robot_arm.urdf
+    file: package://environment/unload-gen0/robot_arm.urdf
 
 - add_weld:
     parent: robot_base::base
@@ -18,7 +21,7 @@ directives:
 
 - add_model: 
     name: Truck_Trailer_Floor
-    file: /home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Floor.urdf
+    file: package://environment/Truck_Trailer_Floor.urdf
 
 - add_weld:
     parent: world
@@ -26,7 +29,7 @@ directives:
 
 - add_model: 
     name: Truck_Trailer_Right_Side
-    file: /home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Right_Side.urdf
+    file: package://environment/Truck_Trailer_Right_Side.urdf
 
 - add_weld:
     parent: world
@@ -34,7 +37,7 @@ directives:
 
 - add_model: 
     name: Truck_Trailer_Left_Side
-    file: /home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Left_Side.urdf
+    file: package://environment/Truck_Trailer_Left_Side.urdf
 
 - add_weld:
     parent: world
@@ -42,7 +45,7 @@ directives:
     
 - add_model: 
     name: Truck_Trailer_Roof
-    file: /home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Roof.urdf
+    file: package://environment/Truck_Trailer_Roof.urdf
 
 - add_weld:
     parent: world
@@ -50,7 +53,7 @@ directives:
 
 - add_model: 
     name: Truck_Trailer_Back
-    file: /home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Back.urdf
+    file: package://environment/Truck_Trailer_Back.urdf
 
 - add_weld:
     parent: world
