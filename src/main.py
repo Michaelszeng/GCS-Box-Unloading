@@ -40,7 +40,6 @@ from gcs import MotionPlanner
 from debug import Debugger
 
 
-# Set logging level in drake to DEBUG
 configure_logging()
 log = logging.getLogger("drake")
 # log.setLevel("DEBUG")
@@ -124,8 +123,6 @@ builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort
 
 ### Controller
 controller_plant = MultibodyPlant(time_step=0.001)
-parser = Parser(plant)
-ConfigureParser(parser)
 Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
 num_robot_positions = controller_plant.num_positions()
@@ -255,7 +252,7 @@ robot_diagram_builder_diagram = robot_diagram_builder.Build()
 iris_simulator = Simulator(robot_diagram_builder_diagram)
 iris_simulator.AdvanceTo(0.001)
 
-collision_checker_params = dict(edge_step_size=0.125)
+collision_checker_params = {}
 collision_checker_params["robot_model_instances"] = robot_model_instances
 collision_checker_params["model"] = robot_diagram_builder_diagram
 collision_checker_params["edge_step_size"] = 0.25

@@ -1,0 +1,9 @@
+directives:
+
+- add_model:
+    name: environment
+    file: /home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/src/gpu_visibility_graph_test/test_env.urdf
+
+- add_weld:
+    parent: world
+    child: environment::fixed

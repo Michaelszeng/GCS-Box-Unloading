@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<robot name="Truck_Trailer_Left_Side">
+  <link name="Truck_Trailer_Left_Side">
+    <inertial>
+      <mass value="354.84003799434534"/>
+      <inertia ixx="9.700864051883427e+17" ixy="8922.704519561794" ixz="30403.289474062407" iyy="7.39269156758015e+17" iyz="46265.875286616705" izz="2.3085540363690883e+17"/>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </inertial>
+    <visual>
+      <origin xyz="1.5 1.2827 1.397" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <box size="5 0.0254 2.794"/>
+      </geometry>
+      <material name="Truck_Trailer_Left_Side_material">
+        <color rgba="1 1 1 0.1"/>
+      </material>
+    </visual>
+    <collision name="collision">
+      <origin xyz="1.5 1.2827 1.397" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <box size="5 0.0254 2.794"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>

@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<robot name="Truck_Trailer_Floor">
+  <link name="Truck_Trailer_Floor">
+    <inertial>
+      <mass value="649.0624884982565"/>
+      <inertia ixx="5.408742598418216e+18" ixy="2.3612755776348657" ixz="1813.459643623577" iyy="5.757664861981684e+18" iyz="-124713168487610.52" izz="3.489929173074377e+17"/>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </inertial>
+    <visual>
+      <origin xyz="-1.0 0.0 0.012855" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <box size="10 2.54 0.02571"/>
+      </geometry>
+    </visual>
+    <collision name="collision">
+      <origin xyz="-1.0 0.0 0.012855" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <box size="10 2.54 0.02571"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>

@@ -1,0 +1,57 @@
+directives:
+
+- add_model:
+    name: robot_base
+    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/unload-gen0/robot_base.urdf
+
+- add_weld:
+    parent: world
+    child: robot_base::base_link
+
+- add_model:
+    name: kuka
+    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/unload-gen0/robot_arm.urdf
+
+- add_weld:
+    parent: robot_base::base
+    child: kuka::base_link
+
+- add_model: 
+    name: Truck_Trailer_Floor
+    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Floor.urdf
+
+- add_weld:
+    parent: world
+    child: Truck_Trailer_Floor::Truck_Trailer_Floor
+
+- add_model: 
+    name: Truck_Trailer_Right_Side
+    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Right_Side.urdf
+
+- add_weld:
+    parent: world
+    child: Truck_Trailer_Right_Side::Truck_Trailer_Right_Side
+
+- add_model: 
+    name: Truck_Trailer_Left_Side
+    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Left_Side.urdf
+
+- add_weld:
+    parent: world
+    child: Truck_Trailer_Left_Side::Truck_Trailer_Left_Side
+    
+- add_model: 
+    name: Truck_Trailer_Roof
+    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Roof.urdf
+
+- add_weld:
+    parent: world
+    child: Truck_Trailer_Roof::Truck_Trailer_Roof
+
+- add_model: 
+    name: Truck_Trailer_Back
+    file: file:///home/michaelszeng/UROP-RLRG-GCS-Box_Unloading/Codebase/data/Truck_Trailer_Back.urdf
+
+- add_weld:
+    parent: world
+    child: Truck_Trailer_Back::Truck_Trailer_Back

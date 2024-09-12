@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<robot name="Truck_Trailer_Roof">
+  <link name="Truck_Trailer_Roof">
+    <inertial>
+      <mass value="422.1303764881761"/>
+      <inertia ixx="8.38284973698533e+17" ixy="-67423.43266282436" ixz="-36955.11761111073" iyy="1.065140567118284e+18" iyz="-85892124869470.36" izz="2.270470789400728e+17"/>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </inertial>
+    <visual>
+      <origin xyz="-6.0 -1.2954 0.0" rpy="1.57079632679 0.0 1.57079632679"/>
+      <geometry>
+        <mesh filename="Truck_Trailer_Roof.obj"/>
+      </geometry>
+      <material name="Truck_Trailer_Roof_material">
+        <color rgba="1 1 1 0.1"/>
+      </material>
+    </visual>
+    <collision name="collision">
+      <origin xyz="1.5 0.0 2.7813" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <box size="5 2.540 0.0254"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>

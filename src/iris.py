@@ -27,6 +27,7 @@ from pathlib import Path
 import pydot
 import matplotlib.pyplot as plt
 import matplotlib
+import pyvista as pv
 import time
 matplotlib.use("tkagg")
 
@@ -130,8 +131,6 @@ class IrisRegionGenerator():
         # print(f"Collision-free fraction: {np.shape(collision_free_samples)[0] / num_samples}")  # ~11%
 
         if (cspace_dim == 6):  # 6 choose 3 = 20; make a 4x5 grid of plots
-            import pyvista as pv
-
             plotter = pv.Plotter(shape=(4, 5), notebook=False)
 
             for i in range(20):
@@ -331,7 +330,7 @@ class IrisRegionGenerator():
         clique_ellipse = Hyperellipsoid.MakeHypersphere(kEpsilonEllipsoid, self.plant.GetPositions(self.plant_context))
         region = FastIris(self.collision_checker, clique_ellipse, domain, options)
 
-        regions_dict = {f"set0" : region}
+        regions_dict = {"set0" : region}
         SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
         
         # This source region will be drawn in black

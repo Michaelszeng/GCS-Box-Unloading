@@ -816,14 +816,12 @@ def MakeHardwareStation(
     # Add joints between each box and eef to be able lock these later to simulate the gripper's suction
     from scenario import NUM_BOXES
     from pydrake.all import QuaternionFloatingJoint
+    eef_model_idx = sim_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+    eef_body_idx = sim_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+    frame_parent = sim_plant.get_body(eef_body_idx).body_frame()
     for i in range(NUM_BOXES):
         box_model_idx = sim_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
         box_body_idx = sim_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-
-        eef_model_idx = sim_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
-        eef_body_idx = sim_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
-
-        frame_parent = sim_plant.get_body(eef_body_idx).body_frame()
         frame_child = sim_plant.get_body(box_body_idx).body_frame()
 
         joint = QuaternionFloatingJoint(f"{eef_body_idx}-{box_body_idx}", frame_parent, frame_child)

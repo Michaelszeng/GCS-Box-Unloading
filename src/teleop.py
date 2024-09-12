@@ -35,21 +35,35 @@ import datetime
 
 from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
 
+NUM_BOXES = 0
 
 class MeshcatSliderSource(LeafSystem):
     def __init__(self, meshcat):
         LeafSystem.__init__(self)
         self.meshcat = meshcat
-        self.DeclareVectorOutputPort("slider_values", BasicVector(6), self.DoCalcOutput)
+
+        if joint_control:
+            self.DeclareVectorOutputPort("slider_values", BasicVector(12), self.DoCalcOutput)
+        else:
+            self.DeclareVectorOutputPort("slider_values", BasicVector(6), self.DoCalcOutput)
 
     def DoCalcOutput(self, context, output):
-        x = self.meshcat.GetSliderValue('x')
-        y = self.meshcat.GetSliderValue('y')
-        z = self.meshcat.GetSliderValue('z')
-        roll = self.meshcat.GetSliderValue('roll')
-        pitch = self.meshcat.GetSliderValue('pitch')
-        yaw = self.meshcat.GetSliderValue('yaw')
-        output.SetFromVector([x, y, z, roll, pitch, yaw])
+        if joint_control:
+            q1 = self.meshcat.GetSliderValue('q1')
+            q2 = self.meshcat.GetSliderValue('q2')
+            q3 = self.meshcat.GetSliderValue('q3')
+            q4 = self.meshcat.GetSliderValue('q4')
+            q5 = self.meshcat.GetSliderValue('q5')
+            q6 = self.meshcat.GetSliderValue('q6')
+            output.SetFromVector([q1, q2, q3, q4, q5, q6, 0, 0, 0, 0, 0, 0])
+        else:
+            x = self.meshcat.GetSliderValue('x')
+            y = self.meshcat.GetSliderValue('y')
+            z = self.meshcat.GetSliderValue('z')
+            roll = self.meshcat.GetSliderValue('roll')
+            pitch = self.meshcat.GetSliderValue('pitch')
+            yaw = self.meshcat.GetSliderValue('yaw')
+            output.SetFromVector([x, y, z, roll, pitch, yaw])
 
 
 class InverseKinematicsSystem(LeafSystem):
@@ -112,10 +126,12 @@ log.setLevel("INFO")
 parser = argparse.ArgumentParser()
 parser.add_argument('--fast', default='T', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
+parser.add_argument('--joint_control', default='F', help="T/F; whether to control joint positions (instead of xyz rpy)")
 args = parser.parse_args()
 
 seed = int(args.randomization)
 randomize_boxes = (args.fast == 'F')
+joint_control = (args.joint_control == 'T')
 
     
 #####################
@@ -137,12 +153,20 @@ np.random.seed(seed)
 ### Meshcat Setup ###
 #####################
 meshcat = StartMeshcat()
-meshcat.AddSlider('x', -1.0, 2.0, 0.01, 0.75)
-meshcat.AddSlider('y', -1.0, 1.0, 0.01, 0.0)
-meshcat.AddSlider('z', 0.0, 3.0, 0.01, 1.0)
-meshcat.AddSlider('roll', -np.pi, np.pi, 0.01, np.pi)
-meshcat.AddSlider('pitch', -np.pi, np.pi, 0.01, 0.0)
-meshcat.AddSlider('yaw', -np.pi, np.pi, 0.01, 0.0)
+if joint_control:
+    meshcat.AddSlider('q1', -np.pi, np.pi, 0.01, 0.0)
+    meshcat.AddSlider('q2', -np.pi, np.pi, 0.01, -2.2)
+    meshcat.AddSlider('q3', -np.pi, np.pi, 0.01, 2.2)
+    meshcat.AddSlider('q4', -np.pi, np.pi, 0.01, 0.0)
+    meshcat.AddSlider('q5', -np.pi, np.pi, 0.01, 1.57)
+    meshcat.AddSlider('q6', -np.pi, np.pi, 0.01, 0.0)
+else:
+    meshcat.AddSlider('x', -1.0, 2.0, 0.01, 0.75)
+    meshcat.AddSlider('y', -1.0, 1.0, 0.01, 0.0)
+    meshcat.AddSlider('z', 0.0, 3.0, 0.01, 1.0)
+    meshcat.AddSlider('roll', -np.pi, np.pi, 0.01, np.pi)
+    meshcat.AddSlider('pitch', -np.pi, np.pi, 0.01, 0.0)
+    meshcat.AddSlider('yaw', -np.pi, np.pi, 0.01, 0.0)
 meshcat.AddButton("Close")
 # meshcat.SetProperty("/drake/contact_forces", "visible", False)  # Doesn't work for some reason
 
@@ -196,25 +220,28 @@ num_robot_positions = controller_plant.num_positions()
 # Add Meshcat Slider Source System
 slider_source = builder.AddSystem(MeshcatSliderSource(meshcat))
 
-# Add IK System
-ik_system = builder.AddSystem(InverseKinematicsSystem(controller_plant, meshcat))
-
-# Connect sliders to IK system
-builder.Connect(slider_source.get_output_port(0), ik_system.get_input_port(0))
-
 ### Controller
-controller = builder.AddSystem(InverseDynamicsController(controller_plant, [150]*num_robot_positions, [50]*num_robot_positions, [50]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
-builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
-builder.Connect(ik_system.get_output_port(0), controller.GetInputPort("desired_state"))
-builder.Connect(ik_system.get_output_port(1), controller.GetInputPort("desired_acceleration"))
-builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka_actuation"))
+if joint_control:
+    zero_accel_source = builder.AddSystem(ConstantVectorSource([0,0,0,0,0,0]))
 
-### Print Debugger
-# if True:
-#     debugger = builder.AddSystem(Debugger())
-#     builder.Connect(station.GetOutputPort("kuka_state"), debugger.GetInputPort("kuka_state"))
-#     builder.Connect(station.GetOutputPort("body_poses"), debugger.GetInputPort("body_poses"))
-#     builder.Connect(controller.GetOutputPort("generalized_force"), debugger.GetInputPort("kuka_actuation"))
+    controller = builder.AddSystem(InverseDynamicsController(controller_plant, [150]*num_robot_positions, [50]*num_robot_positions, [50]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
+    builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
+    builder.Connect(slider_source.get_output_port(0), controller.GetInputPort("desired_state"))
+    builder.Connect(zero_accel_source.get_output_port(), controller.GetInputPort("desired_acceleration"))
+    builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka_actuation"))
+
+else:
+    # Add IK System
+    ik_system = builder.AddSystem(InverseKinematicsSystem(controller_plant, meshcat))
+
+    # Connect sliders to IK system
+    builder.Connect(slider_source.get_output_port(0), ik_system.get_input_port(0))
+
+    controller = builder.AddSystem(InverseDynamicsController(controller_plant, [150]*num_robot_positions, [50]*num_robot_positions, [50]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
+    builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("estimated_state"))
+    builder.Connect(ik_system.get_output_port(0), controller.GetInputPort("desired_state"))
+    builder.Connect(ik_system.get_output_port(1), controller.GetInputPort("desired_acceleration"))
+    builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka_actuation"))
 
 ### Finalizing diagram setup
 diagram = builder.Build()
