@@ -3,10 +3,8 @@ from pydrake.all import (
     Diagram,
     RigidTransform,
     RotationMatrix,
-    SpatialVelocity,
     MultibodyPlant,
     Context,
-    AngleAxis,
     VPolytope,
     Point,
     InverseKinematics,
@@ -14,14 +12,10 @@ from pydrake.all import (
     logical_or,
     logical_and
 )
-from pydrake.common.yaml import yaml_load_typed
 
-from enum import Enum
-from typing import BinaryIO, Optional, Union, Tuple
+from typing import BinaryIO, Union
 import numpy as np
-import numpy.typing as npt
 import pydot
-import matplotlib.pyplot as plt
 import yaml
 import os
 import sys

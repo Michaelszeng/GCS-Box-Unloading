@@ -4,13 +4,9 @@ from pydrake.all import (
     VPolytope,
     StartMeshcat,
     Rgba,
-    InverseKinematics,
-    Solve,
     Point,
     Sphere,
     Box,
-    logical_or,
-    logical_and
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
