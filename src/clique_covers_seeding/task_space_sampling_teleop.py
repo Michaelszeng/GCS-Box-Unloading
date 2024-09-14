@@ -23,13 +23,13 @@ from utils import diagram_visualize_connections
 import numpy as np
 import time
 
-TEST_SCENE = "3DOFFLIPPER"
+# TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
-# TEST_SCENE = "14DOFIIWAS"
+TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
 # TEST_SCENE = "BOX-UNLOADING"
 
@@ -43,17 +43,18 @@ class VectorSplitter(LeafSystem):
     it into 2 output vectors of size out1 and out2. This is used for multi-robot
     plants so the output of one controller can control both robots.
     """
-    def __init__(self, out1, out2):
+    def __init__(self, out1, out2=0):
         super().__init__()
         self.out1 = out1
         self.out2 = out2
         self.DeclareVectorInputPort("input", BasicVector(out1 + out2))
         self.DeclareVectorOutputPort("output_1", BasicVector(out1), self.Output1)
-        self.DeclareVectorOutputPort("output_2", BasicVector(out2), self.Output2)
+        if out2 > 0:
+            self.DeclareVectorOutputPort("output_2", BasicVector(out2), self.Output2)
 
     def Output1(self, context, output):
         input_vector = self.get_input_port(0).Eval(context)
-        output.SetFromVector([input_vector[:self.out1]])  # return first `out1` elements
+        output.SetFromVector(input_vector[:self.out1])  # return first `out1` elements
 
     def Output2(self, context, output):
         input_vector = self.get_input_port(0).Eval(context)
