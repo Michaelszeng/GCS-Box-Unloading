@@ -63,9 +63,6 @@ class MotionPlanner(LeafSystem):
         parser = Parser(plant)
         ConfigureParser(parser)
         kuka = parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")[1]  # ModelInstance object
-
-        # Weld robot base in place
-        plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), robot_pose)
         
         plant.Finalize()
         diagram = builder.Build()

@@ -150,7 +150,6 @@ scene_graph = robot_diagram_builder.scene_graph()
 visualizer = MeshcatVisualizer.AddToBuilder(diagram_builder, scene_graph, meshcat)
 
 # Weld robot base in place
-plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link", plant.GetModelInstanceByName("robot_base")), robot_pose)
 diagram = robot_diagram_builder.Build()
 collision_checker_params["model"] = diagram
 context = diagram.CreateDefaultContext()

@@ -6,14 +6,13 @@ from pydrake.all import (
 import numpy as np
 import time
 
-from scenario import scenario_yaml_for_iris, robot_pose
+from scenario import scenario_yaml_for_iris
 
 
 # Generate regions with no obstacles at all
 robot_diagram_builder = RobotDiagramBuilder()
 robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
 robot_diagram_builder_plant = robot_diagram_builder.plant()
-robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
 robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
 collision_checker_params = {}

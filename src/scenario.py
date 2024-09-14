@@ -26,17 +26,19 @@ q_place_nominal = [1.55738942, -2.2127606, 2.02098258, 0.02843482, 1.7572682, 1.
 
 robot_pose = RigidTransform([0.0,0.0,0.58])
 
-relative_path_to_robot_base = '../data/unload-gen0/robot_base.urdf'
-relative_path_to_robot_arm = '../data/unload-gen0/robot_arm.urdf'
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+relative_path_to_robot_base = os.path.join(current_dir, '../data/unload-gen0/robot_base.urdf')
+relative_path_to_robot_arm = os.path.join(current_dir, '../data/unload-gen0/robot_arm.urdf')
 
 """ Note: It is necessary to split the truck trailer into individual parts since
     Drake automatically takes the convex hull of the collision geometry, which 
     would make the hollow shipping container no longer hollow."""
-relative_path_to_truck_trailer_floor = '../data/Truck_Trailer_Floor.sdf'
-relative_path_to_truck_trailer_back = '../data/Truck_Trailer_Back.sdf'
-relative_path_to_truck_trailer_right_side = '../data/Truck_Trailer_Right_Side.sdf'
-relative_path_to_truck_trailer_left_side = '../data/Truck_Trailer_Left_Side.sdf'
-relative_path_to_truck_trailer_roof = '../data/Truck_Trailer_Roof.sdf'
+relative_path_to_truck_trailer_floor = os.path.join(current_dir, '../data/Truck_Trailer_Floor.sdf')
+relative_path_to_truck_trailer_back = os.path.join(current_dir, '../data/Truck_Trailer_Back.sdf')
+relative_path_to_truck_trailer_right_side = os.path.join(current_dir, '../data/Truck_Trailer_Right_Side.sdf')
+relative_path_to_truck_trailer_left_side = os.path.join(current_dir, '../data/Truck_Trailer_Left_Side.sdf')
+relative_path_to_truck_trailer_roof = os.path.join(current_dir, '../data/Truck_Trailer_Roof.sdf')
 
 absolute_path_to_robot_base = os.path.abspath(relative_path_to_robot_base)
 absolute_path_to_robot_arm = os.path.abspath(relative_path_to_robot_arm)
@@ -51,6 +53,16 @@ directives:
 - add_model:
     name: robot_base
     file: file://{absolute_path_to_robot_base}
+- add_frame:
+    name: robot_base::robot_base_offset
+    X_PF:
+        base_frame: world
+        translation: [{robot_pose.translation()[0]}, {robot_pose.translation()[1]}, {robot_pose.translation()[2]}]
+- add_weld:
+    parent: robot_base::robot_base_offset
+    child: robot_base::base_link  
+
+    
 - add_model:
     name: kuka
     file: file://{absolute_path_to_robot_arm}
@@ -63,7 +75,7 @@ directives:
         arm_a6: [{q_nominal[5]}]
 - add_weld:
     parent: robot_base::base
-    child: kuka::base_link        
+    child: kuka::base_link 
 
 
 - add_model: 
@@ -825,14 +837,6 @@ def set_up_scene(station, station_context, plant, plant_context, simulator, rand
     trailer_roof_body_idx = plant.GetBodyIndices(trailer_roof_model_idx)[0]  # BodyIndex
     if randomize_boxes:
         plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
-
-    # Move Robot to start position
-    robot_model_idx = plant.GetModelInstanceByName("robot_base")  # ModelInstanceIndex
-    robot_body_idx = plant.GetBodyIndices(robot_model_idx)[0]  # BodyIndex
-    plant.SetFreeBodyPose(plant_context, plant.get_body(robot_body_idx), robot_pose)
-    for joint_idx in plant.GetJointIndices(robot_model_idx):
-        robot_joint = plant.get_joint(joint_idx)  # Joint object
-        robot_joint.Lock(plant_context)
 
     # Set poses for all boxes
     # Because of added floating joints between boxes and eef, we must express free body pose relative to eef

@@ -33,7 +33,7 @@ import yaml
 import logging
 import datetime
 
-from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, robot_pose, set_up_scene, get_W_X_eef
 
 NUM_BOXES = 0
 

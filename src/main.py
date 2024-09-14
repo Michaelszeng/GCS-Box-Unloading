@@ -204,7 +204,6 @@ set_up_scene(station, station_context, plant, plant_context, simulator, randomiz
 robot_diagram_builder = RobotDiagramBuilder()
 robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
 robot_diagram_builder_plant = robot_diagram_builder.plant()
-robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
 robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
 collision_checker_params = {}
@@ -233,12 +232,12 @@ region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checke
 #                                                   num_points_per_visibility_round=i*75 + 50,
 #                                                   use_previous_saved_regions=True)
 
-for i in range(10):
-    print(f"Beginning Clique Covers Iteration {i}.")
-    region_generator.generate_source_iris_regions(minimum_clique_size=10,
-                                                  coverage_threshold=0.1, 
-                                                  num_points_per_visibility_round=1000,
-                                                  use_previous_saved_regions=True)
+# for i in range(10):
+#     print(f"Beginning Clique Covers Iteration {i}.")
+#     region_generator.generate_source_iris_regions(minimum_clique_size=10,
+#                                                   coverage_threshold=0.1, 
+#                                                   num_points_per_visibility_round=1000,
+#                                                   use_previous_saved_regions=True)
 
 # Generate regions with box in eef
 robot_diagram_builder = RobotDiagramBuilder()
@@ -252,7 +251,6 @@ robot_diagram_builder_scene_graph = robot_diagram_builder.scene_graph()
 robot_diagram_builder_plant = robot_diagram_builder.plant()
 
 # Set pose of box to be in "grabbed" position relative to eef and weld it there
-robot_diagram_builder_plant.WeldFrames(robot_diagram_builder_plant.world_frame(), robot_diagram_builder_plant.GetFrameByName("base_link", robot_diagram_builder_plant.GetModelInstanceByName("robot_base")), robot_pose)
 eef_model_idx = robot_diagram_builder_plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
 eef_body_idx = robot_diagram_builder_plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
 frame_parent = robot_diagram_builder_plant.get_body(eef_body_idx).body_frame()
