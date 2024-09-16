@@ -11,6 +11,7 @@ from pydrake.all import (
     InverseDynamicsController,
     ConstantVectorSource,
     BasicVector,
+    Rgba,
 )
 
 import sys
@@ -33,9 +34,20 @@ import time
 # TEST_SCENE = "15DOFALLEGRO"
 TEST_SCENE = "BOX-UNLOADING"
 
+sampling_bounds = [
+    [-0.75, -0.65, 2],    # upper deposit area
+    [-0.75, -0.65, 0.75], # lower deposit area
+    [0, -1.28, 0.02571],
+    [2.5, -1.28, 0.02571],
+    [2.5, 1.28, 0.02571],
+    [0, 1.28, 0.02571],
+    [0, -1.28, 2.7686],
+    [2.5, -1.28, 2.7686],
+    [2.5, 1.28, 2.7686],
+    [0, 1.28, 2.7686],
+]
 
 yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
-
 
 class VectorSplitter(LeafSystem):
     """
@@ -120,6 +132,18 @@ simulator = Simulator(diagram)
 simulator_context = simulator.get_mutable_context()
 station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
+
+# Display convex hull of sampling region
+from scipy.spatial import ConvexHull
+hull = ConvexHull(np.array(sampling_bounds))
+vertices = np.array(sampling_bounds).T  # Transpose to get 3xN matrix
+faces = hull.simplices.T  # Transpose to get 3xM matrix (each column is a triangle)
+meshcat.SetTriangleMesh(
+    path="/convex_polygon",
+    vertices=vertices,
+    faces=faces,
+    rgba=Rgba(r=0.5, g=0.1, b=0.1, a=0.5),
+)
 
 simulator.set_publish_every_time_step(True)
 meshcat.StartRecording()
