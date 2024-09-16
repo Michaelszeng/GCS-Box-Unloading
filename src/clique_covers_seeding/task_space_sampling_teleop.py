@@ -23,6 +23,7 @@ from utils import diagram_visualize_connections
 
 import numpy as np
 import time
+import importlib
 
 # TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
@@ -32,20 +33,9 @@ import time
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
-TEST_SCENE = "BOX-UNLOADING"
+TEST_SCENE = "BOXUNLOADING"
 
-sampling_bounds = [
-    [-0.75, -0.65, 2],    # upper deposit area
-    [-0.75, -0.65, 0.75], # lower deposit area
-    [0, -1.28, 0.02571],
-    [2.5, -1.28, 0.02571],
-    [2.5, 1.28, 0.02571],
-    [0, 1.28, 0.02571],
-    [0, -1.28, 2.7686],
-    [2.5, -1.28, 2.7686],
-    [2.5, 1.28, 2.7686],
-    [0, 1.28, 2.7686],
-]
+task_space_sampling_region = importlib.import_module(f"task_space_sampling_regions.{TEST_SCENE}")
 
 yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
 
@@ -77,7 +67,7 @@ meshcat = StartMeshcat()
 
 builder = DiagramBuilder()
 
-if TEST_SCENE == "BOX-UNLOADING":
+if TEST_SCENE == "BOXUNLOADING":
     scenario = load_scenario(data=scenario_yaml_for_iris)
 else:
     scenario = load_scenario(filename=yaml_file)
@@ -135,8 +125,8 @@ plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 
 # Display convex hull of sampling region
 from scipy.spatial import ConvexHull
-hull = ConvexHull(np.array(sampling_bounds))
-vertices = np.array(sampling_bounds).T  # Transpose to get 3xN matrix
+hull = ConvexHull(np.array(task_space_sampling_region.sampling_bounds))
+vertices = np.array(task_space_sampling_region.sampling_bounds).T  # Transpose to get 3xN matrix
 faces = hull.simplices.T  # Transpose to get 3xM matrix (each column is a triangle)
 meshcat.SetTriangleMesh(
     path="/convex_polygon",
