@@ -46,7 +46,7 @@ NUM_SAMPLES = 1000
 
 task_space_sampling_region = importlib.import_module(f"task_space_sampling_regions.{TEST_SCENE}")
 
-yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
+scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
 
 
 meshcat = StartMeshcat()
@@ -60,7 +60,7 @@ parser.package_map().Add("iris_environments", os.path.dirname(os.path.abspath(__
 if TEST_SCENE == "BOXUNLOADING":
     robot_model_instances = parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
 else:
-    robot_model_instances = parser.AddModels(yaml_file)
+    robot_model_instances = parser.AddModels(scene_yaml_file)
 plant = robot_diagram_builder.plant()
 plant.Finalize()
 AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=meshcat)

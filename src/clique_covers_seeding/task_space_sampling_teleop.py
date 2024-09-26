@@ -35,9 +35,7 @@ import importlib
 # TEST_SCENE = "15DOFALLEGRO"
 TEST_SCENE = "BOXUNLOADING"
 
-task_space_sampling_region = importlib.import_module(f"task_space_sampling_regions.{TEST_SCENE}")
-
-yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
+scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
 
 class VectorSplitter(LeafSystem):
     """
@@ -70,7 +68,7 @@ builder = DiagramBuilder()
 if TEST_SCENE == "BOXUNLOADING":
     scenario = load_scenario(data=scenario_yaml_for_iris)
 else:
-    scenario = load_scenario(filename=yaml_file)
+    scenario = load_scenario(filename=scene_yaml_file)
 
 # Hardware station setup
 station = builder.AddSystem(MakeHardwareStation(
@@ -122,18 +120,6 @@ simulator = Simulator(diagram)
 simulator_context = simulator.get_mutable_context()
 station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
-
-# Display convex hull of sampling region
-from scipy.spatial import ConvexHull
-hull = ConvexHull(np.array(task_space_sampling_region.sampling_bounds))
-vertices = np.array(task_space_sampling_region.sampling_bounds).T  # Transpose to get 3xN matrix
-faces = hull.simplices.T  # Transpose to get 3xM matrix (each column is a triangle)
-meshcat.SetTriangleMesh(
-    path="/convex_polygon",
-    vertices=vertices,
-    faces=faces,
-    rgba=Rgba(r=0.5, g=0.1, b=0.1, a=0.5),
-)
 
 simulator.set_publish_every_time_step(True)
 meshcat.StartRecording()
