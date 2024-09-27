@@ -12,7 +12,6 @@ from pydrake.all import (
     VPolytope,
     HPolyhedron,
     SceneGraphCollisionChecker,
-    ConfigurationSpaceObstacleCollisionChecker,
     RandomGenerator,
     PointCloud,
     Rgba,
@@ -35,23 +34,28 @@ from scipy.sparse import find
 # TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
-# TEST_SCENE = "7DOFIIWA"
+TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
-TEST_SCENE = "BOXUNLOADING"
+# TEST_SCENE = "BOXUNLOADING"
 
 rng = RandomGenerator(1234)
 
-scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
+# scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
+src_directory = os.path.dirname(os.path.abspath(__file__))
+parent_directory = os.path.dirname(src_directory)
+data_directory = os.path.join(parent_directory)
+scene_yaml_file = os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "yamls", TEST_SCENE + ".dmd.yaml")
 
 meshcat = StartMeshcat()
 
 
 robot_diagram_builder = RobotDiagramBuilder()
 parser = robot_diagram_builder.parser()
-parser.package_map().Add("iris_environments", os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/iris_environments/assets")
+iris_environement_assets = os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "iris_environments", "assets")
+parser.package_map().Add("iris_environments",iris_environement_assets)
 if TEST_SCENE == "BOXUNLOADING":
     robot_model_instances = parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
 else:
@@ -74,4 +78,3 @@ collision_checker_params["robot_model_instances"] = robot_model_instances
 collision_checker_params["model"] = diagram
 collision_checker_params["edge_step_size"] = 0.125
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
-config_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
