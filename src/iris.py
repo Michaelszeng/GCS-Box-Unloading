@@ -45,11 +45,11 @@ class IrisRegionGenerator():
 
 
     @staticmethod
-    def visualize_connectivity(iris_regions, coverage, output_file='../iris_connectivity.svg', skip_svg=False):
+    def visualize_connectivity(regions, coverage, output_file='../iris_connectivity.svg', skip_svg=False):
         """
         Create and save SVG graph of IRIS Region connectivity.
 
-        iris_regions can be a list of ConvexSets or a dictionary with keys as
+        regions can be a list of ConvexSets or a dictionary with keys as
         labels and values as ConvexSets.
         """
         numEdges = 0
@@ -57,10 +57,10 @@ class IrisRegionGenerator():
 
         graph = pydot.Dot("IRIS region connectivity")
 
-        if isinstance(iris_regions, dict):
-            items = list(iris_regions.items())
+        if isinstance(regions, dict):
+            items = list(regions.items())
         else:
-            items = list(enumerate(iris_regions))
+            items = list(enumerate(regions))
 
         for i, (label1, v1) in enumerate(items):
             numNodes += 1
@@ -84,12 +84,23 @@ class IrisRegionGenerator():
         return numNodes, numEdges
     
 
-    def estimate_coverage(self, regions, num_samples=10000, seed=42):
+    @staticmethod
+    def estimate_coverage(plant, collision_checker, regions, num_samples=10000, seed=42):
+        """
+        Estimate coverage fraction of the regions in the entire cspace via
+        sampling.
+
+        regions can be a list of ConvexSets or a dictionary with keys as
+        labels and values as ConvexSets.
+        """
+        if isinstance(regions, dict):
+            regions = list(regions.values())
+
         rng = RandomGenerator(seed)
-        sampling_domain = HPolyhedron.MakeBox(self.plant.GetPositionLowerLimits(), self.plant.GetPositionUpperLimits())
+        sampling_domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
         last_sample = sampling_domain.UniformSample(rng)
 
-        self.collision_checker.SetConfigurationSpaceObstacles([])  # We don't want to account for any c-space obstacles during the coverge estimate
+        collision_checker.SetConfigurationSpaceObstacles([])  # We don't want to account for any c-space obstacles during the coverge estimate
 
         num_samples_in_regions = 0
         num_samples_collision_free = 0
@@ -97,7 +108,7 @@ class IrisRegionGenerator():
             last_sample = sampling_domain.UniformSample(rng, last_sample)
 
             # Check if sample is in collision
-            if self.collision_checker.CheckConfigCollisionFree(last_sample):
+            if collision_checker.CheckConfigCollisionFree(last_sample):
                 num_samples_collision_free += 1
 
                 # If sample is collsion-free, check if sample falls in regions
@@ -222,19 +233,105 @@ class IrisRegionGenerator():
             plt.pause(1)  # Allow the plot to be displayed
 
 
-    def test_iris_region(self, plant, plant_context, meshcat, regions, seed=42, num_sample=10000, colors=None, name="regions", coverage=True, histogram=True, connectivity=True, svg=True, task_space_render=True):
+    @staticmethod
+    def visualize_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample=10000, colors=None, name="regions", task_space=True, scene="BOXUNLOADING"):
         """
-        Plot small spheres in the volume of each region. (we are using forward
-        kinematics to return from configuration space to task space.)
+        Plot dense point clouds to visualize the volume of each region. If 
+        `task_space` is set to True, we use forward kinematics to return from
+        configuration space to task space.
 
-        regions is a list of ConvexSets.
+        regions can either be a list of HPolyhedrons or a dictionary mapping
+        names to HPolyhedrons.
+        """
+        world_frame = plant.world_frame()
+
+        if task_space:            
+            if scene == "3DOFFLIPPER":
+                print("visualize_iris_region for 3DOFFLIPPER in task space to be implemented.")
+                return
+            if scene == "5DOFUR3":
+                ee_frame = plant.GetFrameByName("ur_ee_link")
+            if scene == "6DOFUR3":
+                ee_frame = plant.GetFrameByName("ur_ee_link")
+            if scene == "7DOFIIWA":
+                ee_frame = plant.GetFrameByName("iiwa_link_7")
+            if scene == "7DOFBINS":
+                ee_frame = plant.GetFrameByName("iiwa_link_7")
+            if scene == "7DOF4SHELVES":
+                ee_frame = plant.GetFrameByName("iiwa_link_7")
+            if scene == "14DOFIIWAS":
+                print("visualize_iris_region for 14DOFIIWAS in task space to be implemented.")
+                return
+            if scene == "15DOFALLEGRO":
+                print("visualize_iris_region for 15DOFALLEGRO in task space to be implemented.")
+                return
+            if scene == "BOXUNLOADING":
+                ee_frame = plant.GetFrameByName("arm_eef")
+
+        rng = RandomGenerator(seed)
+
+        # Allow caller to input custom colors
+        if colors is None:
+            colors = [
+                Rgba(0.5,0.0,0.0,0.5),
+                Rgba(0.0,0.5,0.0,0.5),
+                Rgba(0.0,0.0,0.5,0.5),
+                Rgba(0.5,0.5,0.0,0.5),
+                Rgba(0.5,0.0,0.5,0.5),
+                Rgba(0.0,0.5,0.5,0.5),
+                Rgba(0.2,0.2,0.2,0.5),
+                Rgba(0.5,0.2,0.0,0.5),
+                Rgba(0.2,0.5,0.0,0.5),
+                Rgba(0.5,0.0,0.2,0.5),
+                Rgba(0.2,0.0,0.5,0.5),
+                Rgba(0.0,0.5,0.2,0.5),
+                Rgba(0.0,0.2,0.5,0.5),
+            ]
+
+        if isinstance(regions, list):
+            # Make regions a dictionry with keys as a counter
+            regions = {i: regions[i] for i in range(len(regions))}
+
+        for i, (region_name, region) in enumerate(regions.items()):
+
+            xyzs = []  # List to hold XYZ positions of configurations in the IRIS region
+
+            q_sample = region.UniformSample(rng)
+            prev_sample = q_sample
+
+            if task_space:
+                plant.SetPositions(plant_context, q_sample)
+                xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
+            else:
+                xyzs.append(prev_sample)
+
+            for _ in range(num_sample-1):
+                q_sample = region.UniformSample(rng, prev_sample)
+                prev_sample = q_sample
+
+                if task_space:
+                    plant.SetPositions(plant_context, q_sample)
+                    xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
+                else:
+                    xyzs.append(prev_sample)
+                    
+            # Create pointcloud from sampled point in IRIS region in order to plot in Meshcat
+            xyzs = np.array(xyzs)
+            pc = PointCloud(len(xyzs))
+            pc.mutable_xyzs()[:] = xyzs.T
+            meshcat.SetObject(f"{name}/{region_name}", pc, point_size=0.025, rgba=colors[i % len(colors)])
+
+
+    def test_iris_region(self, plant, plant_context, meshcat, collision_checker, regions, seed=42, num_sample=10000, colors=None, name="regions", coverage=True, histogram=True, connectivity=True, svg=True, task_space_render=True):
+        """
+        Run a series of tests on a given list of IRIS regions.
         """
         if not self.DEBUG:
             print("IrisRegionGenerator: DEBUG set to False; skipping region visualization.")
             return
         
         if coverage:
-            coverage = self.estimate_coverage(regions)
+            coverage = self.estimate_coverage(plant, collision_checker, regions)
             print(f"Estimated region coverage fraction: {coverage}")
 
         if histogram:
@@ -248,52 +345,7 @@ class IrisRegionGenerator():
             print("\n\n")
 
         if task_space_render:
-            world_frame = plant.world_frame()
-            ee_frame = plant.GetFrameByName("arm_eef")
-
-            rng = RandomGenerator(seed)
-
-            # Allow caller to input custom colors
-            if colors is None:
-                colors = [
-                    Rgba(0.5,0.0,0.0,0.5),
-                    Rgba(0.0,0.5,0.0,0.5),
-                    Rgba(0.0,0.0,0.5,0.5),
-                    Rgba(0.5,0.5,0.0,0.5),
-                    Rgba(0.5,0.0,0.5,0.5),
-                    Rgba(0.0,0.5,0.5,0.5),
-                    Rgba(0.2,0.2,0.2,0.5),
-                    Rgba(0.5,0.2,0.0,0.5),
-                    Rgba(0.2,0.5,0.0,0.5),
-                    Rgba(0.5,0.0,0.2,0.5),
-                    Rgba(0.2,0.0,0.5,0.5),
-                    Rgba(0.0,0.5,0.2,0.5),
-                    Rgba(0.0,0.2,0.5,0.5),
-                ]
-
-            for i in range(len(regions)):
-                region = regions[i]
-
-                xyzs = []  # List to hold XYZ positions of configurations in the IRIS region
-
-                q_sample = region.UniformSample(rng)
-                prev_sample = q_sample
-
-                plant.SetPositions(plant_context, q_sample)
-                xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
-
-                for _ in range(num_sample-1):
-                    q_sample = region.UniformSample(rng, prev_sample)
-                    prev_sample = q_sample
-
-                    plant.SetPositions(plant_context, q_sample)
-                    xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
-                
-                # Create pointcloud from sampled point in IRIS region in order to plot in Meshcat
-                xyzs = np.array(xyzs)
-                pc = PointCloud(len(xyzs))
-                pc.mutable_xyzs()[:] = xyzs.T
-                meshcat.SetObject(f"{name}/region {i}", pc, point_size=0.025, rgba=colors[i % len(colors)])
+            IrisRegionGenerator.visualize_iris_region(plant, plant_context, meshcat, regions, seed, num_sample, colors, name)
 
 
     def load_and_test_regions(self, name="regions"):
@@ -310,7 +362,7 @@ class IrisRegionGenerator():
             volumes.append(r.CalcVolumeViaSampling(RandomGenerator(0), desired_rel_accuracy=0.01, max_num_samples=1000000).volume)
         print("volumes:", volumes)
 
-        self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions, name=name)
+        self.test_iris_region(self.plant, self.plant_context, self.collision_checker, self.meshcat, regions, name=name)
 
 
     def generate_source_region_at_q_nominal(self, q):
@@ -334,7 +386,7 @@ class IrisRegionGenerator():
         SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
         
         # This source region will be drawn in black
-        self.test_iris_region(self.plant, self.plant_context, self.meshcat, [region], colors=[Rgba(0.0,0.0,0.0,0.5)], coverage=True, histogram=False, connectivity=False, svg=False, task_space_render=False)
+        self.test_iris_region(self.plant, self.plant_context, self.meshcat, self.collision_checker, [region], colors=[Rgba(0.0,0.0,0.0,0.5)], coverage=True, histogram=False, connectivity=False, svg=False, task_space_render=False)
 
 
     def generate_source_iris_regions(self, 
@@ -396,7 +448,7 @@ class IrisRegionGenerator():
             regions_dict = {f"set{i}" : regions[i] for i in range(len(regions))}
             SaveIrisRegionsYamlFile(self.regions_file, regions_dict)
 
-            self.test_iris_region(self.plant, self.plant_context, self.meshcat, regions, coverage=True, histogram=False, connectivity=True, svg=False, task_space_render=False)
+            self.test_iris_region(self.plant, self.plant_context, self.meshcat, self.collision_checker, regions, coverage=True, histogram=False, connectivity=True, svg=False, task_space_render=False)
         
     
     @staticmethod
