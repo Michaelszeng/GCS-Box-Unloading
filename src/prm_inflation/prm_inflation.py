@@ -84,7 +84,7 @@ collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 # Sample to build PRM
-N = 20
+N = 10
 points = np.zeros((ambient_dim, N))  # ambient_dim x N
 # domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
 domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduec size of domain to make it easer to tell what's going on
@@ -101,6 +101,9 @@ for i in range(np.shape(points)[1]):
 RADIUS = np.pi/4  # Radians
 print(np.shape(points))
 prm = PRM(cspace_obstacle_collision_checker, points, RADIUS)  # Adjacency Mat.
+prm.setdiag(0)
+
+print(f"\n{prm.toarray().astype(int)}\n")
 
 if ambient_dim == 3:  # Visualize PRM in 3D space
         
@@ -151,9 +154,10 @@ print(f"Number of edges in PRM: {np.sum(prm)/2}")
 
 for i in range(N):
     for j in range(i+1, N):
-        if prm[i, j] != 0:  # Find neighbors of point i
+        if prm[i, j]:  # Find neighbors of point i
 
             # Build region around (i,j)
+            print(f"Building region around ({i}, {j})")
             line_clique = np.hstack((points[:,i:i+1], points[:,j:j+1]))  # ambient_dim x 2
             hpoly = FastCliqueInflation(cspace_obstacle_collision_checker, line_clique, domain, options)
             regions[f"{i},{j}"] = hpoly
@@ -162,7 +166,12 @@ for i in range(N):
             M = hpoly.A() @ points <= hpoly.b()[:, None]
 
             C = np.all(M, axis=0)  # (N,) array of truths
+            print(C)
+            print(f"There are {np.sum(C)} True values in C.")
+            print(prm[i])
             prm[i, C] = 0  # Remove all edges with true values in C
+            print("--------------------------------")
+            print(prm[i])
 
 print(f"Number of regions generated: {len(regions)}")
 
@@ -172,6 +181,8 @@ IrisRegionGenerator.visualize_connectivity(regions, coverage, output_file='prm_r
 
 print(f"c-space Coverage: {coverage}")
 
+
+print(f"{cspace_meshcat.web_url()}/download")
 
 
 # while cspace_coverage < COVERAGE_THRESH:
