@@ -1,3 +1,7 @@
+"""
+Template file that allows teleoperation of robots in all 9 scenes.
+"""
+
 from pydrake.all import (
     DiagramBuilder,
     StartMeshcat,
@@ -29,90 +33,21 @@ import numpy as np
 import time
 import importlib
 import argparse
-import pickle
 
 # TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
-TEST_SCENE = "7DOFBINS"
+# TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
-# TEST_SCENE = "BOXUNLOADING"
+TEST_SCENE = "BOXUNLOADING"
 
-scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
-
-
-class MeshcatSliderSource(LeafSystem):
-    def __init__(self, meshcat):
-        LeafSystem.__init__(self)
-        self.meshcat = meshcat
-
-        if joint_control:
-            self.DeclareVectorOutputPort("slider_values", BasicVector(2*num_robot_positions), self.DoCalcOutput)
-        else:
-            self.DeclareVectorOutputPort("slider_values", BasicVector(6), self.DoCalcOutput)
-
-    def DoCalcOutput(self, context, output):
-        if joint_control:
-            out = []
-            for i in range(num_robot_positions):
-                out.append(self.meshcat.GetSliderValue(f'q{i}'))
-            out += [0]*num_robot_positions
-            output.SetFromVector(out)
-        else:
-            x = self.meshcat.GetSliderValue('x')
-            y = self.meshcat.GetSliderValue('y')
-            z = self.meshcat.GetSliderValue('z')
-            roll = self.meshcat.GetSliderValue('roll')
-            pitch = self.meshcat.GetSliderValue('pitch')
-            yaw = self.meshcat.GetSliderValue('yaw')
-            output.SetFromVector([x, y, z, roll, pitch, yaw])
-
-
-class InverseKinematicsSystem(LeafSystem):
-    def __init__(self, plant, meshcat):
-        LeafSystem.__init__(self)
-        self.plant = plant
-        self.meshcat = meshcat
-        self.DeclareVectorInputPort("slider_values", BasicVector(6))
-        self.DeclareVectorOutputPort("desired_state", BasicVector(num_robot_positions*2), self.CalculateDesiredState)
-        
-    def CalculateDesiredState(self, context, output):
-        slider_values = self.get_input_port(0).Eval(context)
-        x, y, z, roll, pitch, yaw = slider_values
-        desired_pose = RigidTransform(RotationMatrix(RollPitchYaw(roll, pitch, yaw)), [x, y, z])
-        
-        ik = InverseKinematics(self.plant)
-        ik.AddPositionConstraint(
-            ee_frame,
-            [0, 0, 0],
-            self.plant.world_frame(),
-            desired_pose.translation(),
-            desired_pose.translation()
-        )
-        ik.AddOrientationConstraint(
-            ee_frame,
-            RotationMatrix(),
-            self.plant.world_frame(),
-            desired_pose.rotation(),
-            0.05
-        )
-        
-        prog = ik.prog()
-        prog.SetInitialGuess(ik.q(), default_joint_positions)
-        result = Solve(prog)
-        
-        if result.is_success():
-            q_solution = result.GetSolution(ik.q())
-            v_solution = np.zeros_like(q_solution)  # Assuming zero velocity for simplicity
-            desired_state = np.concatenate([q_solution, v_solution])
-        else:
-            print("ik fail; defaulting to zero state.")
-            desired_state = np.zeros(num_robot_positions*2)
-            
-        output.SetFromVector(desired_state)
+src_directory = os.path.dirname(os.path.abspath(__file__))
+parent_directory = os.path.dirname(src_directory)
+data_directory = os.path.join(parent_directory)
+scene_yaml_file = os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "yamls", TEST_SCENE + ".dmd.yaml")
 
 
 class VectorSplitter(LeafSystem):
@@ -161,7 +96,7 @@ station = builder.AddSystem(MakeHardwareStation(
 
     # This is to be able to load our own models from a local path
     # we can refer to this using the "package://" URI directive
-    parser_preload_callback=lambda parser: parser.package_map().Add("iris_environments", os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/iris_environments/assets"),
+    parser_preload_callback=lambda parser: parser.package_map().Add("iris_environments", os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "iris_environments", "assets")),
 ))
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
@@ -201,10 +136,6 @@ else:
     meshcat.AddSlider('roll', -np.pi, np.pi, 0.01, default_pose.rotation().ToRollPitchYaw().vector()[0])
     meshcat.AddSlider('pitch', -np.pi, np.pi, 0.01, default_pose.rotation().ToRollPitchYaw().vector()[1])
     meshcat.AddSlider('yaw', -np.pi, np.pi, 0.01, default_pose.rotation().ToRollPitchYaw().vector()[2])
-start_pt_button = "Capture Start Point"
-end_pt_button = "Capture End Point"
-meshcat.AddButton(start_pt_button)
-meshcat.AddButton(end_pt_button)
 meshcat.AddButton("Close")
 
 # Figure out how many robots there are and how many joints each has
@@ -226,19 +157,10 @@ control_splitter = builder.AddSystem(VectorSplitter(*model_instances_indices_wit
 # Set controller desired state
 builder.Connect(station.GetOutputPort("state"), controller.GetInputPort("estimated_state"))
 builder.Connect(controller.GetOutputPort("generalized_force"), control_splitter.GetInputPort("input"))
-
-if joint_control:
-    builder.Connect(slider_source.get_output_port(0), controller.GetInputPort("desired_state"))
-else:
-    # Add IK System
-    ik_system = builder.AddSystem(InverseKinematicsSystem(plant, meshcat))
-    # Connect sliders to IK system
-    builder.Connect(slider_source.get_output_port(0), ik_system.get_input_port(0))
-    builder.Connect(ik_system.get_output_port(0), controller.GetInputPort("desired_state"))
+builder.Connect(TODO: FILL IN HERE, controller.GetInputPort("desired_state"))
 
 # Set controller desired accel
-zero_accel_source = builder.AddSystem(ConstantVectorSource([0]*num_robot_positions))
-builder.Connect(zero_accel_source.get_output_port(), controller.GetInputPort("desired_acceleration"))
+builder.Connect(TODO: FILL IN HERE, controller.GetInputPort("desired_acceleration"))
 
 # Connect each output of the splitter to the actuation input for each robot
 for i, (robot_model_instance_idx, num_joints) in enumerate(model_instances_indices_with_actuators.items()):
@@ -253,36 +175,7 @@ simulator_context = simulator.get_mutable_context()
 station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 
-slider_source_context = slider_source.GetMyMutableContextFromRoot(simulator_context)
-ik_system_context = ik_system.GetMyMutableContextFromRoot(simulator_context)
-
 # Main simulation loop
-print(f"Default joint positions: {default_joint_positions}")
-
 ctr = 0
-end_pt_button_clicks = 0
-start_pt_button_clicks = 0
-start_pts = []
-end_pts = []
-
 while not meshcat.GetButtonClicks("Close"):
-    if joint_control:
-        plant.SetPositions(plant_context, slider_source.get_output_port(0).Eval(slider_source_context)[:num_robot_positions])
-    else:
-        plant.SetPositions(plant_context, ik_system.get_output_port(0).Eval(ik_system_context)[:num_robot_positions])
     simulator.AdvanceTo(simulator_context.get_time() + 0.01)
-   
-    if meshcat.GetButtonClicks(end_pt_button) != end_pt_button_clicks:
-        end_pt_button_clicks = meshcat.GetButtonClicks(end_pt_button)
-        print("Placing End Point")
-        end_pts.append(plant.GetPositions(plant_context))
-    if meshcat.GetButtonClicks(start_pt_button) != start_pt_button_clicks:
-        start_pt_button_clicks = meshcat.GetButtonClicks(start_pt_button)
-        print("Placing Start Point")
-        start_pts.append(plant.GetPositions(plant_context))
-
-pickle_file = f'{TEST_SCENE}_endpts.pkl'
-with open(pickle_file, 'wb') as file:
-    pickle.dump({"start_pts": start_pts, "end_pts": end_pts}, file)
-
-print(f"Start and end points saved to {pickle_file}")

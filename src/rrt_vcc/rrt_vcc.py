@@ -36,10 +36,10 @@ import pickle
 import time
 
 # TEST_SCENE = "3DOFFLIPPER"
-TEST_SCENE = "5DOFUR3"
+# TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
-# TEST_SCENE = "7DOFBINS"
+TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
@@ -125,7 +125,7 @@ tree = BiRRT(tuple(endpts["start_pts"][0]),
             plant.GetPositionUpperLimits(),
             StraightLineCollisionChecker(check_collision))
 
-tree_connected = tree.build_tree(max_iter = int(1e2))
+tree_connected = tree.build_tree(max_iter = int(1e3))
 print(tree_connected)
 
 # construct the RationalForwardKinematics of this plant. This object handles the
@@ -137,5 +137,6 @@ vis_bundle = vis_utils.VisualizationBundle(
     diagram, context, plant, plant_context,
     Ratfk, meshcat, q_star
 )
+# if tree_connected:
 tree.draw_tree(vis_bundle, ee_body, prefix = f"bi_rrt")
 time.sleep(10)

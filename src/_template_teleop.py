@@ -255,9 +255,16 @@ simulator_context = simulator.get_mutable_context()
 station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 
+slider_source_context = slider_source.GetMyMutableContextFromRoot(simulator_context)
+ik_system_context = ik_system.GetMyMutableContextFromRoot(simulator_context)
+
 # Main simulation loop
 ctr = 0
 while not meshcat.GetButtonClicks("Close"):
+    if joint_control:
+        plant.SetPositions(plant_context, slider_source.get_output_port(0).Eval(slider_source_context)[:num_robot_positions])
+    else:
+        plant.SetPositions(plant_context, ik_system.get_output_port(0).Eval(ik_system_context)[:num_robot_positions])
     simulator.AdvanceTo(simulator_context.get_time() + 0.01)
     ctr += 1
     if (ctr == 100):
