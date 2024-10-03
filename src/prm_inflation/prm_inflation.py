@@ -11,16 +11,22 @@ from pydrake.all import (
     RobotDiagramBuilder,
     VPolytope,
     HPolyhedron,
+    Hyperellipsoid,
     SceneGraphCollisionChecker,
     ConfigurationSpaceObstacleCollisionChecker,
     RandomGenerator,
     PointCloud,
+    Sphere,
     Rgba,
     Quaternion,
     RigidTransform,
     PRM,
     FastCliqueInflation,
     FastCliqueInflationOptions,
+    FastIris,
+    FastIrisOptions,
+    IrisInConfigurationSpace,
+    IrisOptions,
 )
 
 import sys
@@ -34,7 +40,7 @@ from utils import ik
 import numpy as np
 import time
 from scipy.spatial.transform import Rotation
-from scipy.sparse import find
+from scipy.sparse import csc_matrix, lil_matrix
 
 TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
@@ -61,6 +67,7 @@ if TEST_SCENE == "BOXUNLOADING":
 else:
     robot_model_instances = parser.AddModels(scene_yaml_file)
 plant = robot_diagram_builder.plant()
+scene_graph = robot_diagram_builder.scene_graph()
 plant.Finalize()
 AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=meshcat)
 diagram = robot_diagram_builder.Build()
@@ -69,7 +76,7 @@ diagram = robot_diagram_builder.Build()
 simulator = Simulator(diagram)
 simulator.AdvanceTo(0.001)
 
-plant_context = plant.CreateDefaultContext()
+plant_context = plant.GetMyMutableContextFromRoot(diagram.CreateDefaultContext())
 
 ambient_dim = plant.num_positions()
 
@@ -84,10 +91,10 @@ collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 # Sample to build PRM
-N = 10
+N = 60
 points = np.zeros((ambient_dim, N))  # ambient_dim x N
-# domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
-domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduec size of domain to make it easer to tell what's going on
+domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
+# domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
 last_polytope_sample = domain.UniformSample(rng, domain.ChebyshevCenter())
 for i in range(np.shape(points)[1]):
     last_polytope_sample = domain.UniformSample(rng, last_polytope_sample)
@@ -98,10 +105,33 @@ for i in range(np.shape(points)[1]):
     points[:, i] = last_polytope_sample
 
 # Build PRM
-RADIUS = np.pi/4  # Radians
-print(np.shape(points))
-prm = PRM(cspace_obstacle_collision_checker, points, RADIUS)  # Adjacency Mat.
-prm.setdiag(0)
+RADIUS = np.pi/2  # Radians
+prm = PRM(cspace_obstacle_collision_checker, points, RADIUS)  # Adjacency Mat. Scipy csc_matrix
+
+# Remove self edges from PRM
+non_diag_mask = prm.nonzero()[0] != prm.nonzero()[1]
+prm = csc_matrix((prm.data[non_diag_mask], (prm.nonzero()[0][non_diag_mask], prm.nonzero()[1][non_diag_mask])), shape=prm.shape)
+
+# Prune edges between two vertices that both have more than MAX_NEIGHBORS neighbors
+MAX_NEIGHBORS = 1
+for i in range(N):
+    num_neighbors = np.count_nonzero(prm.getrow(i).toarray().flatten())
+    print(f"num_neighbors before: {num_neighbors}")
+
+    if num_neighbors <= MAX_NEIGHBORS:
+        continue
+    
+    neighbors = prm.getrow(i)
+    for neighbor_idx, val in zip(neighbors.indices, neighbors.data):
+        print(neighbor_idx)
+        if val == 1 and np.count_nonzero(prm.getrow(neighbor_idx).toarray().flatten()) > MAX_NEIGHBORS:  # both current vtx and neighbor have degree more than 3
+            prm[i,neighbor_idx] = 0
+            prm[neighbor_idx,i] = 0
+        
+        # Check if current vtx now has MAX_NEIGHBORS or less neighbors
+        if np.count_nonzero(prm.getrow(i).toarray().flatten()) <= MAX_NEIGHBORS:
+            break
+    print(f"num_neighbors after: {np.count_nonzero(prm.getrow(i).toarray().flatten())}")
 
 print(f"\n{prm.toarray().astype(int)}\n")
 
@@ -137,13 +167,20 @@ if ambient_dim == 3:  # Visualize PRM in 3D space
     for i in range(N):
         for j in range(i + 1, N):
             if prm[i, j] == 1:
-                cspace_meshcat.SetLine(f"prm/({i},{j})", np.hstack((points[:,i:i+1], points[:,j:j+1])), rgba=Rgba(0, 0, 1, 1))
+                cspace_meshcat.SetLine(f"prm/edges/({i},{j})", np.hstack((points[:,i:i+1], points[:,j:j+1])), rgba=Rgba(0, 0, 1, 1))
 
-# Follow a "path" through cspace, inflating regions along the way.
+    # Draw nodes of PRM
+    for i in range(N):
+        cspace_meshcat.SetObject(f"prm/points/{i}", Sphere(radius=0.02), rgba=Rgba(0, 0, 1, 1))
+        cspace_meshcat.SetTransform(f"prm/points/{i}", RigidTransform(points[:,i]))
+
 # Jump to a new "path" if the current path ends
-regions = {}
 options = FastCliqueInflationOptions()
-options.parallelize = False
+# options = FastIrisOptions()
+# options = IrisOptions()
+# options.require_sample_point_is_contained = True
+
+options.configuration_space_margin = 1e-3
 last_point_idx = 0  # Start with the first point
 cspace_coverage = 0
 COVERAGE_THRESH = 0.35
@@ -152,6 +189,8 @@ iris_gen = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, f"dat
 
 print(f"Number of edges in PRM: {np.sum(prm)/2}")
 
+regions = {}
+region_point_containment = {}
 for i in range(N):
     for j in range(i+1, N):
         if prm[i, j]:  # Find neighbors of point i
@@ -159,19 +198,31 @@ for i in range(N):
             # Build region around (i,j)
             print(f"Building region around ({i}, {j})")
             line_clique = np.hstack((points[:,i:i+1], points[:,j:j+1]))  # ambient_dim x 2
+
             hpoly = FastCliqueInflation(cspace_obstacle_collision_checker, line_clique, domain, options)
+
+            # plant.SetPositions(plant_context, (points[:,i] +  points[:,j]) / 2)
+            # fastiris_ellipse = Hyperellipsoid.MakeHypersphere(1e-5, plant.GetPositions(plant_context))
+            # hpoly = FastIris(cspace_obstacle_collision_checker, fastiris_ellipse, domain, options)
+
+            # plant.SetPositions(plant_context, (points[:,i] +  points[:,j]) / 2)
+            # start_time = time.time()
+            # hpoly = IrisInConfigurationSpace(plant, plant_context, options)
+
             regions[f"{i},{j}"] = hpoly
 
             # Check whether any other points are now covered by this region
-            M = hpoly.A() @ points <= hpoly.b()[:, None]
+            hpoly_scaled = hpoly.Scale(3.0)
+            M = hpoly_scaled.A() @ points <= hpoly_scaled.b()[:, None]
+            # M = hpoly.A() @ points <= hpoly.b()[:, None]
 
             C = np.all(M, axis=0)  # (N,) array of truths
-            print(C)
-            print(f"There are {np.sum(C)} True values in C.")
-            print(prm[i])
-            prm[i, C] = 0  # Remove all edges with true values in C
-            print("--------------------------------")
-            print(prm[i])
+
+            # Remove edges between every point pair in C
+            prm_lil = prm.tolil()
+            prm_lil[np.ix_(C, C)] = 0  # Remove all edges covered by region
+            # prm_lil[C,:] = 0  # Remove all points covered by region
+            prm = prm_lil.tocsc()
 
 print(f"Number of regions generated: {len(regions)}")
 

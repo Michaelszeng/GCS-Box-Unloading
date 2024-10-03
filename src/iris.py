@@ -234,7 +234,7 @@ class IrisRegionGenerator():
 
 
     @staticmethod
-    def visualize_iris_region(plant, plant_context, meshcat, regions, seed=42, num_sample=10000, colors=None, name="regions", task_space=True, scene="BOXUNLOADING"):
+    def visualize_iris_region(plant, plant_context, meshcat, regions, seed=42, density=1, colors=None, name="regions", task_space=True, scene="BOXUNLOADING"):
         """
         Plot dense point clouds to visualize the volume of each region. If 
         `task_space` is set to True, we use forward kinematics to return from
@@ -305,7 +305,9 @@ class IrisRegionGenerator():
             else:
                 xyzs.append(prev_sample)
 
-            for _ in range(num_sample-1):
+            num_samples = int(2e4 * density * region.CalcVolumeViaSampling(RandomGenerator(0), desired_rel_accuracy=0.01, max_num_samples=1000).volume)
+
+            for _ in range(num_samples-1):
                 q_sample = region.UniformSample(rng, prev_sample)
                 prev_sample = q_sample
 
