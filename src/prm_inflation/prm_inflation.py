@@ -42,11 +42,11 @@ import time
 from scipy.spatial.transform import Rotation
 from scipy.sparse import csc_matrix, lil_matrix
 
-TEST_SCENE = "3DOFFLIPPER"
+# TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
-# TEST_SCENE = "7DOFBINS"
+TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
@@ -91,7 +91,7 @@ collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 # Sample to build PRM
-N = 60
+N = 1000
 points = np.zeros((ambient_dim, N))  # ambient_dim x N
 domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
 # domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
@@ -113,17 +113,15 @@ non_diag_mask = prm.nonzero()[0] != prm.nonzero()[1]
 prm = csc_matrix((prm.data[non_diag_mask], (prm.nonzero()[0][non_diag_mask], prm.nonzero()[1][non_diag_mask])), shape=prm.shape)
 
 # Prune edges between two vertices that both have more than MAX_NEIGHBORS neighbors
-MAX_NEIGHBORS = 1
+MAX_NEIGHBORS = 3
 for i in range(N):
     num_neighbors = np.count_nonzero(prm.getrow(i).toarray().flatten())
-    print(f"num_neighbors before: {num_neighbors}")
 
     if num_neighbors <= MAX_NEIGHBORS:
         continue
     
     neighbors = prm.getrow(i)
     for neighbor_idx, val in zip(neighbors.indices, neighbors.data):
-        print(neighbor_idx)
         if val == 1 and np.count_nonzero(prm.getrow(neighbor_idx).toarray().flatten()) > MAX_NEIGHBORS:  # both current vtx and neighbor have degree more than 3
             prm[i,neighbor_idx] = 0
             prm[neighbor_idx,i] = 0
@@ -131,12 +129,10 @@ for i in range(N):
         # Check if current vtx now has MAX_NEIGHBORS or less neighbors
         if np.count_nonzero(prm.getrow(i).toarray().flatten()) <= MAX_NEIGHBORS:
             break
-    print(f"num_neighbors after: {np.count_nonzero(prm.getrow(i).toarray().flatten())}")
 
 print(f"\n{prm.toarray().astype(int)}\n")
 
-if ambient_dim == 3:  # Visualize PRM in 3D space
-        
+if ambient_dim == 3:  # Visualize PRM in 3D cspace
     # Plot bounding box around C-space
     lower_corner = plant.GetPositionLowerLimits()
     upper_corner = plant.GetPositionUpperLimits()
@@ -173,6 +169,44 @@ if ambient_dim == 3:  # Visualize PRM in 3D space
     for i in range(N):
         cspace_meshcat.SetObject(f"prm/points/{i}", Sphere(radius=0.02), rgba=Rgba(0, 0, 1, 1))
         cspace_meshcat.SetTransform(f"prm/points/{i}", RigidTransform(points[:,i]))
+else:  # Visualize PRM in task space
+    if TEST_SCENE == "5DOFUR3":
+        ee_frame = plant.GetFrameByName("ur_ee_link")
+    if TEST_SCENE == "6DOFUR3":
+        ee_frame = plant.GetFrameByName("ur_ee_link")
+    if TEST_SCENE == "7DOFIIWA":
+        ee_frame = plant.GetFrameByName("iiwa_link_7")
+    if TEST_SCENE == "7DOFBINS":
+        ee_frame = plant.GetFrameByName("iiwa_link_7")
+    if TEST_SCENE == "7DOF4SHELVES":
+        ee_frame = plant.GetFrameByName("iiwa_link_7")
+    if TEST_SCENE == "14DOFIIWAS":
+        print("visualize_iris_region for 14DOFIIWAS in task space to be implemented.")
+    if TEST_SCENE == "15DOFALLEGRO":
+        print("visualize_iris_region for 15DOFALLEGRO in task space to be implemented.")
+    if TEST_SCENE == "BOXUNLOADING":
+        ee_frame = plant.GetFrameByName("arm_eef")
+
+    # Draw edges of PRM
+    for i in range(N):
+        for j in range(i + 1, N):
+            if prm[i, j] == 1:
+                plant.SetPositions(plant_context, points[:,i])
+                p1 = plant.CalcRelativeTransform(plant_context, frame_A=plant.world_frame(), frame_B=ee_frame).translation()
+
+                plant.SetPositions(plant_context, points[:,j])
+                p2 = plant.CalcRelativeTransform(plant_context, frame_A=plant.world_frame(), frame_B=ee_frame).translation()
+
+                meshcat.SetLine(f"prm/edges/({i},{j})", np.hstack((p1.reshape(3,1), p2.reshape(3,1))), rgba=Rgba(0, 0, 1, 1))
+
+    # Draw nodes of PRM
+    for i in range(N):
+        meshcat.SetObject(f"prm/points/{i}", Sphere(radius=0.02), rgba=Rgba(0, 0, 1, 1))
+
+        plant.SetPositions(plant_context, points[:,i])
+        p = plant.CalcRelativeTransform(plant_context, frame_A=plant.world_frame(), frame_B=ee_frame)
+        
+        meshcat.SetTransform(f"prm/points/{i}", p)
 
 # Jump to a new "path" if the current path ends
 options = FastCliqueInflationOptions()
@@ -212,9 +246,9 @@ for i in range(N):
             regions[f"{i},{j}"] = hpoly
 
             # Check whether any other points are now covered by this region
-            hpoly_scaled = hpoly.Scale(3.0)
-            M = hpoly_scaled.A() @ points <= hpoly_scaled.b()[:, None]
-            # M = hpoly.A() @ points <= hpoly.b()[:, None]
+            # hpoly_scaled = hpoly.Scale(3.0)
+            # M = hpoly_scaled.A() @ points <= hpoly_scaled.b()[:, None]
+            M = hpoly.A() @ points <= hpoly.b()[:, None]
 
             C = np.all(M, axis=0)  # (N,) array of truths
 
@@ -226,14 +260,15 @@ for i in range(N):
 
 print(f"Number of regions generated: {len(regions)}")
 
-IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat, regions, task_space=False, scene=TEST_SCENE)
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
 coverage = IrisRegionGenerator.estimate_coverage(plant, cspace_obstacle_collision_checker, regions)
 IrisRegionGenerator.visualize_connectivity(regions, coverage, output_file='prm_regions_connectivity.svg', skip_svg=False)
 
 print(f"c-space Coverage: {coverage}")
 
 
-print(f"{cspace_meshcat.web_url()}/download")
+print(f"{cspace_meshcat.web_url() if ambient_dim == 3 else meshcat.web_url()}/download")
+time.sleep(10)
 
 
 # while cspace_coverage < COVERAGE_THRESH:

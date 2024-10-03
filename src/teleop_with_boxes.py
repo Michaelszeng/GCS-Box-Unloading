@@ -97,7 +97,6 @@ class InverseKinematicsSystem(LeafSystem):
         )
         
         prog = ik.prog()
-        initial_guess = np.zeros(6)
         prog.SetInitialGuess(ik.q(), q_nominal)
         result = Solve(prog)
         

@@ -243,8 +243,6 @@ class IrisRegionGenerator():
         regions can either be a list of HPolyhedrons or a dictionary mapping
         names to HPolyhedrons.
         """
-        world_frame = plant.world_frame()
-
         if task_space:            
             if scene == "3DOFFLIPPER":
                 print("visualize_iris_region for 3DOFFLIPPER in task space to be implemented.")
@@ -301,7 +299,7 @@ class IrisRegionGenerator():
 
             if task_space:
                 plant.SetPositions(plant_context, q_sample)
-                xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
+                xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=plant.world_frame(), frame_B=ee_frame).translation())
             else:
                 xyzs.append(prev_sample)
 
@@ -313,7 +311,7 @@ class IrisRegionGenerator():
 
                 if task_space:
                     plant.SetPositions(plant_context, q_sample)
-                    xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=world_frame, frame_B=ee_frame).translation())
+                    xyzs.append(plant.CalcRelativeTransform(plant_context, frame_A=plant.world_frame(), frame_B=ee_frame).translation())
                 else:
                     xyzs.append(prev_sample)
                     

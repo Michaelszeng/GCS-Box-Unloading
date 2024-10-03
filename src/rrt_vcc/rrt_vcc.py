@@ -25,11 +25,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from station import MakeHardwareStation, load_scenario
 from scenario import scenario_yaml_for_iris
 from utils import ik
+from rrt import *
 
 import numpy as np
 import importlib
 from scipy.spatial.transform import Rotation
 from scipy.sparse import find
+import pickle
 
 # TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
@@ -77,3 +79,14 @@ collision_checker_params["robot_model_instances"] = robot_model_instances
 collision_checker_params["model"] = diagram
 collision_checker_params["edge_step_size"] = 0.125
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+
+
+pickle_file = f'{TEST_SCENE}_endpts.pkl'
+with open(pickle_file, 'rb') as f:
+    endpts = pickle.load(f)
+
+rrt = BiRRT(endpts["start_pts"][0], 
+            endpts["end_pts"][0],
+            plant.GetPositionLowerLimits(),
+            plant.GetPositionUpperLimits(),
+            StraightLineCollisionChecker())

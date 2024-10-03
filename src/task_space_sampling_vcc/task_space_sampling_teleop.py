@@ -26,14 +26,14 @@ import time
 import importlib
 
 # TEST_SCENE = "3DOFFLIPPER"
-# TEST_SCENE = "5DOFUR3"
+TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
-TEST_SCENE = "BOXUNLOADING"
+# TEST_SCENE = "BOXUNLOADING"
 
 scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
 
