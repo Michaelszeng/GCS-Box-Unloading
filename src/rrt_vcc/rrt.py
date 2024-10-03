@@ -168,6 +168,7 @@ class RRT:
                 f"{prefix}/seg_{idx}",
                 traj_options,
             )
+            print((s0, s1))
         self.draw_start_and_end(vis_bundle, body, prefix, options)
 
 
