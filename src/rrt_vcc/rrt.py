@@ -1,287 +1,426 @@
 from pydrake.all import (
-    Sphere, 
-    Rgba, 
-    RigidBody
+    Sphere,
+    Rgba,
+    RigidTransform,
 )
 
-from scipy.spatial import KDTree
-import networkx as nx
-from tqdm import tqdm
 import numpy as np
-from dataclasses import dataclass
-from visualization_utils import visualize_body_at_s, VisualizationBundle
-from scipy.sparse.csgraph import dijkstra
-from scipy.sparse import coo_matrix
-from scipy.spatial import cKDTree
-import visualization_utils as vis_utils
+import networkx as nx
+from tqdm.auto import tqdm
+import scipy
+import time
 
 
-class StraightLineCollisionChecker:
-    def __init__(self, in_collision_handle, query_density=100):
-        self.in_collision_handle = in_collision_handle
-        self.query_density = query_density
-
-    def straight_line_has_collision(self, start, end):
-        for pos in np.linspace(start, end, self.query_density):
-            if self.in_collision_handle(pos):
-                return True
-        return False
-
-
-@dataclass
-class DrawTreeOptions:
-    edge_color: Rgba = Rgba(0, 0, 1, 0.5)
-    start_color: Rgba = Rgba(0, 1, 0, 0.5)
-    end_color: Rgba = Rgba(1, 0, 0, 0.5)
-    path_size: float = 0.01
-    num_points: int = 100
-    start_end_radius: float = 0.05
+class RRTOptions:
+    def __init__(
+        self,
+        step_size=1e-1,
+        check_size=1e-2,
+        max_vertices=1e3,
+        max_iters=1e4,
+        goal_sample_frequency=0.05,
+        always_swap=False,
+        timeout=np.inf,
+    ):
+        self.step_size = step_size
+        self.check_size = check_size
+        self.max_vertices = int(max_vertices)
+        self.max_iters = int(max_iters)
+        self.goal_sample_frequency = goal_sample_frequency
+        self.always_swap = always_swap
+        self.timeout = timeout
+        assert self.goal_sample_frequency >= 0
+        assert self.goal_sample_frequency <= 1
 
 
 class RRT:
-    def __init__(
-        self,
-        start_pos,
-        end_pos,
-        lower_limits,
-        upper_limits,
-        straight_line_col_checker: StraightLineCollisionChecker,
-        do_build_max_iter=-1,
-    ):
-        """
-        start_pos: start of the rrt
-        end_pos: end of the rrt
-        lower_limits]upper limits: search in the box [lower_limits, upper_limits]
-        straight_line_col_checker: StraightLineCollisionChecker object
-        """
+    def __init__(self, RandomConfig, ValidityChecker, Distance=None, meshcat=None):
+        self.RandomConfig = RandomConfig
+        self.ValidityChecker = ValidityChecker
+        if Distance is None:
+            self.Distance = lambda x, y: np.linalg.norm(x - y)
+        else:
+            self.Distance = Distance
+
+        self.options = None
+        self.tree = None
+        self.meshcat = meshcat
+
+    def plan(self, start, goal, options):
+        t0 = time.time()
+        self.options = options
         self.tree = nx.Graph()
-        self.start_pos = start_pos
-        self.end_pos = end_pos
-        self.start_node = self.tree.add_node(start_pos)
+        self.tree.add_node(0, q=start)
+        success = False
 
-        self.lower_limits = lower_limits
-        self.upper_limits = upper_limits
-
-        self.straight_line_col_checker = straight_line_col_checker
-        if do_build_max_iter > 0:
-            self.build_tree(do_build_max_iter)
-
-    def get_nearest_node(self, pos):
-        nearest_node = None
-        nearest_distance = np.inf
-        for node in self.tree.nodes():
-            if (dist := np.linalg.norm(node - pos)) < nearest_distance:
-                nearest_node = node
-                nearest_distance = dist
-        return nearest_node, nearest_distance
-
-    def get_random_node(self):
-        if np.random.rand() > 0.1:
-            pos = np.random.uniform(self.lower_limits, self.upper_limits)
-            while self.straight_line_col_checker.in_collision_handle(pos):
-                pos = np.random.uniform(self.lower_limits, self.upper_limits)
-        else:
-            pos = np.array(self.end_pos)
-        return pos
-
-    def add_node(self, pos, bisection_tol=1e-5):
-        nearest_node, nearest_neighbor_dist = self.get_nearest_node(pos)
-        nearest_nod_arr = np.array(nearest_node)
-        # run bisection search to extend as far as possible in this direction
-        t_upper_bound = 1
-        t_lower_bound = 0
-        max_extend = False
-        if self.straight_line_col_checker.straight_line_has_collision(
-            pos, nearest_nod_arr
-        ):
-            while t_upper_bound - t_lower_bound > bisection_tol:
-                t = (t_upper_bound + t_lower_bound) / 2
-                cur_end = (1 - t) * nearest_nod_arr + t * pos
-                if self.straight_line_col_checker.straight_line_has_collision(
-                    cur_end, nearest_nod_arr
-                ):
-                    t_upper_bound = t
-                else:
-                    t_lower_bound = t
-        else:
-            cur_end = pos
-            max_extend = True
-        new_node = tuple(cur_end)
-        self.tree.add_node(new_node)
-        self.tree.add_edge(
-            nearest_node, new_node, weight=np.linalg.norm(nearest_nod_arr - cur_end)
-        )
-        return max_extend
-
-    def add_new_random_node(self, bisection_tol=1e-5):
-        pos = self.get_random_node()
-        return self.add_node(pos, bisection_tol)
-
-    def build_tree(self, max_iter=int(1e4), bisection_tol=1e-5):
-        for i in tqdm(range(max_iter)):
-            self.add_new_random_node(bisection_tol)
-            if self.end_pos in self.tree.nodes():
-                return True
-        return False
-
-    def draw_start_and_end(
-        self,
-        vis_bundle: VisualizationBundle,
-        body,
-        prefix="rrt",
-        options=DrawTreeOptions(),
-    ):
-        start_name = f"{prefix}/start"
-        s = self.start_pos
-        visualize_body_at_s(
-            vis_bundle,
-            body,
-            s,
-            start_name,
-            options.start_end_radius,
-            options.start_color,
-        )
-
-        end_name = f"{prefix}/end"
-        s = self.end_pos
-        visualize_body_at_s(
-            vis_bundle, body, s, end_name, options.start_end_radius, options.end_color
-        )
-
-    def draw_tree(self, vis_bundle, body, prefix="rrt", options=DrawTreeOptions()):
-        vis_bundle.meshcat_instance.Delete(prefix)
-        traj_options = vis_utils.TrajectoryVisualizationOptions(
-            start_size=options.start_end_radius,
-            start_color=options.edge_color,
-            end_size=options.start_end_radius,
-            end_color=options.edge_color,
-            path_color=options.edge_color,
-            path_size=options.path_size,
-            num_points=options.num_points,
-        )
-        for idx, (s0, s1) in enumerate(self.tree.edges()):
-            vis_utils.visualize_s_space_segment(
-                vis_bundle,
-                np.array(s0),
-                np.array(s1),
-                body,
-                f"{prefix}/seg_{idx}",
-                traj_options,
+        if self.meshcat and len(start) == 3:
+            visualize = True
+   
+            self.meshcat.SetObject(
+                f"rrt/points/_start",
+                Sphere(radius=0.02),
+                rgba=Rgba(0, 1, 0, 1),
             )
-            print((s0, s1))
-        self.draw_start_and_end(vis_bundle, body, prefix, options)
+            self.meshcat.SetTransform(
+                f"rrt/points/_start", RigidTransform(start)
+            )
+
+            self.meshcat.SetObject(
+                f"rrt/points/_goal",
+                Sphere(radius=0.02),
+                rgba=Rgba(0, 1, 0, 1),
+            )
+            self.meshcat.SetTransform(
+                f"rrt/points/_goal", RigidTransform(goal)
+            )
+        
+        iters = tqdm(total=self.options.max_iters, position=0, desc="Iterations")
+        vertices = tqdm(total=self.options.max_vertices, position=1, desc="Vertices")
+        for i in range(self.options.max_iters):
+            if time.time() - t0 > self.options.timeout:
+                break
+            iters.update(1)
+            old_tree_size = len(self.tree)
+            if len(self.tree) >= self.options.max_vertices or success == True:
+                break
+            sample_goal = np.random.random() < self.options.goal_sample_frequency
+            q_subgoal = goal.copy() if sample_goal else self.RandomConfig()
+            q_near_idx = self._nearest_idx(q_subgoal)
+            while len(self.tree) < self.options.max_vertices:
+                status = self._extend(q_near_idx, q_subgoal, visualize)
+                q_new = self.tree.nodes[len(self.tree) - 1]["q"]
+                if self.Distance(q_new, goal) <= self.options.step_size:
+                    success = True
+                    break
+                if status == "stopped" or status == "reached":
+                    break
+                q_near_idx = len(self.tree) - 1
+            vertices.update(len(self.tree) - old_tree_size)
+
+        if success:
+            goal_idx = len(self.tree)
+            self.tree.add_node(goal_idx, q=goal)
+            self.tree.add_edge(goal_idx - 1, goal_idx)
+            start_idx = 0
+            return self._path(start_idx, goal_idx, visualize)
+        else:
+            return []
+
+    def _nearest_idx(self, q_subgoal):
+        dists = [
+            self.Distance(q_subgoal, self.tree.nodes[i]["q"])
+            for i in range(len(self.tree))
+        ]
+        return np.argmin(dists)
+
+    def _furthest_idx(self, q_subgoal):
+        dists = [
+            self.Distance(q_subgoal, self.tree.nodes[i]["q"])
+            for i in range(len(self.tree))
+        ]
+        return np.argmax(dists)
+
+    def _extend(self, q_near_idx, q_subgoal, visualize):
+        q_near = self.tree.nodes[q_near_idx]["q"]
+        step = q_subgoal - q_near
+        unit_step = step / self.Distance(q_near, q_subgoal)
+        q_new = q_near + self.options.step_size * unit_step
+        validity_step = self.options.check_size * unit_step
+        if self.ValidityChecker(q_new):
+            for i in range(1, int(self.options.step_size / self.options.check_size)):
+                if not self.ValidityChecker(q_near + i * validity_step):
+                    return "stopped"
+            q_new_idx = len(self.tree)
+            self.tree.add_node(q_new_idx, q=q_new)
+            self.tree.add_edge(q_near_idx, q_new_idx)
+
+            if visualize:
+                self.meshcat.SetLine(
+                    f"rrt/edges/({q_near_idx:03d},{q_new_idx:03d})",
+                    np.hstack((q_near.reshape(3, 1), q_new.reshape(3, 1))),
+                    rgba=Rgba(0, 0, 1, 1),
+                )
+                self.meshcat.SetObject(
+                    f"rrt/points/{q_new_idx:03d}",
+                    Sphere(radius=0.01),
+                    rgba=Rgba(0, 0, 1, 1),
+                )
+                self.meshcat.SetTransform(
+                    f"rrt/points/{q_new_idx:03d}", RigidTransform(q_new)
+                )
+            
+            dist_to_subgoal = self.Distance(q_new, q_subgoal)
+            if dist_to_subgoal <= self.options.step_size:
+                step = q_subgoal - q_new
+                unit_step = step / dist_to_subgoal
+                validity_step = self.options.check_size * unit_step
+                for i in range(1, int(dist_to_subgoal / self.options.check_size)):
+                    if not self.ValidityChecker(q_new + i * validity_step):
+                        return "stopped"
+                return "reached"
+            else:
+                return "extended"
+        else:
+            return "stopped"
+
+    def _path(self, i, j, visualize):
+        path_idx = nx.shortest_path(self.tree, source=i, target=j)
+        path = [self.tree.nodes[idx]["q"] for idx in path_idx]
+        
+        if visualize:
+            for idx in range(len(path) - 1):
+                q_current = path[idx].reshape(3, 1)
+                q_next = path[idx + 1].reshape(3, 1)
+
+                self.meshcat.SetLine(
+                    f"path/edges/({path_idx[idx]:03d},{path_idx[idx+1]:03d})",
+                    np.hstack((q_current, q_next)),
+                    line_width=2.0,
+                    rgba=Rgba(1, 0, 0, 1),  # Red lines
+                )
+                self.meshcat.SetObject(
+                    f"path/points/{path_idx[idx]:03d}",
+                    Sphere(radius=0.011),
+                    rgba=Rgba(1, 0, 0, 1),
+                )
+                self.meshcat.SetTransform(
+                    f"path/points/{path_idx[idx]:03d}", RigidTransform(q_current)
+                )
+
+            # Also plot the last node
+            q_last = path[-1].reshape(3, 1)
+            self.meshcat.SetObject(
+                f"path/points/{path_idx[-1]}", Sphere(radius=0.01), rgba=Rgba(1, 0, 0, 1)
+            )
+            self.meshcat.SetTransform(f"path/points/{path_idx[-1]}", RigidTransform(q_last))
+            
+        return path
+
+    def furthest_path(self):
+        return self._path(0, self._furthest_idx(self.tree.nodes[0]["q"]))
+
+    def nodes(self):
+        return np.array([self.tree.nodes[i]["q"] for i in range(len(self.tree))])
+
+    def adj_mat(self):
+        return nx.adjacency_matrix(self.tree).toarray()
 
 
 class BiRRT:
-    def __init__(
-        self,
-        start_pos,
-        end_pos,
-        lower_limits,
-        upper_limits,
-        straight_line_col_checker: StraightLineCollisionChecker,
-    ):
+    def __init__(self, RandomConfig, ValidityChecker, Distance=None, meshcat=None):
         """
-        start_pos: start of the rrt
-        end_pos: end of the rrt
-        lower_limits]upper limits: search in the box [lower_limits, upper_limits]
-        straight_line_col_checker: StraightLineCollisionChecker object
+        RandomConfig is a function to generate a random q
+
+        ValidityChecker is a function to check th collision-free-ness of a q
+
+        Distance is a lambda x,y function (Euclidean distance if left as None)
         """
-        self.tree_to_start = RRT(
-            start_pos, end_pos, lower_limits, upper_limits, straight_line_col_checker
-        )
-        self.tree_to_end = RRT(
-            end_pos, start_pos, lower_limits, upper_limits, straight_line_col_checker
-        )
-        self.start_pos = start_pos
-        self.end_pos = end_pos
-
-        self.lower_limits = lower_limits
-        self.upper_limits = upper_limits
-
-        self.straight_line_col_checker = straight_line_col_checker
-
-        self.connected_tree = None
-
-    def add_node(self, pos, bisection_tol=1e-5):
-        if np.random.rand() > 0.1:
-            return self.tree_to_start.add_node(
-                pos, bisection_tol
-            ) and self.tree_to_end.add_node(pos, bisection_tol)
+        self.RandomConfig = RandomConfig
+        self.ValidityChecker = ValidityChecker
+        if Distance is None:
+            self.Distance = lambda x, y: np.linalg.norm(x - y)
         else:
-            return self.tree_to_start.add_node(
-                np.array(self.end_pos), bisection_tol
-            ) or self.tree_to_end.add_node(np.array(self.start_pos), bisection_tol)
+            self.Distance = Distance
 
-    def get_random_node(self):
-        pos = np.random.uniform(self.lower_limits, self.upper_limits)
-        while self.straight_line_col_checker.in_collision_handle(pos):
-            pos = np.random.uniform(self.lower_limits, self.upper_limits)
-        return pos
+        self.options = None
+        self.tree_a = None
+        self.tree_b = None
+        self.meshcat = meshcat
 
-    def build_tree(self, max_iter=int(1e4), bisection_tol=1e-5, verbose=True):
-        for i in tqdm(range(max_iter)):
-            pos = self.get_random_node()
-            trees_connected = self.add_node(pos, bisection_tol)
-            if trees_connected:
-                self.connected_tree = nx.compose(
-                    self.tree_to_start.tree, self.tree_to_end.tree
-                )
-                return True
-        return False
+    def plan(self, start, goal, options):
+        t0 = time.time()
 
-    def draw_tree(
-        self,
-        vis_bundle: VisualizationBundle,
-        body,
-        prefix="bi_rrt",
-        start_tree_options=DrawTreeOptions(
-            edge_color=Rgba(0, 1, 0, 0.5), start_color=Rgba(0, 1, 0, 0.5)
-        ),
-        end_tree_options=DrawTreeOptions(
-            edge_color=Rgba(1, 0, 0, 0.5), start_color=Rgba(1, 0, 0, 0.5)
-        ),
-        shortest_path_options=DrawTreeOptions(edge_color=Rgba(0, 0, 1, 0.5)),
-    ):
-        self.tree_to_start.draw_tree(
-            vis_bundle, body, prefix + "/start_tree", start_tree_options
-        )
-        self.tree_to_end.draw_tree(
-            vis_bundle, body, prefix + "/end_tree", end_tree_options
-        )
-        self.tree_to_start.draw_start_and_end(
-            vis_bundle, body, prefix + "/shortest_path", start_tree_options
-        )
-        if self.connected_tree is not None:
-            self.draw_start_target_path(vis_bundle, body, prefix, shortest_path_options)
+        self.options = options
+        self.tree_a = nx.Graph()
+        self.tree_a.add_node(0, q=start)
+        self.tree_b = nx.Graph()
+        self.tree_b.add_node(0, q=goal)
 
-    def draw_start_target_path(
-        self,
-        vis_bundle: VisualizationBundle,
-        body,
-        prefix="bi_rrt",
-        options=DrawTreeOptions(),
-    ):
-        if self.connected_tree is None:
-            raise ValueError("This Bi-RRT is not connected")
-        path = nx.dijkstra_path(self.connected_tree, self.start_pos, self.end_pos)
-        edges = zip(path[:-1], path[1:])
-        traj_options = vis_utils.TrajectoryVisualizationOptions(
-            start_size=options.start_end_radius,
-            start_color=options.edge_color,
-            end_size=options.start_end_radius,
-            end_color=options.edge_color,
-            path_color=options.edge_color,
-            path_size=options.path_size,
-            num_points=options.num_points,
-        )
-        for idx, (s0, s1) in enumerate(edges):
-            vis_utils.visualize_s_space_segment(
-                vis_bundle,
-                np.array(s0),
-                np.array(s1),
-                body,
-                f"{prefix}/path_seg_{idx}",
-                traj_options,
+        if self.meshcat and len(start) == 3:
+            visualize = True
+   
+            self.meshcat.SetObject(
+                f"rrt/points/_start",
+                Sphere(radius=0.02),
+                rgba=Rgba(0, 1, 0, 1),
             )
-        self.tree_to_start.draw_start_and_end(vis_bundle, body, prefix, options)
+            self.meshcat.SetTransform(
+                f"rrt/points/_start", RigidTransform(start)
+            )
+
+            self.meshcat.SetObject(
+                f"rrt/points/_goal",
+                Sphere(radius=0.02),
+                rgba=Rgba(0, 1, 0, 1),
+            )
+            self.meshcat.SetTransform(
+                f"rrt/points/_goal", RigidTransform(goal)
+            )
+
+        success = False
+        iters = tqdm(total=self.options.max_iters, position=0, desc="Iterations")
+        vertices = tqdm(total=self.options.max_vertices, position=1, desc="Vertices")
+        for i in range(self.options.max_iters):
+            if time.time() - t0 > self.options.timeout:
+                break
+            iters.update(1)
+
+            old_tree_size = len(self.tree_a) + len(self.tree_b)
+            if old_tree_size >= self.options.max_vertices or success == True:
+                break
+
+            q_subgoal = self.RandomConfig()
+            q_near_idx = self._nearest_idx(self.tree_a, q_subgoal)
+            nodes_added = 0
+            while len(self.tree_a) + len(self.tree_b) < self.options.max_vertices:
+                status = self._extend(self.tree_a, q_near_idx, q_subgoal, visualize)
+                if status == "stopped":
+                    break
+                else:
+                    nodes_added += 1
+                if status == "reached":
+                    break
+                q_near_idx = len(self.tree_a) - 1
+            if nodes_added == 0:
+                if self.options.always_swap:
+                    self.tree_a, self.tree_b = self.tree_b, self.tree_a
+                continue
+            vertices.update(len(self.tree_a) + len(self.tree_b) - old_tree_size)
+            old_tree_size = len(self.tree_a) + len(self.tree_b)
+
+            selected = np.random.randint(1, nodes_added + 1)
+            q_subgoal_idx = len(self.tree_a) - selected
+            q_subgoal = self.tree_a.nodes[q_subgoal_idx]["q"]
+            q_near_idx = self._nearest_idx(self.tree_b, q_subgoal)
+
+            while len(self.tree_a) + len(self.tree_b) < self.options.max_vertices:
+                status = self._extend(self.tree_b, q_near_idx, q_subgoal, visualize)
+                if status == "stopped":
+                    break
+                elif status == "reached":
+                    success = True
+                    break
+                q_near_idx = len(self.tree_b) - 1
+            vertices.update(len(self.tree_a) + len(self.tree_b) - old_tree_size)
+            self.tree_a, self.tree_b = self.tree_b, self.tree_a
+
+        if success:
+            path_a = self._path(self.tree_a, 0, len(self.tree_a) - 1, visualize)
+            path_b = self._path(self.tree_b, q_subgoal_idx, 0, visualize)
+            path = path_a + path_b
+            if np.linalg.norm(path[0] - start) > 1e-15:
+                path.reverse()
+            return path
+        else:
+            return []
+
+    def _nearest_idx(self, tree, q_subgoal):
+        dists = [self.Distance(q_subgoal, tree.nodes[i]["q"]) for i in range(len(tree))]
+        return np.argmin(dists)
+
+    def _furthest_idx(self, tree, q_subgoal):
+        dists = [self.Distance(q_subgoal, tree.nodes[i]["q"]) for i in range(len(tree))]
+        return np.argmax(dists)
+
+    def _extend(self, tree, q_near_idx, q_subgoal, visualize):
+        q_near = tree.nodes[q_near_idx]["q"]
+        step = q_subgoal - q_near
+        unit_step = step / self.Distance(q_near, q_subgoal)
+        q_new = q_near + self.options.step_size * unit_step
+        validity_step = self.options.check_size * unit_step
+        if self.ValidityChecker(q_new):
+            for i in range(1, int(self.options.step_size / self.options.check_size)):
+                if not self.ValidityChecker(q_near + i * validity_step):
+                    return "stopped"
+            q_new_idx = len(tree)
+            tree.add_node(q_new_idx, q=q_new)
+            tree.add_edge(q_near_idx, q_new_idx)
+
+            if visualize:
+                if tree == self.tree_a:
+                    which_tree = "a"
+                else:
+                    which_tree = "b"
+                
+                self.meshcat.SetLine(
+                    f"rrt/{which_tree}/edges/({q_near_idx:03d},{q_new_idx:03d})",
+                    np.hstack((q_near.reshape(3, 1), q_new.reshape(3, 1))),
+                    rgba=Rgba(0, 0, 1, 1),
+                )
+                self.meshcat.SetObject(
+                    f"rrt/{which_tree}/points/{q_new_idx:03d}",
+                    Sphere(radius=0.01),
+                    rgba=Rgba(0, 0, 1, 1),
+                )
+                self.meshcat.SetTransform(
+                    f"rrt/{which_tree}/points/{q_new_idx:03d}", RigidTransform(q_new)
+                )
+
+            dist_to_subgoal = self.Distance(q_new, q_subgoal)
+            if dist_to_subgoal <= self.options.step_size:
+                step = q_subgoal - q_new
+                unit_step = step / dist_to_subgoal
+                validity_step = self.options.check_size * unit_step
+                for i in range(1, int(dist_to_subgoal / self.options.check_size)):
+                    if not self.ValidityChecker(q_new + i * validity_step):
+                        return "stopped"
+                return "reached"
+            else:
+                return "extended"
+        else:
+            return "stopped"
+
+
+    def _path(self, tree, i, j, visualize=False):
+        path_idx = nx.shortest_path(tree, source=i, target=j)
+        path = [tree.nodes[idx]["q"] for idx in path_idx]
+
+        if visualize:
+            for idx in range(len(path) - 1):
+                q_current = path[idx].reshape(3, 1)
+                q_next = path[idx + 1].reshape(3, 1)
+
+                self.meshcat.SetLine(
+                    f"path/edges/({path_idx[idx]:03d},{path_idx[idx+1]:03d})",
+                    np.hstack((q_current, q_next)),
+                    rgba=Rgba(1, 0, 0, 1),  # Red lines
+                )
+                self.meshcat.SetObject(
+                    f"path/points/{path_idx[idx]:03d}",
+                    Sphere(radius=0.01),
+                    rgba=Rgba(1, 0, 0, 1),
+                )
+                self.meshcat.SetTransform(
+                    f"path/points/{path_idx[idx]:03d}", RigidTransform(q_current)
+                )
+
+            # Also plot the last node
+            q_last = path[-1].reshape(3, 1)
+            self.meshcat.SetObject(
+                f"path/points/{path_idx[-1]}", Sphere(radius=0.01), rgba=Rgba(1, 0, 0, 1)
+            )
+            self.meshcat.SetTransform(f"path/points/{path_idx[-1]}", RigidTransform(q_last))
+
+        return path
+
+    def furthest_path(self):
+        path_a = self._path(
+            self.tree_a, 0, self._furthest_idx(self.tree_a, self.tree_a.nodes[0]["q"])
+        )
+        path_b = self._path(
+            self.tree_b, 0, self._furthest_idx(self.tree_b, self.tree_b.nodes[0]["q"])
+        )
+        return path_a + path_b
+
+    def nodes(self):
+        nodes_a = np.array([self.tree_a.nodes[i]["q"] for i in range(len(self.tree_a))])
+        nodes_b = np.array([self.tree_b.nodes[i]["q"] for i in range(len(self.tree_b))])
+        return np.vstack((nodes_a, nodes_b))
+
+    def adj_mat(self):
+        adj_mat_a = nx.adjacency_matrix(self.tree_a).toarray()
+        adj_mat_b = nx.adjacency_matrix(self.tree_b).toarray()
+        full_adj_mat = scipy.linalg.block_diag(adj_mat_a, adj_mat_b)
+        idx = len(self.tree_a) - 1
+        full_adj_mat[idx, -1] = full_adj_mat[-1, idx] = 1
+        return full_adj_mat

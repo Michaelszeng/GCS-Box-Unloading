@@ -42,11 +42,11 @@ import time
 from scipy.spatial.transform import Rotation
 from scipy.sparse import csc_matrix, lil_matrix
 
-# TEST_SCENE = "3DOFFLIPPER"
+TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
-TEST_SCENE = "7DOFBINS"
+# TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
@@ -91,7 +91,7 @@ collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 # Sample to build PRM
-N = 1000
+N = 60
 points = np.zeros((ambient_dim, N))  # ambient_dim x N
 domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
 # domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
@@ -210,9 +210,10 @@ else:  # Visualize PRM in task space
 
 # Jump to a new "path" if the current path ends
 options = FastCliqueInflationOptions()
-# options = FastIrisOptions()
 # options = IrisOptions()
 # options.require_sample_point_is_contained = True
+
+fast_iris_options = FastIrisOptions()
 
 options.configuration_space_margin = 1e-3
 last_point_idx = 0  # Start with the first point
@@ -233,11 +234,12 @@ for i in range(N):
             print(f"Building region around ({i}, {j})")
             line_clique = np.hstack((points[:,i:i+1], points[:,j:j+1]))  # ambient_dim x 2
 
-            hpoly = FastCliqueInflation(cspace_obstacle_collision_checker, line_clique, domain, options)
+            initial_hpoly = FastCliqueInflation(cspace_obstacle_collision_checker, line_clique, domain, options)
+            hpoly_inscribed_ellipsoid = initial_hpoly.MaximumVolumeInscribedEllipsoid()
 
             # plant.SetPositions(plant_context, (points[:,i] +  points[:,j]) / 2)
             # fastiris_ellipse = Hyperellipsoid.MakeHypersphere(1e-5, plant.GetPositions(plant_context))
-            # hpoly = FastIris(cspace_obstacle_collision_checker, fastiris_ellipse, domain, options)
+            hpoly = FastIris(cspace_obstacle_collision_checker, hpoly_inscribed_ellipsoid, domain, fast_iris_options)
 
             # plant.SetPositions(plant_context, (points[:,i] +  points[:,j]) / 2)
             # start_time = time.time()

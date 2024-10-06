@@ -11,6 +11,7 @@ from pydrake.all import (
     RobotDiagramBuilder,
     VPolytope,
     HPolyhedron,
+    Hyperrectangle,
     SceneGraphCollisionChecker,
     RandomGenerator,
     PointCloud,
@@ -35,11 +36,11 @@ from scipy.sparse import find
 import pickle
 import time
 
-# TEST_SCENE = "3DOFFLIPPER"
+TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
-TEST_SCENE = "7DOFBINS"
+# TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
@@ -74,6 +75,37 @@ context = diagram.CreateDefaultContext()
 simulator = Simulator(diagram)
 simulator_context = simulator.get_mutable_context()
 plant_context = diagram.GetMutableSubsystemContext(plant, context)
+
+ambient_dim = plant.num_positions()
+
+if ambient_dim == 3:
+    cspace_meshcat = StartMeshcat()
+
+    # Plot bounding box around C-space
+    lower_corner = plant.GetPositionLowerLimits()
+    upper_corner = plant.GetPositionUpperLimits()
+
+    # Define the 8 corners of the box
+    box_corners = np.array([
+        [[lower_corner[0]], [lower_corner[1]], [lower_corner[2]]],  # (xmin, ymin, zmin)
+        [[upper_corner[0]], [lower_corner[1]], [lower_corner[2]]],  # (xmax, ymin, zmin)
+        [[lower_corner[0]], [upper_corner[1]], [lower_corner[2]]],  # (xmin, ymax, zmin)
+        [[upper_corner[0]], [upper_corner[1]], [lower_corner[2]]],  # (xmax, ymax, zmin)
+        [[lower_corner[0]], [lower_corner[1]], [upper_corner[2]]],  # (xmin, ymin, zmax)
+        [[upper_corner[0]], [lower_corner[1]], [upper_corner[2]]],  # (xmax, ymin, zmax)
+        [[lower_corner[0]], [upper_corner[1]], [upper_corner[2]]],  # (xmin, ymax, zmax)
+        [[upper_corner[0]], [upper_corner[1]], [upper_corner[2]]],  # (xmax, ymax, zmax)
+    ])
+
+    # Draw lines between the corners to form the edges of the bounding box
+    box_edges = [
+        (0, 1), (1, 3), (3, 2), (2, 0),  # Bottom face
+        (4, 5), (5, 7), (7, 6), (6, 4),  # Top face
+        (0, 4), (1, 5), (2, 6), (3, 7)   # Vertical edges
+    ]
+
+    for edge in box_edges:
+        cspace_meshcat.SetLine(f"bounding_box/box_edge_{edge[0]}_{edge[1]}", np.hstack((box_corners[edge[0]], box_corners[edge[1]])), rgba=Rgba(0, 0, 0, 1))
 
 simulator.AdvanceTo(0.001)
 
@@ -113,30 +145,33 @@ pickle_file = f'{TEST_SCENE}_endpts.pkl'
 with open(pickle_file, 'rb') as f:
     endpts = pickle.load(f)
 
-def check_collision(q):
-    return not collision_checker.CheckConfigCollisionFree(q)
+def check_collision_free(q):
+    return collision_checker.CheckConfigCollisionFree(q)
+    
+def make_sample_q():
+    domain = Hyperrectangle(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
+    last_polytope_sample = domain.UniformSample(rng)
+
+    def sample_q():
+        return domain.UniformSample(rng)
+    
+    return sample_q
 
 print(f"Start: {endpts['start_pts'][0]}")
 print(f"End: {endpts['end_pts'][0]}")
 
-tree = BiRRT(tuple(endpts["start_pts"][0]), 
-            tuple(endpts["end_pts"][0]),
-            plant.GetPositionLowerLimits(),
-            plant.GetPositionUpperLimits(),
-            StraightLineCollisionChecker(check_collision))
 
-tree_connected = tree.build_tree(max_iter = int(1e3))
-print(tree_connected)
+rrt_options = RRTOptions(step_size=1e-1, 
+                         check_size=1e-2, 
+                         max_vertices=1e3,
+                         max_iters=1e4, 
+                         goal_sample_frequency=0.05, 
+                         always_swap=False,
+                         timeout=np.inf)
 
-# construct the RationalForwardKinematics of this plant. This object handles the
-# computations for the forward kinematics in the tangent-configuration space
-Ratfk = RationalForwardKinematics(plant)
-q_star = np.zeros(num_robot_positions)
+rrt = RRT(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
+path = rrt.plan(endpts['start_pts'][0], endpts['end_pts'][0], rrt_options)
 
-vis_bundle = vis_utils.VisualizationBundle(
-    diagram, context, plant, plant_context,
-    Ratfk, meshcat, q_star
-)
-# if tree_connected:
-tree.draw_tree(vis_bundle, ee_body, prefix = f"bi_rrt")
+print(path)
+
 time.sleep(10)

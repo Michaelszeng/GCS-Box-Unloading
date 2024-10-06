@@ -31,11 +31,11 @@ import importlib
 import argparse
 import pickle
 
-# TEST_SCENE = "3DOFFLIPPER"
+TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
-TEST_SCENE = "7DOFBINS"
+# TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
@@ -254,7 +254,8 @@ station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 
 slider_source_context = slider_source.GetMyMutableContextFromRoot(simulator_context)
-ik_system_context = ik_system.GetMyMutableContextFromRoot(simulator_context)
+if not joint_control:
+    ik_system_context = ik_system.GetMyMutableContextFromRoot(simulator_context)
 
 # Main simulation loop
 print(f"Default joint positions: {default_joint_positions}")
