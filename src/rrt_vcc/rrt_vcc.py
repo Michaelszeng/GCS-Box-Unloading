@@ -28,6 +28,7 @@ from station import MakeHardwareStation, load_scenario
 from scenario import scenario_yaml_for_iris
 from utils import ik
 from rrt import *
+from rrt_star import *
 
 import numpy as np
 import importlib
@@ -161,15 +162,26 @@ print(f"Start: {endpts['start_pts'][0]}")
 print(f"End: {endpts['end_pts'][0]}")
 
 
+# rrt_options = RRTOptions(step_size=1e-1, 
+#                          check_size=1e-2, 
+#                          max_vertices=1e3,
+#                          max_iters=1e4, 
+#                          goal_sample_frequency=0.05, 
+#                          always_swap=False,
+#                          timeout=np.inf)
+
+# rrt = RRT(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
+
+
 rrt_options = RRTOptions(step_size=1e-1, 
                          check_size=1e-2, 
                          max_vertices=1e3,
                          max_iters=1e4, 
                          goal_sample_frequency=0.05, 
-                         always_swap=False,
                          timeout=np.inf)
 
-rrt = RRT(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
+rrt = RRTStar(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
+
 path = rrt.plan(endpts['start_pts'][0], endpts['end_pts'][0], rrt_options)
 
 print(path)
