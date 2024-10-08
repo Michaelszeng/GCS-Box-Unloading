@@ -19,6 +19,8 @@ from pydrake.all import (
     Quaternion,
     RigidTransform,
     RationalForwardKinematics,
+    IrisInConfigurationSpaceFromCliqueCover,
+    IrisFromCliqueCoverOptions,
 )
 
 import sys
@@ -200,19 +202,28 @@ for i in range(len(endpts['start_pts'])):
     
 vpoly = VPolytope(all_path_pts)
 hpoly = HPolyhedron(vpoly)
-IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, [hpoly], task_space=(ambient_dim!=3), scene=TEST_SCENE)
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, [hpoly], name="rrt_convex_hull", task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
-# options = IrisFromCliqueCoverOptions()
-# options.num_points_per_coverage_check = 1000
-# options.num_points_per_visibility_round = num_points_per_visibility_round
-# options.coverage_termination_threshold = coverage_threshold
-# options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
-# options.iteration_limit = 1  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
-# options.fast_iris_options.max_iterations = 1
+options = IrisFromCliqueCoverOptions()
+options.num_points_per_coverage_check = 1000
+options.num_points_per_visibility_round = 1000
+options.coverage_termination_threshold = 0.7
+options.minimum_clique_size = 8
+options.iteration_limit = 1
+options.fast_iris_options.max_iterations = 1
 # options.fast_iris_options.require_sample_point_is_contained = True
-# options.fast_iris_options.mixing_steps = 10  # default 50
-# options.fast_iris_options.random_seed = 0
-# options.fast_iris_options.verbose = True
-# options.use_fast_iris = True
+options.fast_iris_options.mixing_steps = 50
+options.fast_iris_options.random_seed = 0
+options.fast_iris_options.verbose = True
+options.use_fast_iris = True
+
+# Very scuffed way of setting the domain for clique covers
+options.iris_options.bounding_region = hpoly
+
+regions = IrisInConfigurationSpaceFromCliqueCover(
+    checker=collision_checker, options=options, generator=RandomGenerator(0), sets=[]
+)  # List of HPolyhedrons
+
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
 time.sleep(10)
