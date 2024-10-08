@@ -22,6 +22,7 @@ class RRTOptions:
         neighbor_radius=0.2,  # Added for RRT*
         goal_tolerance=1e-2,  # Added for RRT*
         timeout=np.inf,
+        index=0,
     ):
         self.step_size = step_size
         self.check_size = check_size
@@ -31,6 +32,7 @@ class RRTOptions:
         self.neighbor_radius = neighbor_radius  # Added for RRT*
         self.goal_tolerance = goal_tolerance    # Added for RRT*
         self.timeout = timeout
+        self.idx = index
         assert self.goal_sample_frequency >= 0
         assert self.goal_sample_frequency <= 1
 
@@ -60,21 +62,21 @@ class RRTStar:
         if self.meshcat and len(start) == 3:
             visualize = True
             self.meshcat.SetObject(
-                f"rrt/points/_start",
+                f"rrt_{self.options.idx}/points/_start",
                 Sphere(radius=0.02),
                 rgba=Rgba(0, 1, 0, 1),
             )
             self.meshcat.SetTransform(
-                f"rrt/points/_start", RigidTransform(start)
+                f"rrt_{self.options.idx}/points/_start", RigidTransform(start)
             )
 
             self.meshcat.SetObject(
-                f"rrt/points/_goal",
+                f"rrt_{self.options.idx}/points/_goal",
                 Sphere(radius=0.02),
                 rgba=Rgba(0, 1, 0, 1),
             )
             self.meshcat.SetTransform(
-                f"rrt/points/_goal", RigidTransform(goal)
+                f"rrt_{self.options.idx}/points/_goal", RigidTransform(goal)
             )
 
         iters = tqdm(total=self.options.max_iters, position=0, desc="Iterations")
@@ -123,17 +125,17 @@ class RRTStar:
             if visualize:
                 q_parent = self.tree.nodes[q_min_idx]['q']
                 self.meshcat.SetLine(
-                    f"rrt/edges/({q_min_idx:03d},{q_new_idx:03d})",
+                    f"rrt_{self.options.idx}/edges/({q_min_idx:03d},{q_new_idx:03d})",
                     np.hstack((q_parent.reshape(3, 1), q_new.reshape(3, 1))),
                     rgba=Rgba(0, 0, 1, 1),
                 )
                 self.meshcat.SetObject(
-                    f"rrt/points/{q_new_idx:03d}",
+                    f"rrt_{self.options.idx}/points/{q_new_idx:03d}",
                     Sphere(radius=0.01),
                     rgba=Rgba(0, 0, 1, 1),
                 )
                 self.meshcat.SetTransform(
-                    f"rrt/points/{q_new_idx:03d}", RigidTransform(q_new)
+                    f"rrt_{self.options.idx}/points/{q_new_idx:03d}", RigidTransform(q_new)
                 )
 
             # Rewire the tree
@@ -151,10 +153,10 @@ class RRTStar:
 
                     if visualize:
                         # Remove old edge visualization
-                        self.meshcat.Delete(f"rrt/edges/({old_parent_idx:03d},{idx:03d})")
+                        self.meshcat.Delete(f"rrt_{self.options.idx}/edges/({old_parent_idx:03d},{idx:03d})")
                         # Add new edge visualization
                         self.meshcat.SetLine(
-                            f"rrt/edges/({q_new_idx:03d},{idx:03d})",
+                            f"rrt_{self.options.idx}/edges/({q_new_idx:03d},{idx:03d})",
                             np.hstack((q_new.reshape(3, 1), q_near.reshape(3, 1))),
                             rgba=Rgba(0, 0, 1, 1),
                         )
@@ -177,15 +179,15 @@ class RRTStar:
 
             if visualize:
                 self.meshcat.SetObject(
-                    f"rrt/points/{goal_idx:03d}",
+                    f"rrt_{self.options.idx}/points/{goal_idx:03d}",
                     Sphere(radius=0.01),
                     rgba=Rgba(1, 0, 0, 1),
                 )
                 self.meshcat.SetTransform(
-                    f"rrt/points/{goal_idx:03d}", RigidTransform(goal)
+                    f"rrt_{self.options.idx}/points/{goal_idx:03d}", RigidTransform(goal)
                 )
                 self.meshcat.SetLine(
-                    f"rrt/edges/({min_cost_idx:03d},{goal_idx:03d})",
+                    f"rrt_{self.options.idx}/edges/({min_cost_idx:03d},{goal_idx:03d})",
                     np.hstack((self.tree.nodes[min_cost_idx]['q'].reshape(3, 1), goal.reshape(3, 1))),
                     rgba=Rgba(0, 0, 1, 1),
                 )
@@ -245,28 +247,28 @@ class RRTStar:
                 q_next = path[idx + 1].reshape(3, 1)
 
                 self.meshcat.SetLine(
-                    f"path/edges/({path_idx[idx]:03d},{path_idx[idx+1]:03d})",
+                    f"path_{self.options.idx}/edges/({path_idx[idx]:03d},{path_idx[idx+1]:03d})",
                     np.hstack((q_current, q_next)),
                     line_width=2.0,
                     rgba=Rgba(1, 0, 0, 1),  # Red lines
                 )
                 self.meshcat.SetObject(
-                    f"path/points/{path_idx[idx]:03d}",
+                    f"path_{self.options.idx}/points/{path_idx[idx]:03d}",
                     Sphere(radius=0.011),
                     rgba=Rgba(1, 0, 0, 1),
                 )
                 self.meshcat.SetTransform(
-                    f"path/points/{path_idx[idx]:03d}", RigidTransform(q_current)
+                    f"path_{self.options.idx}/points/{path_idx[idx]:03d}", RigidTransform(q_current)
                 )
 
             # Also plot the last node
             q_last = path[-1].reshape(3, 1)
             self.meshcat.SetObject(
-                f"path/points/{path_idx[-1]}",
+                f"path_{self.options.idx}/points/{path_idx[-1]}",
                 Sphere(radius=0.01),
                 rgba=Rgba(1, 0, 0, 1),
             )
-            self.meshcat.SetTransform(f"path/points/{path_idx[-1]}", RigidTransform(q_last))
+            self.meshcat.SetTransform(f"path_{self.options.idx}/points/{path_idx[-1]}", RigidTransform(q_last))
 
         return path
 

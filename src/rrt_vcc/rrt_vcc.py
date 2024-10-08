@@ -26,6 +26,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from station import MakeHardwareStation, load_scenario
 from scenario import scenario_yaml_for_iris
+from iris import IrisRegionGenerator
 from utils import ik
 from rrt import *
 from rrt_star import *
@@ -158,32 +159,60 @@ def make_sample_q():
     
     return sample_q
 
-print(f"Start: {endpts['start_pts'][0]}")
-print(f"End: {endpts['end_pts'][0]}")
+assert len(endpts['start_pts']) == len(endpts['end_pts'])
 
+all_path_pts = np.array(endpts['start_pts'][0]).reshape(3,1)  # Initialize ambient_dim x N matrix to hold all points in RRTs
+for i in range(len(endpts['start_pts'])):
+    start_q = endpts['start_pts'][i]
+    end_q = endpts['end_pts'][i]
 
-# rrt_options = RRTOptions(step_size=1e-1, 
-#                          check_size=1e-2, 
-#                          max_vertices=1e3,
-#                          max_iters=1e4, 
-#                          goal_sample_frequency=0.05, 
-#                          always_swap=False,
-#                          timeout=np.inf)
+    print(f"Start: {start_q}")
+    print(f"End: {end_q}")
 
-# rrt = RRT(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
+    # rrt_options = RRTOptions(step_size=1e-1, 
+    #                          check_size=1e-2, 
+    #                         #  max_vertices=1e3,
+    #                          max_vertices=1
+    #                          max_iters=1e4, 
+    #                          goal_sample_frequency=0.05, 
+    #                          always_swap=False,
+    #                          timeout=np.inf)
 
+    # rrt = RRT(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
 
-rrt_options = RRTOptions(step_size=1e-1, 
-                         check_size=1e-2, 
-                         max_vertices=1e3,
-                         max_iters=1e4, 
-                         goal_sample_frequency=0.05, 
-                         timeout=np.inf)
+    rrt_options = RRTOptions(step_size=1e-1, 
+                             check_size=1e-2, 
+                             max_vertices=500,
+                             max_iters=1e4, 
+                             goal_sample_frequency=0.05, 
+                             timeout=np.inf,
+                             index=i)
 
-rrt = RRTStar(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
+    rrt = RRTStar(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
 
-path = rrt.plan(endpts['start_pts'][0], endpts['end_pts'][0], rrt_options)
+    path = rrt.plan(start_q, end_q, rrt_options)
 
-print(path)
+    print(f"Found path: {path != []}")
+    
+    print(np.shape(np.array(path)))
+    
+    all_path_pts = np.hstack((all_path_pts, np.array(path).T))
+    
+vpoly = VPolytope(all_path_pts)
+hpoly = HPolyhedron(vpoly)
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, [hpoly], task_space=(ambient_dim!=3), scene=TEST_SCENE)
+
+# options = IrisFromCliqueCoverOptions()
+# options.num_points_per_coverage_check = 1000
+# options.num_points_per_visibility_round = num_points_per_visibility_round
+# options.coverage_termination_threshold = coverage_threshold
+# options.minimum_clique_size = minimum_clique_size  # minimum of 7 points needed to create a shape with volume in 6D
+# options.iteration_limit = 1  # Only build 1 visibility graph --> cliques --> region in order not to have too much region overlap
+# options.fast_iris_options.max_iterations = 1
+# options.fast_iris_options.require_sample_point_is_contained = True
+# options.fast_iris_options.mixing_steps = 10  # default 50
+# options.fast_iris_options.random_seed = 0
+# options.fast_iris_options.verbose = True
+# options.use_fast_iris = True
 
 time.sleep(10)

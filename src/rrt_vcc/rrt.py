@@ -87,7 +87,6 @@ class RRT:
             q_subgoal = goal.copy() if sample_goal else self.RandomConfig()
             q_near_idx = self._nearest_idx(q_subgoal)
             while len(self.tree) < self.options.max_vertices:
-            # for i in range(1):
                 status = self._extend(q_near_idx, q_subgoal, visualize)
                 q_new = self.tree.nodes[len(self.tree) - 1]["q"]
                 if self.Distance(q_new, goal) <= self.options.step_size:
