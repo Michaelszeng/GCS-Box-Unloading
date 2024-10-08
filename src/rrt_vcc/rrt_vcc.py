@@ -40,8 +40,8 @@ from scipy.sparse import find
 import pickle
 import time
 
-TEST_SCENE = "3DOFFLIPPER"
-# TEST_SCENE = "5DOFUR3"
+# TEST_SCENE = "3DOFFLIPPER"
+TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
@@ -51,6 +51,7 @@ TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "BOXUNLOADING"
 
 rng = RandomGenerator(1234)
+np.random.seed(1234)
 
 src_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 parent_directory = os.path.dirname(src_directory)
@@ -161,9 +162,14 @@ def make_sample_q():
     
     return sample_q
 
+def forward_kinematics(q):
+    plant.SetPositions(plant_context, q)
+    p = plant.CalcRelativeTransform(plant_context, frame_A=plant.world_frame(), frame_B=ee_frame).translation()
+    return p
+
 assert len(endpts['start_pts']) == len(endpts['end_pts'])
 
-all_path_pts = np.array(endpts['start_pts'][0]).reshape(3,1)  # Initialize ambient_dim x N matrix to hold all points in RRTs
+all_path_pts = np.array(endpts['start_pts'][0]).reshape(ambient_dim,1)  # Initialize ambient_dim x N matrix to hold all points in RRTs
 for i in range(len(endpts['start_pts'])):
     start_q = endpts['start_pts'][i]
     end_q = endpts['end_pts'][i]
@@ -180,17 +186,19 @@ for i in range(len(endpts['start_pts'])):
     #                          always_swap=False,
     #                          timeout=np.inf)
 
-    # rrt = RRT(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
+    # rrt = RRT(make_sample_q(), check_collision_free, meshcat=cspace_meshcat if ambient_dim==3 else meshcat)
 
-    rrt_options = RRTOptions(step_size=1e-1, 
-                             check_size=1e-2, 
-                             max_vertices=500,
-                             max_iters=1e4, 
-                             goal_sample_frequency=0.05, 
+    rrt_options = RRTOptions(step_size=4e-1, 
+                             check_size=5e-2, 
+                             neighbor_radius=0.2,
+                             min_vertices=1000,
+                             max_vertices=10000,
+                             goal_sample_frequency=0.1, 
                              timeout=np.inf,
-                             index=i)
+                             index=i,
+                             draw_rrt=False)
 
-    rrt = RRTStar(make_sample_q(), check_collision_free, meshcat=cspace_meshcat)
+    rrt = RRTStar(make_sample_q(), check_collision_free, ForwardKinematis=forward_kinematics, meshcat=cspace_meshcat if ambient_dim==3 else meshcat)
 
     path = rrt.plan(start_q, end_q, rrt_options)
 
@@ -202,13 +210,13 @@ for i in range(len(endpts['start_pts'])):
     
 vpoly = VPolytope(all_path_pts)
 hpoly = HPolyhedron(vpoly)
-IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, [hpoly], name="rrt_convex_hull", task_space=(ambient_dim!=3), scene=TEST_SCENE)
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, [hpoly], name="rrt_convex_hull", task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
 options = IrisFromCliqueCoverOptions()
 options.num_points_per_coverage_check = 1000
 options.num_points_per_visibility_round = 1000
 options.coverage_termination_threshold = 0.7
-options.minimum_clique_size = 8
+options.minimum_clique_size = ambient_dim + 1
 options.iteration_limit = 1
 options.fast_iris_options.max_iterations = 1
 # options.fast_iris_options.require_sample_point_is_contained = True
@@ -224,6 +232,6 @@ regions = IrisInConfigurationSpaceFromCliqueCover(
     checker=collision_checker, options=options, generator=RandomGenerator(0), sets=[]
 )  # List of HPolyhedrons
 
-IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
 time.sleep(10)

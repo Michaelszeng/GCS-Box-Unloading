@@ -31,8 +31,8 @@ import importlib
 import argparse
 import pickle
 
-TEST_SCENE = "3DOFFLIPPER"
-# TEST_SCENE = "5DOFUR3"
+# TEST_SCENE = "3DOFFLIPPER"
+TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
@@ -282,8 +282,24 @@ while not meshcat.GetButtonClicks("Close"):
         print("Placing Start Point")
         start_pts.append(plant.GetPositions(plant_context))
 
+
 pickle_file = f'{TEST_SCENE}_endpts.pkl'
+
+if os.path.exists(pickle_file):
+    with open(pickle_file, 'rb') as file:
+        data = pickle.load(file)
+        current_start_pts = data.get("start_pts", [])
+        current_end_pts = data.get("end_pts", [])
+else:
+    current_start_pts = []
+    current_end_pts = []
+
+# Append the new points to the existing lists
+current_start_pts.extend(start_pts)
+current_end_pts.extend(end_pts)
+
+# Save the updated lists back to the pickle file
 with open(pickle_file, 'wb') as file:
-    pickle.dump({"start_pts": start_pts, "end_pts": end_pts}, file)
+    pickle.dump({"start_pts": current_start_pts, "end_pts": current_end_pts}, file)
 
 print(f"Start and end points saved to {pickle_file}")
