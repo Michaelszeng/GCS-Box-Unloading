@@ -50,8 +50,8 @@ TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "15DOFALLEGRO"
 # TEST_SCENE = "BOXUNLOADING"
 
-rng = RandomGenerator(1234)
-np.random.seed(1234)
+rng = RandomGenerator(0)
+np.random.seed(0)
 
 src_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 parent_directory = os.path.dirname(src_directory)
@@ -196,7 +196,9 @@ for i in range(len(endpts['start_pts'])):
                              goal_sample_frequency=0.1, 
                              timeout=np.inf,
                              index=i,
-                             draw_rrt=False)
+                             draw_rrt=False,
+                             use_rrt_star=False,
+                            )
 
     rrt = RRTStar(make_sample_q(), check_collision_free, ForwardKinematis=forward_kinematics, meshcat=cspace_meshcat if ambient_dim==3 else meshcat)
 
