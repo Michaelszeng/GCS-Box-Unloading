@@ -40,8 +40,8 @@ from scipy.sparse import find
 import pickle
 import time
 
-# TEST_SCENE = "3DOFFLIPPER"
-TEST_SCENE = "5DOFUR3"
+TEST_SCENE = "3DOFFLIPPER"
+# TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
@@ -191,12 +191,12 @@ for i in range(len(endpts['start_pts'])):
     rrt_options = RRTOptions(step_size=4e-1, 
                              check_size=5e-2, 
                              neighbor_radius=0.2,
-                             min_vertices=1000,
-                             max_vertices=10000,
+                             min_vertices=100,
+                             max_vertices=500,
                              goal_sample_frequency=0.1, 
                              timeout=np.inf,
                              index=i,
-                             draw_rrt=False,
+                             draw_rrt=True,
                              use_rrt_star=False,
                             )
 

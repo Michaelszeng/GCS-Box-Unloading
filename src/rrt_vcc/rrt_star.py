@@ -24,7 +24,7 @@ class RRTOptions:
         timeout=np.inf,
         index=0,
         draw_rrt=True,
-        use_rrt_star=True,  # New option to switch between RRT and RRT*
+        use_rrt_star=True,  # Option to switch between RRT and RRT*
     ):
         self.step_size = step_size
         self.check_size = check_size
@@ -36,7 +36,7 @@ class RRTOptions:
         self.timeout = timeout
         self.idx = index
         self.draw_rrt = draw_rrt
-        self.use_rrt_star = use_rrt_star  # New option
+        self.use_rrt_star = use_rrt_star
         assert self.goal_sample_frequency >= 0
         assert self.goal_sample_frequency <= 1
 
@@ -59,9 +59,8 @@ class RRTStar:
     def plan(self, start, goal, options):
         t0 = time.time()
         self.options = options
-        self.tree = nx.DiGraph()  # Changed to directed graph
+        self.tree = nx.DiGraph()  # Directed graph
         self.tree.add_node(0, q=start, cost=0.0)  # Initialize cost
-        success = False
         goal_nodes = []  # To store nodes close to the goal
 
         visualize = False
@@ -101,14 +100,6 @@ class RRTStar:
 
             q_nearest_idx = self._nearest_idx(q_rand)
             q_nearest = self.tree.nodes[q_nearest_idx]['q']
-
-            q_new = self._steer(q_nearest, q_rand, self.options.step_size)
-
-            if not self.ValidityChecker(q_new):
-                continue
-
-            if not self._check_path(q_nearest, q_new):
-                continue
 
             if self.options.use_rrt_star:
                 # RRT* specific code
@@ -174,33 +165,52 @@ class RRTStar:
                                 rgba=Rgba(0, 0, 1, 1),
                             )
             else:
-                # Standard RRT code
-                q_new_idx = len(self.tree)
-                c_min = self.tree.nodes[q_nearest_idx]['cost'] + self.Distance(q_nearest, q_new)
-                self.tree.add_node(q_new_idx, q=q_new, cost=c_min)
-                self.tree.add_edge(q_nearest_idx, q_new_idx)
-                if visualize and self.options.draw_rrt:
-                    q_parent = self.tree.nodes[q_nearest_idx]['q']
-                    self.meshcat.SetLine(
-                        f"rrt_{self.options.idx}/edges/({q_nearest_idx:03d},{q_new_idx:03d})",
-                        np.hstack((q_parent.reshape(3, 1), q_new.reshape(3, 1))) if ambient_dim == 3 else
-                        np.hstack((self.ForwardKinematics(q_parent).reshape(3, 1), self.ForwardKinematics(q_new).reshape(3, 1))),
-                        rgba=Rgba(0, 0, 1, 1),
-                    )
-                    if self.options.max_vertices <= 1000:
-                        self.meshcat.SetObject(
-                            f"rrt_{self.options.idx}/points/{q_new_idx:03d}",
-                            Sphere(radius=0.01 if ambient_dim == 3 else 0.005),
+                # Standard RRT code with modification to expand as much as possible towards q_rand
+                q_current = q_nearest
+                q_current_idx = q_nearest_idx
+                while True:
+                    q_new = self._steer(q_current, q_rand, self.options.step_size)
+                    if not self.ValidityChecker(q_new):
+                        break
+                    if not self._check_path(q_current, q_new):
+                        break
+                    c_new = self.tree.nodes[q_current_idx]['cost'] + self.Distance(q_current, q_new)
+                    q_new_idx = len(self.tree)
+                    self.tree.add_node(q_new_idx, q=q_new, cost=c_new)
+                    self.tree.add_edge(q_current_idx, q_new_idx)
+
+                    if visualize and self.options.draw_rrt:
+                        q_parent = self.tree.nodes[q_current_idx]['q']
+                        self.meshcat.SetLine(
+                            f"rrt_{self.options.idx}/edges/({q_current_idx:03d},{q_new_idx:03d})",
+                            np.hstack((q_parent.reshape(3, 1), q_new.reshape(3, 1))) if ambient_dim == 3 else
+                            np.hstack((self.ForwardKinematics(q_parent).reshape(3, 1), self.ForwardKinematics(q_new).reshape(3, 1))),
                             rgba=Rgba(0, 0, 1, 1),
                         )
-                        self.meshcat.SetTransform(
-                            f"rrt_{self.options.idx}/points/{q_new_idx:03d}",
-                            RigidTransform(q_new if ambient_dim == 3 else self.ForwardKinematics(q_new))
-                        )
+                        if self.options.max_vertices <= 1000:
+                            self.meshcat.SetObject(
+                                f"rrt_{self.options.idx}/points/{q_new_idx:03d}",
+                                Sphere(radius=0.01 if ambient_dim == 3 else 0.005),
+                                rgba=Rgba(0, 0, 1, 1),
+                            )
+                            self.meshcat.SetTransform(
+                                f"rrt_{self.options.idx}/points/{q_new_idx:03d}",
+                                RigidTransform(q_new if ambient_dim == 3 else self.ForwardKinematics(q_new))
+                            )
 
-            # Check if q_new is close to the goal
-            if self.Distance(q_new, goal) <= self.options.step_size:
-                goal_nodes.append(q_new_idx)
+                    # Check if q_new is close to the goal
+                    if self.Distance(q_new, goal) <= self.options.step_size:
+                        goal_nodes.append(q_new_idx)
+                        break  # Stop expanding when goal is reached
+
+                    # Prepare for next iteration
+                    if np.array_equal(q_new, q_rand):
+                        # Reached the random sample
+                        break
+                    q_current = q_new
+                    q_current_idx = q_new_idx
+                    if len(self.tree) >= self.options.max_vertices:
+                        break
 
             # If we've reached goal and min_vertices has been reached, then just return
             if goal_nodes and len(self.tree) >= self.options.min_vertices:
