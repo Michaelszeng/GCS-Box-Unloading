@@ -39,8 +39,8 @@ from scipy.sparse import find
 import pickle
 import time
 
-TEST_SCENE = "3DOFFLIPPER"
-# TEST_SCENE = "5DOFUR3"
+# TEST_SCENE = "3DOFFLIPPER"
+TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
@@ -186,7 +186,7 @@ for i in range(len(endpts['start_pts'])):
                                    index=i,
                                    draw_rrt=True,
                                    use_rrt_star=False,
-                                   use_bi_rrt=False
+                                   use_bi_rrt=True
                                   )
 
     path = RRTMaster(rrt_options, start_q, end_q, make_sample_q(), check_collision_free, ForwardKinematics=forward_kinematics, meshcat=cspace_meshcat if ambient_dim==3 else meshcat)

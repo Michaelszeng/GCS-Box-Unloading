@@ -18,6 +18,7 @@ class RRTOptions:
         check_size=1e-2,
         max_vertices=1e3,
         goal_sample_frequency=0.05,
+        always_swap=False,
         timeout=np.inf,
         index=0,
         draw_rrt=True,
@@ -26,6 +27,7 @@ class RRTOptions:
         self.check_size = check_size
         self.max_vertices = int(max_vertices)
         self.goal_sample_frequency = goal_sample_frequency
+        self.always_swap = always_swap
         self.timeout = timeout
         self.idx = index
         self.draw_rrt = draw_rrt
@@ -33,7 +35,7 @@ class RRTOptions:
         assert self.goal_sample_frequency <= 1
 
 class RRT:
-    def __init__(self, RandomConfig, ValidityChecker, Distance=None, meshcat=None):
+    def __init__(self, RandomConfig, ValidityChecker, Distance=None, ForwardKinematics=None, meshcat=None):
         self.RandomConfig = RandomConfig
         self.ValidityChecker = ValidityChecker
         if Distance is None:
@@ -43,6 +45,7 @@ class RRT:
 
         self.options = None
         self.tree = None
+        self.ForwardKinematics = ForwardKinematics
         self.meshcat = meshcat
 
     def plan(self, start, goal, options):
@@ -59,7 +62,7 @@ class RRT:
    
             self.meshcat.SetObject(
                 f"rrt_{self.options.idx}/points/_start",
-                Sphere(radius=0.01),
+                Sphere(radius=0.01 if ambient_dim==3 else 0.005),
                 rgba=Rgba(0, 1, 0, 1),
             )
             self.meshcat.SetTransform(
@@ -68,7 +71,7 @@ class RRT:
 
             self.meshcat.SetObject(
                 f"rrt_{self.options.idx}/points/_goal",
-                Sphere(radius=0.01),
+                Sphere(radius=0.01 if ambient_dim==3 else 0.005),
                 rgba=Rgba(0, 1, 0, 1),
             )
             self.meshcat.SetTransform(
@@ -101,7 +104,7 @@ class RRT:
             self.tree.add_node(goal_idx, q=goal)
             self.tree.add_edge(goal_idx - 1, goal_idx)
             start_idx = 0
-            return self._path(start_idx, goal_idx, visualize)
+            return self._path(start_idx, goal_idx, visualize, ambient_dim)
         else:
             return []
 
@@ -136,12 +139,13 @@ class RRT:
             if visualize and self.options.draw_rrt:
                 self.meshcat.SetLine(
                     f"rrt_{self.options.idx}/edges/({q_near_idx:03d},{q_new_idx:03d})",
-                    np.hstack((q_near.reshape(3, 1), q_new.reshape(3, 1))),
+                    np.hstack((q_near.reshape(3, 1), q_new.reshape(3, 1))) if ambient_dim==3 else
+                    np.hstack((self.ForwardKinematics(q_near).reshape(3, 1), self.ForwardKinematics(q_new).reshape(3, 1))),
                     rgba=Rgba(0, 0, 1, 1),
                 )
                 self.meshcat.SetObject(
                     f"rrt_{self.options.idx}/points/{q_new_idx:03d}",
-                    Sphere(radius=0.01),
+                    Sphere(radius=0.01 if ambient_dim==3 else 0.005),
                     rgba=Rgba(0, 0, 1, 1),
                 )
                 self.meshcat.SetTransform(
@@ -162,24 +166,25 @@ class RRT:
         else:
             return "stopped"
 
-    def _path(self, i, j, visualize):
+    def _path(self, i, j, visualize, ambient_dim):
         path_idx = nx.shortest_path(self.tree, source=i, target=j)
         path = [self.tree.nodes[idx]["q"] for idx in path_idx]
         
         if visualize:
             for idx in range(len(path) - 1):
-                q_current = path[idx].reshape(3, 1)
-                q_next = path[idx + 1].reshape(3, 1)
+                q_current = path[idx]
+                q_next = path[idx + 1]
 
                 self.meshcat.SetLine(
                     f"path_{self.options.idx}/edges/({path_idx[idx]:03d},{path_idx[idx+1]:03d})",
-                    np.hstack((q_current, q_next)),
+                    np.hstack((q_current.reshape(3, 1), q_next.reshape(3, 1))) if ambient_dim==3 else
+                    np.hstack((self.ForwardKinematics(q_current).reshape(3, 1), self.ForwardKinematics(q_next).reshape(3, 1))),
                     line_width=2.0,
                     rgba=Rgba(1, 0, 0, 1),  # Red lines
                 )
                 self.meshcat.SetObject(
                     f"path_{self.options.idx}/points/{path_idx[idx]:03d}",
-                    Sphere(radius=0.02),
+                    Sphere(radius=0.011 if ambient_dim==3 else 0.006),
                     rgba=Rgba(1, 0, 0, 1),
                 )
                 self.meshcat.SetTransform(
@@ -187,11 +192,11 @@ class RRT:
                 )
 
             # Also plot the last node
-            q_last = path[-1].reshape(3, 1)
+            q_last = path[-1]
             self.meshcat.SetObject(
-                f"path_{self.options.idx}/points/{path_idx[-1]}", Sphere(radius=0.02), rgba=Rgba(1, 0, 0, 1)
+                f"path_{self.options.idx}/points/{path_idx[-1]}", Sphere(radius=0.011 if ambient_dim==3 else 0.006), rgba=Rgba(1, 0, 0, 1)
             )
-            self.meshcat.SetTransform(f"path_{self.options.idx}/points/{path_idx[-1]}", RigidTransform(q_last))
+            self.meshcat.SetTransform(f"path_{self.options.idx}/points/{path_idx[-1]}", RigidTransform(q_last.reshape(3, 1) if ambient_dim==3 else self.ForwardKinematics(q_last).reshape(3, 1)))
             
         return path
 
@@ -206,7 +211,7 @@ class RRT:
 
 
 class BiRRT:
-    def __init__(self, RandomConfig, ValidityChecker, Distance=None, meshcat=None):
+    def __init__(self, RandomConfig, ValidityChecker, Distance=None, ForwardKinematics=None, meshcat=None):
         """
         RandomConfig is a function to generate a random q
 
@@ -224,6 +229,7 @@ class BiRRT:
         self.options = None
         self.tree_a = None
         self.tree_b = None
+        self.ForwardKinematics = ForwardKinematics
         self.meshcat = meshcat
 
     def plan(self, start, goal, options):
@@ -242,7 +248,7 @@ class BiRRT:
    
             self.meshcat.SetObject(
                 f"rrt_{self.options.idx}/points/_start",
-                Sphere(radius=0.01),
+                Sphere(radius=0.01 if ambient_dim==3 else 0.005),
                 rgba=Rgba(0, 1, 0, 1),
             )
             self.meshcat.SetTransform(
@@ -251,7 +257,7 @@ class BiRRT:
 
             self.meshcat.SetObject(
                 f"rrt_{self.options.idx}/points/_goal",
-                Sphere(radius=0.01),
+                Sphere(radius=0.01 if ambient_dim==3 else 0.005),
                 rgba=Rgba(0, 1, 0, 1),
             )
             self.meshcat.SetTransform(
@@ -304,8 +310,8 @@ class BiRRT:
             self.tree_a, self.tree_b = self.tree_b, self.tree_a
 
         if success:
-            path_a = self._path(self.tree_a, 0, len(self.tree_a) - 1, visualize, ambient_dim)
-            path_b = self._path(self.tree_b, q_subgoal_idx, 0, visualize, ambient_dim)
+            path_a = self._path(self.tree_a, 0, len(self.tree_a) - 1)
+            path_b = self._path(self.tree_b, q_subgoal_idx, 0)
             path = path_a + path_b
             self._visualize_path(path, visualize, ambient_dim)
             if np.linalg.norm(path[0] - start) > 1e-15:
@@ -344,12 +350,13 @@ class BiRRT:
                 
                 self.meshcat.SetLine(
                     f"rrt_{self.options.idx}/{which_tree}/edges/({q_near_idx:03d},{q_new_idx:03d})",
-                    np.hstack((q_near.reshape(3, 1), q_new.reshape(3, 1))),
+                    np.hstack((q_near.reshape(3, 1), q_new.reshape(3, 1))) if ambient_dim==3 else
+                    np.hstack((self.ForwardKinematics(q_near).reshape(3, 1), self.ForwardKinematics(q_new).reshape(3, 1))),
                     rgba=Rgba(0, 0, 1, 1),
                 )
                 self.meshcat.SetObject(
                     f"rrt_{self.options.idx}/{which_tree}/points/{q_new_idx:03d}",
-                    Sphere(radius=0.01),
+                    Sphere(radius=0.01 if ambient_dim==3 else 0.005),
                     rgba=Rgba(0, 0, 1, 1),
                 )
                 self.meshcat.SetTransform(
@@ -373,19 +380,19 @@ class BiRRT:
     def _visualize_path(self, path, visualize, ambient_dim):
         if visualize:
             for idx in range(len(path) - 1):
-                q_current = path[idx].reshape(3, 1)
-                q_next = path[idx + 1].reshape(3, 1)
+                q_current = path[idx]
+                q_next = path[idx + 1]
 
                 self.meshcat.SetLine(
                     f"path_{self.options.idx}/edges/({idx:03d},{idx+1:03d})",
-                    np.hstack((q_current, q_next)),
+                    np.hstack((q_current.reshape(3, 1), q_next.reshape(3, 1))) if ambient_dim==3 else
+                    np.hstack((self.ForwardKinematics(q_current).reshape(3, 1), self.ForwardKinematics(q_next).reshape(3, 1))),
                     line_width=2.0,
                     rgba=Rgba(1, 0, 0, 1),  # Red lines
                 )
-                print(f"path_{self.options.idx}/points/{idx:03d}")
                 self.meshcat.SetObject(
                     f"path_{self.options.idx}/points/{idx:03d}",
-                    Sphere(radius=0.02),
+                    Sphere(radius=0.011 if ambient_dim==3 else 0.006),
                     rgba=Rgba(1, 0, 0, 1),
                 )
                 self.meshcat.SetTransform(
@@ -393,13 +400,13 @@ class BiRRT:
                 )
 
             # Also plot the last node
-            q_last = path[-1].reshape(3, 1)
+            q_last = path[-1]
             self.meshcat.SetObject(
-                f"path_{self.options.idx}/points/-1", Sphere(radius=0.02), rgba=Rgba(1, 0, 0, 1)
+                f"path_{self.options.idx}/points/-1", Sphere(radius=0.011 if ambient_dim==3 else 0.006), rgba=Rgba(1, 0, 0, 1)
             )
             self.meshcat.SetTransform(f"path_{self.options.idx}/points/-1", RigidTransform(q_last if ambient_dim==3 else self.ForwardKinematics(q_last)))
 
-    def _path(self, tree, i, j, visualize, ambient_dim):
+    def _path(self, tree, i, j):
         path_idx = nx.shortest_path(tree, source=i, target=j)
         path = [tree.nodes[idx]["q"] for idx in path_idx]
         return path

@@ -67,8 +67,8 @@ def RRTMaster(master_options, start, goal, RandomConfig, ValidityChecker, Distan
         )
         
         if master_options.use_bi_rrt:
-            rrt = BiRRT(RandomConfig, ValidityChecker, Distance=Distance, meshcat=meshcat)
+            rrt = BiRRT(RandomConfig, ValidityChecker, Distance=Distance, ForwardKinematics=ForwardKinematics, meshcat=meshcat)
         else:
-            rrt = RRT(RandomConfig, ValidityChecker, Distance=Distance, meshcat=meshcat)
+            rrt = RRT(RandomConfig, ValidityChecker, Distance=Distance, ForwardKinematics=ForwardKinematics, meshcat=meshcat)
             
     return rrt.plan(start, goal, options)
