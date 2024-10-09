@@ -30,8 +30,7 @@ from station import MakeHardwareStation, load_scenario
 from scenario import scenario_yaml_for_iris
 from iris import IrisRegionGenerator
 from utils import ik
-from rrt import *
-from rrt_star import *
+from rrt_master import *
 
 import numpy as np
 import importlib
@@ -177,32 +176,20 @@ for i in range(len(endpts['start_pts'])):
     print(f"Start: {start_q}")
     print(f"End: {end_q}")
 
-    # rrt_options = RRTOptions(step_size=1e-1, 
-    #                          check_size=1e-2, 
-    #                         #  max_vertices=1e3,
-    #                          max_vertices=1
-    #                          max_iters=1e4, 
-    #                          goal_sample_frequency=0.05, 
-    #                          always_swap=False,
-    #                          timeout=np.inf)
+    rrt_options = RRTMasterOptions(step_size=1e-1, 
+                                   check_size=5e-2, 
+                                   neighbor_radius=0.2,
+                                   min_vertices=1000,
+                                   max_vertices=1000,
+                                   goal_sample_frequency=0.1, 
+                                   timeout=np.inf,
+                                   index=i,
+                                   draw_rrt=True,
+                                   use_rrt_star=False,
+                                   use_bi_rrt=False
+                                  )
 
-    # rrt = RRT(make_sample_q(), check_collision_free, meshcat=cspace_meshcat if ambient_dim==3 else meshcat)
-
-    rrt_options = RRTOptions(step_size=4e-1, 
-                             check_size=5e-2, 
-                             neighbor_radius=0.2,
-                             min_vertices=100,
-                             max_vertices=500,
-                             goal_sample_frequency=0.1, 
-                             timeout=np.inf,
-                             index=i,
-                             draw_rrt=True,
-                             use_rrt_star=False,
-                            )
-
-    rrt = RRTStar(make_sample_q(), check_collision_free, ForwardKinematis=forward_kinematics, meshcat=cspace_meshcat if ambient_dim==3 else meshcat)
-
-    path = rrt.plan(start_q, end_q, rrt_options)
+    path = RRTMaster(rrt_options, start_q, end_q, make_sample_q(), check_collision_free, ForwardKinematics=forward_kinematics, meshcat=cspace_meshcat if ambient_dim==3 else meshcat)
 
     print(f"Found path: {path != []}")
     
@@ -230,10 +217,10 @@ options.use_fast_iris = True
 # Very scuffed way of setting the domain for clique covers
 options.iris_options.bounding_region = hpoly
 
-regions = IrisInConfigurationSpaceFromCliqueCover(
-    checker=collision_checker, options=options, generator=RandomGenerator(0), sets=[]
-)  # List of HPolyhedrons
+# regions = IrisInConfigurationSpaceFromCliqueCover(
+#     checker=collision_checker, options=options, generator=RandomGenerator(0), sets=[]
+# )  # List of HPolyhedrons
 
-IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
+# IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
 time.sleep(10)
