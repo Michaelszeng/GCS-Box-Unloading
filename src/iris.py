@@ -352,7 +352,7 @@ class IrisRegionGenerator():
         regions = LoadIrisRegionsYamlFile(self.regions_file)
 
         # To control how many sets to evaluate
-        num_sets = 13
+        num_sets = 9999
         regions = {k: v for k, v in regions.items() if k.startswith("set") and k[3:].isdigit() and 0 <= int(k[3:]) <= num_sets}
 
         regions = [hpolyhedron for hpolyhedron in regions.values()]

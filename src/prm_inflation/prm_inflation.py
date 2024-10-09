@@ -27,6 +27,7 @@ from pydrake.all import (
     FastIrisOptions,
     IrisInConfigurationSpace,
     IrisOptions,
+    LoadIrisRegionsYamlFile,
 )
 
 import sys
@@ -55,6 +56,10 @@ TEST_SCENE = "3DOFFLIPPER"
 rng = RandomGenerator(1234)
 
 scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
+
+# Load restricted domain if it exists
+if os.path.exists(f"{TEST_SCENE}.yaml"):
+    domain = list(LoadIrisRegionsYamlFile(f"{TEST_SCENE}.yaml").values())[0]
 
 meshcat = StartMeshcat()
 
@@ -90,11 +95,13 @@ collision_checker_params["edge_step_size"] = 0.125
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
+if not os.path.exists(f"{TEST_SCENE}.yaml"):
+    domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
+    # domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
+
 # Sample to build PRM
 N = 60
 points = np.zeros((ambient_dim, N))  # ambient_dim x N
-domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
-# domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
 last_polytope_sample = domain.UniformSample(rng, domain.ChebyshevCenter())
 for i in range(np.shape(points)[1]):
     last_polytope_sample = domain.UniformSample(rng, last_polytope_sample)

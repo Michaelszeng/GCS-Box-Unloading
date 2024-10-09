@@ -42,6 +42,7 @@ TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "BOXUNLOADING"
 
 rng = RandomGenerator(1234)
+np.random.seed(1234)
 
 src_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.dirname(src_directory)

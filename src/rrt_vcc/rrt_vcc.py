@@ -1,8 +1,3 @@
-"""
-Template file that shows how to build a generic MultibodyPlant containing one of
-the 9 test scenes.
-"""
-
 from pydrake.all import (
     StartMeshcat,
     AddDefaultVisualization,

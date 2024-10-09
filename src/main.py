@@ -211,7 +211,7 @@ collision_checker_params["robot_model_instances"] = robot_model_instances
 collision_checker_params["model"] = robot_diagram_builder_diagram
 collision_checker_params["edge_step_size"] = 0.25
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
-config_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
+cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 # region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_v2.yaml", DEBUG=True)
 # region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_classic_clique_covers_baseline.yaml", DEBUG=True)
@@ -277,7 +277,7 @@ collision_checker_params["model"] = robot_diagram_builder_diagram
 collision_checker_params["edge_step_size"] = 0.25
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True)  # Filter collision between eef and box so IRIS doesn't fail immediately
-config_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
+cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_place_v2.yaml", DEBUG=True)
 # region_generator.load_and_test_regions(name="regions_place")
