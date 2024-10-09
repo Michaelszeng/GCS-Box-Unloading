@@ -35,8 +35,7 @@ from utils import ik
 
 import numpy as np
 import importlib
-from scipy.spatial.transform import Rotation
-from scipy.sparse import find
+from scipy.spatial import ConvexHull
 
 # TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
@@ -104,36 +103,90 @@ fast_iris_options = FastIrisOptions()
 manual_seed_ellipsoid = Hyperellipsoid.MakeUnitBall(ambient_dim)
 hpoly = FastIris(cspace_obstacle_collision_checker, manual_seed_ellipsoid, domain, fast_iris_options)
 
-NUM_ANGLE_INCREMENTS = 100
+NUM_SAMPLES_PER_FACE = 500
+MIXING_STEPS = 50
 
-while True:
-    # Sample uniformly on surface of polytope
-    # To do so, we sample uniformly on each face of the polytope.
-    A = hpoly.A()  # N x ambient_dim
-    b = hpoly.b()  # N
-    N = np.shape(b)[0]
-    # Iterate through each hyperplane in polytope
-    for i in range(N):
-        # First, we find any point on surface i of the polytope
-        A_slash_i = np.delete(A, i, axis=0)
-        b_slash_i = np.delete(b, i, axis=0)
+face_areas = []
+max_area_idx = 0
+face_samples = []
+
+# Sample uniformly on surface of polytope
+# To do so, we sample uniformly on each face of the polytope.
+A = hpoly.A()  # N x ambient_dim
+b = hpoly.b()  # N
+N = np.shape(b)[0]
+# Iterate through each hyperplane in polytope
+for i in range(N):
+    # First, we find any point on surface i of the polytope
+    A_slash_i = np.delete(A, i, axis=0)
+    b_slash_i = np.delete(b, i, axis=0)
+    
+    # The program is as follows:
+    # Find x
+    # s.t. A_{\i} x ≤ b_{\i}
+    #        A_{i}x = b_{i}
+    prog = MathematicalProgram()
+    x = prog.NewContinuousVariables(ambient_dim)
+    for Ai, bi in zip(A_slash_i, b_slash_i):
+        prog.AddLinearConstraint(Ai @ x <= bi)
+    prog.AddLinearEqualityConstraint(A[i] @ x == b[i])
+    
+    result = Solve(prog)
+    # print(f"Solver {result.get_solver_id().name()} Success: {result.is_success()}")
+    # print('x* = ', result.GetSolution(x))
+    
+    # If the solver fails, assume that face of the polytope is just redundant
+    if not result.is_success():
+        continue
         
-        # The program is as follows:
-        # Find x
-        # s.t. A_{\i} x ≤ b_{\i}
-        #        A_{i}x = b_{i}
-        prog = MathematicalProgram()
-        x = prog.NewContinuousVariables(ambient_dim)
-        for row, bi in zip(A_slash_i, b_slash_i):
-            prog.AddLinearConstraint(row @ x <= bi)
-        prog.AddLinearEqualityConstraint(A[i] @ x == b[i])
+    # Seed point on face of the polytope for hit and run sampling
+    current_sample = result.GetSolution(x)
+    
+    # Next, using this initial point on the face, use hit-and-run sampling
+    # to generate more points on the face.
+    samples = np.empty(shape=(ambient_dim,0))
+    for _ in range(NUM_SAMPLES_PER_FACE):
+        for j in range(MIXING_STEPS):
+            direction = np.random.normal(0, 1, ambient_dim)
+            direction = direction - ((A[i] @ direction - b[i]) / (A[i] @ A[i])) * A[i]  # Project onto face of polytope
+            direction = direction / np.linalg.norm(direction)
+            
+            line_b = b_slash_i - A_slash_i @ current_sample
+            line_a = A_slash_i @ direction
+            theta_max = float('inf')
+            theta_min = float('-inf')
+            for k in range(ambient_dim):
+                if line_a[k] < 0.0:
+                    theta_min = max(theta_min, line_b[k] / line_a[k])
+                elif line_a[k] > 0.0:
+                    theta_max = min(theta_max, line_b[k] / line_a[k])
+            if theta_max == float('inf') or theta_min == float('-inf') or theta_max < theta_min:
+                if theta_max < theta_min:
+                    raise Exception("Hit and run fail; theta_max < theta_min.")
+                raise Exception("Hit and run fail.")
         
-        result = Solve(prog)
-        # print(f"Solver {result.get_solver_id().name()} Success: {result.is_success()}")
-        # print('x* = ', result.GetSolution(x))
+            theta = np.random.uniform(theta_min, theta_max)
+            current_sample = current_sample + theta * direction
+            
+        np.hstack((samples, current_sample))
         
-        # If the solver fails, assume that face of the polytope is just redundant
-        if not result.is_success():
-            continue
-        
-        
+    # Now, estimate the surface area of the polytope and store it. We will
+    # need it later to rescale the number of samples we keep for each face
+    # of the polytope to ensure uniform distribution.
+    face_area = ConvexHull(samples).area
+    face_areas.append(face_area)
+    if face_area > face_areas[max_area_idx]:  # Keep track of largest face
+        max_area_idx = i
+    
+# Now, with samples and area for each face, we reduce the number of samples
+# on each face proportional to area of the face.
+# We also aggregate all samples on surface of polytope into a single np array
+surface_samples = np.empty(shape=(ambient_dim,0))
+for i in range(len(face_areas)):
+    area_ratio = face_areas[i] / face_areas[max_area_idx]
+    num_face_samples_to_keep = int(area_ratio * NUM_SAMPLES_PER_FACE)
+    # Keep lower ratio of samples (generated after more mixing steps)
+    surface_samples.hstack((surface_samples, face_samples[:, -num_face_samples_to_keep:]))
+    
+print(np.shape(surface_samples))
+
