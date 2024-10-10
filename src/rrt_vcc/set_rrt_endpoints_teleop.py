@@ -1,12 +1,16 @@
 from pydrake.all import (
+    RobotDiagramBuilder,
     DiagramBuilder,
     StartMeshcat,
     MeshcatVisualizer,
+    MeshcatVisualizerParams,
+    MeshcatVisualizer,
+    AddMultibodyPlantSceneGraph,
+    MultibodyPlant,
+    Parser,
     LeafSystem,
     Simulator,
     RigidTransform,
-    MultibodyPlant,
-    RobotDiagramBuilder,
     Parser,
     InverseDynamicsController,
     ConstantVectorSource,
@@ -16,6 +20,7 @@ from pydrake.all import (
     RollPitchYaw,
     InverseKinematics,
     Solve,
+    IllustrationProperties,
 )
 
 import sys
@@ -41,8 +46,10 @@ TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "15DOFALLEGRO"
 # TEST_SCENE = "BOXUNLOADING"
 
-scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
-
+src_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+parent_directory = os.path.dirname(src_directory)
+data_directory = os.path.join(parent_directory)
+scene_yaml_file = os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "yamls", TEST_SCENE + ".dmd.yaml")
 
 class MeshcatSliderSource(LeafSystem):
     def __init__(self, meshcat):
@@ -138,7 +145,6 @@ class VectorSplitter(LeafSystem):
         input_vector = self.get_input_port(0).Eval(context)
         output.SetFromVector(input_vector[self.out1:])  # return latter `out2` elements
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--joint_control', default='F', help="T/F; whether to control joint positions (instead of xyz rpy)")
 args = parser.parse_args()
@@ -147,6 +153,36 @@ joint_control = (args.joint_control == 'T')
 
 meshcat = StartMeshcat()
 
+
+def add_ghost_robot(q):
+    """
+    For visualizing the start and end points the user sets.
+    """
+    builder = DiagramBuilder()
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
+    parser = Parser(plant)
+    iris_environement_assets = os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "iris_environments", "assets")
+    parser.package_map().Add("iris_environments", iris_environement_assets)
+    if TEST_SCENE == "BOXUNLOADING":
+        robot_model_instances = parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+    else:
+        robot_model_instances = parser.AddModels(scene_yaml_file)
+    plant.Finalize()
+
+    params = MeshcatVisualizerParams()
+    params.prefix = "ghost_robot"
+    meshcat_vis = MeshcatVisualizer.AddToBuilder(
+        builder, scene_graph, meshcat, params
+    )
+
+    diagram = builder.Build()
+    context = diagram.CreateDefaultContext()
+    plant.SetPositions(plant.GetMyMutableContextFromRoot(context), q)
+    diagram.ForcedPublish(context)
+    
+    meshcat.SetProperty("ghost_robot", "modulated_opacity", 0.5)
+    
+    
 builder = DiagramBuilder()
 
 if TEST_SCENE == "BOXUNLOADING":
@@ -161,7 +197,7 @@ station = builder.AddSystem(MakeHardwareStation(
 
     # This is to be able to load our own models from a local path
     # we can refer to this using the "package://" URI directive
-    parser_preload_callback=lambda parser: parser.package_map().Add("iris_environments", os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/iris_environments/assets"),
+    parser_preload_callback=lambda parser: parser.package_map().Add("iris_environments", os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "iris_environments", "assets")),
 ))
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
@@ -280,7 +316,9 @@ while not meshcat.GetButtonClicks("Close"):
     if meshcat.GetButtonClicks(start_pt_button) != start_pt_button_clicks:
         start_pt_button_clicks = meshcat.GetButtonClicks(start_pt_button)
         print("Placing Start Point")
+        q = plant.GetPositions(plant_context)
         start_pts.append(plant.GetPositions(plant_context))
+        add_ghost_robot(q)  # visualize robot in this configuration
 
 
 pickle_file = f'{TEST_SCENE}_endpts.pkl'

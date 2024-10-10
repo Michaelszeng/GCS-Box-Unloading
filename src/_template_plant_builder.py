@@ -55,7 +55,7 @@ meshcat = StartMeshcat()
 robot_diagram_builder = RobotDiagramBuilder()
 parser = robot_diagram_builder.parser()
 iris_environement_assets = os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "iris_environments", "assets")
-parser.package_map().Add("iris_environments",iris_environement_assets)
+parser.package_map().Add("iris_environments", iris_environement_assets)
 if TEST_SCENE == "BOXUNLOADING":
     robot_model_instances = parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
 else:

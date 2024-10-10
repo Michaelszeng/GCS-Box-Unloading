@@ -213,11 +213,11 @@ collision_checker_params["edge_step_size"] = 0.25
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
-# region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_v2.yaml", DEBUG=True)
-# region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_classic_clique_covers_baseline.yaml", DEBUG=True)
-# region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_10x_obstacle_inflation_test.yaml", DEBUG=True)
-# region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions.yaml", DEBUG=True)
-region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_modified_algorithm_num_points_per_visibility_round=1000.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, "../data/iris_source_regions_v2.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, "../data/iris_source_regions_classic_clique_covers_baseline.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, "../data/iris_source_regions_10x_obstacle_inflation_test.yaml", DEBUG=True)
+# region_generator = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, "../data/iris_source_regions.yaml", DEBUG=True)
+region_generator = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, "../data/iris_source_regions_modified_algorithm_num_points_per_visibility_round=1000.yaml", DEBUG=True)
 # region_generator.load_and_test_regions()
 # region_generator.generate_source_region_at_q_nominal(q_nominal)
 # region_generator.generate_source_iris_regions(minimum_clique_size=10,
@@ -279,7 +279,7 @@ collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 collision_checker.SetCollisionFilteredBetween(eef_body_idx, box_body_idx, True)  # Filter collision between eef and box so IRIS doesn't fail immediately
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
-region_generator = IrisRegionGenerator(meshcat, config_obstacle_collision_checker, "../data/iris_source_regions_place_v2.yaml", DEBUG=True)
+region_generator = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, "../data/iris_source_regions_place_v2.yaml", DEBUG=True)
 # region_generator.load_and_test_regions(name="regions_place")
 # region_generator.generate_source_region_at_q_nominal(q_place_nominal)
 # for i in range(100):
