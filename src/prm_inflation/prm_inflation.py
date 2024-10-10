@@ -53,6 +53,16 @@ TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "15DOFALLEGRO"
 # TEST_SCENE = "BOXUNLOADING"
 
+# # 3DOF HYPERPARAMETERS
+N = 20
+MAX_NEIGHBORS = 2
+
+
+# 5DOF HYPERPARAMETERS
+# N = 100
+# MAX_NEIGHBORS = 1
+
+
 rng = RandomGenerator(1234)
 
 scene_yaml_file = os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/yamls/" + TEST_SCENE + ".dmd.yaml"
@@ -96,11 +106,10 @@ collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 if not os.path.exists(f"{TEST_SCENE}.yaml"):
-    domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
-    # domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
+    # domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
+    domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
 
 # Sample to build PRM
-N = 60
 points = np.zeros((ambient_dim, N))  # ambient_dim x N
 last_polytope_sample = domain.UniformSample(rng, domain.ChebyshevCenter())
 for i in range(np.shape(points)[1]):
@@ -120,7 +129,6 @@ non_diag_mask = prm.nonzero()[0] != prm.nonzero()[1]
 prm = csc_matrix((prm.data[non_diag_mask], (prm.nonzero()[0][non_diag_mask], prm.nonzero()[1][non_diag_mask])), shape=prm.shape)
 
 # Prune edges between two vertices that both have more than MAX_NEIGHBORS neighbors
-MAX_NEIGHBORS = 3
 for i in range(N):
     num_neighbors = np.count_nonzero(prm.getrow(i).toarray().flatten())
 

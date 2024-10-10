@@ -322,7 +322,7 @@ class IrisRegionGenerator():
             meshcat.SetObject(f"{name}/{region_name}", pc, point_size=0.025, rgba=colors[i % len(colors)])
 
 
-    def test_iris_region(self, plant, plant_context, meshcat, collision_checker, regions, seed=42, num_sample=10000, colors=None, name="regions", coverage=True, histogram=True, connectivity=True, svg=True, task_space_render=True):
+    def test_iris_region(self, plant, plant_context, meshcat, collision_checker, regions, seed=42, colors=None, name="regions", coverage=True, histogram=True, connectivity=True, svg=True, task_space_render=True):
         """
         Run a series of tests on a given list of IRIS regions.
         """
@@ -345,7 +345,7 @@ class IrisRegionGenerator():
             print("\n\n")
 
         if task_space_render:
-            IrisRegionGenerator.visualize_iris_region(plant, plant_context, meshcat, regions, seed, num_sample, colors, name)
+            IrisRegionGenerator.visualize_iris_region(plant, plant_context, meshcat, regions, seed, colors, name)
 
 
     def load_and_test_regions(self, name="regions"):

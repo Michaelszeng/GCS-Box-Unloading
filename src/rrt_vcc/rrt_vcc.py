@@ -34,8 +34,8 @@ from scipy.sparse import find
 import pickle
 import time
 
-# TEST_SCENE = "3DOFFLIPPER"
-TEST_SCENE = "5DOFUR3"
+TEST_SCENE = "3DOFFLIPPER"
+# TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
@@ -197,6 +197,7 @@ hpoly = HPolyhedron(vpoly)
 IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, [hpoly], name="rrt_convex_hull", task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
 options = IrisFromCliqueCoverOptions()
+options.sampling_domain = hpoly  # Set domain for clique covers point samples, but not for iris regions
 options.num_points_per_coverage_check = 1000
 options.num_points_per_visibility_round = 1000
 options.coverage_termination_threshold = 0.7
@@ -209,13 +210,13 @@ options.fast_iris_options.random_seed = 0
 options.fast_iris_options.verbose = True
 options.use_fast_iris = True
 
-# Very scuffed way of setting the domain for clique covers
-options.iris_options.bounding_region = hpoly
+# Run 1 iteration of Clique Covers to cover large areas
+regions = IrisInConfigurationSpaceFromCliqueCover(
+    checker=collision_checker, options=options, generator=RandomGenerator(0), sets=[]
+)  # List of HPolyhedrons
 
-# regions = IrisInConfigurationSpaceFromCliqueCover(
-#     checker=collision_checker, options=options, generator=RandomGenerator(0), sets=[]
-# )  # List of HPolyhedrons
+# Run clique inflation on remaining uncovered RRT path edges
 
-# IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
 time.sleep(10)

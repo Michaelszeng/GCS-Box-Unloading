@@ -20,7 +20,8 @@ from pydrake.all import (
     RollPitchYaw,
     InverseKinematics,
     Solve,
-    IllustrationProperties,
+    GeometrySet,
+    CollisionFilterDeclaration,
 )
 
 import sys
@@ -153,24 +154,25 @@ joint_control = (args.joint_control == 'T')
 
 meshcat = StartMeshcat()
 
-
+num_ghost_robots = 0
 def add_ghost_robot(q):
     """
     For visualizing the start and end points the user sets.
     """
+    global num_ghost_robots
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
     parser = Parser(plant)
     iris_environement_assets = os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "iris_environments", "assets")
     parser.package_map().Add("iris_environments", iris_environement_assets)
     if TEST_SCENE == "BOXUNLOADING":
-        robot_model_instances = parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
+        parser.AddModelsFromString(scenario_yaml_for_iris, ".dmd.yaml")
     else:
-        robot_model_instances = parser.AddModels(scene_yaml_file)
+        parser.AddModels(scene_yaml_file)
     plant.Finalize()
 
     params = MeshcatVisualizerParams()
-    params.prefix = "ghost_robot"
+    params.prefix = f"ghost_robots/{num_ghost_robots}"
     meshcat_vis = MeshcatVisualizer.AddToBuilder(
         builder, scene_graph, meshcat, params
     )
@@ -180,7 +182,8 @@ def add_ghost_robot(q):
     plant.SetPositions(plant.GetMyMutableContextFromRoot(context), q)
     diagram.ForcedPublish(context)
     
-    meshcat.SetProperty("ghost_robot", "modulated_opacity", 0.5)
+    meshcat.SetProperty(f"ghost_robots", "modulated_opacity", 0.5)
+    num_ghost_robots += 1
     
     
 builder = DiagramBuilder()
@@ -201,6 +204,12 @@ station = builder.AddSystem(MakeHardwareStation(
 ))
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
+
+# Remove all collisions
+collision_filter_manager = scene_graph.collision_filter_manager()
+inspector = scene_graph.model_inspector()
+geometry_ids = GeometrySet(inspector.GetAllGeometryIds())
+collision_filter_manager.Apply(CollisionFilterDeclaration().ExcludeWithin(geometry_ids))
 
 num_robot_positions = plant.num_positions()
 default_joint_positions = plant.GetPositions(plant.CreateDefaultContext())
@@ -307,18 +316,24 @@ while not meshcat.GetButtonClicks("Close"):
         plant.SetPositions(plant_context, slider_source.get_output_port(0).Eval(slider_source_context)[:num_robot_positions])
     else:
         plant.SetPositions(plant_context, ik_system.get_output_port(0).Eval(ik_system_context)[:num_robot_positions])
-    simulator.AdvanceTo(simulator_context.get_time() + 0.01)
+        
+    meshcat.SetProperty(f"ghost_robots", "modulated_opacity", 0.5)
    
     if meshcat.GetButtonClicks(end_pt_button) != end_pt_button_clicks:
         end_pt_button_clicks = meshcat.GetButtonClicks(end_pt_button)
         print("Placing End Point")
-        end_pts.append(plant.GetPositions(plant_context))
+        q = plant.GetPositions(plant_context)
+        end_pts.append(q)
+        add_ghost_robot(q)  # visualize robot in this configuration
     if meshcat.GetButtonClicks(start_pt_button) != start_pt_button_clicks:
         start_pt_button_clicks = meshcat.GetButtonClicks(start_pt_button)
         print("Placing Start Point")
         q = plant.GetPositions(plant_context)
-        start_pts.append(plant.GetPositions(plant_context))
+        start_pts.append(q)
         add_ghost_robot(q)  # visualize robot in this configuration
+        
+    simulator.AdvanceTo(simulator_context.get_time() + 0.001)
+    time.sleep(0.1)
 
 
 pickle_file = f'{TEST_SCENE}_endpts.pkl'
