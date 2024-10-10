@@ -8,6 +8,7 @@ from pydrake.all import (
     HPolyhedron,
     Hyperrectangle,
     SceneGraphCollisionChecker,
+    ConfigurationSpaceObstacleCollisionChecker,
     RandomGenerator,
     PointCloud,
     Rgba,
@@ -16,6 +17,12 @@ from pydrake.all import (
     RationalForwardKinematics,
     IrisInConfigurationSpaceFromCliqueCover,
     IrisFromCliqueCoverOptions,
+    FastCliqueInflation,
+    FastCliqueInflationOptions,
+    FastIris,
+    FastIrisOptions,
+    IrisInConfigurationSpace,
+    IrisOptions,
 )
 
 import sys
@@ -28,9 +35,7 @@ from utils import ik
 from rrt_master import *
 
 import numpy as np
-import importlib
-from scipy.spatial.transform import Rotation
-from scipy.sparse import find
+from scipy.sparse import csc_matrix, lil_matrix
 import pickle
 import time
 
@@ -113,6 +118,7 @@ collision_checker_params["robot_model_instances"] = robot_model_instances
 collision_checker_params["model"] = diagram
 collision_checker_params["edge_step_size"] = 0.125
 collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
+cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 if TEST_SCENE == "3DOFFLIPPER":
     joint_control = True
@@ -164,7 +170,45 @@ def forward_kinematics(q):
 assert len(endpts['start_pts']) == len(endpts['end_pts'])
 print(f"Number of user-seeded start and end points: {len(endpts['start_pts'])}")
 
-all_path_pts = np.array(endpts['start_pts'][0]).reshape(ambient_dim,1)  # Initialize ambient_dim x N matrix to hold all points in RRTs
+
+def mark_corners(points, tolerance=1e-5):
+    """
+    Return the path with only "corners", ignoring intermediate nodes along 
+    straight line edges.
+    """
+    def is_corner(p1, p2, p3, tolerance=1e-5):
+        """
+        Check if the point p2 is a corner, i.e., if the direction changes between p1->p2 and p2->p3.
+        """
+        vec1 = p2 - p1
+        vec2 = p3 - p2
+        
+        vec1_norm = vec1 / np.linalg.norm(vec1)
+        vec2_norm = vec2 / np.linalg.norm(vec2)
+        
+        # Check if the two vectors are collinear
+        dot_product = np.dot(vec1_norm, vec2_norm)
+        return not (np.abs(dot_product - 1) < tolerance or np.abs(dot_product + 1) < tolerance)
+
+    if len(points) < 3:
+        # If there are fewer than 3 points, consider all of them corners
+        return [(point, True) for point in points]
+    
+    result = []
+    
+    # The start point is always a corner
+    result.append(points[0])
+    
+    for i in range(1, len(points) - 1):
+        if is_corner(points[i-1], points[i], points[i+1], tolerance):
+            result.append(points[i])
+    
+    result.append(points[-1])
+    
+    return result
+
+all_path_pts = np.empty((ambient_dim, 0))
+adj_mat = None
 for i in range(len(endpts['start_pts'])):
     start_q = endpts['start_pts'][i]
     end_q = endpts['end_pts'][i]
@@ -186,16 +230,39 @@ for i in range(len(endpts['start_pts'])):
                                   )
 
     path = RRTMaster(rrt_options, start_q, end_q, make_sample_q(), check_collision_free, ForwardKinematics=forward_kinematics, meshcat=cspace_meshcat if ambient_dim==3 else meshcat)
+    path = mark_corners(path)
 
     print(f"Found path: {path != []}")
+    # print(path)
     
-    print(np.shape(np.array(path)))
-    
+    # Compile all path points
     all_path_pts = np.hstack((all_path_pts, np.array(path).T))
+    
+    # Compile all paths into single graph adjacency matrix
+    temp_n = len(path)
+    temp = scipy.sparse.diags(
+        [[True]*temp_n, [True]*(temp_n-1), [True]*(temp_n-1)],
+        [0, 1, -1],
+        shape=(temp_n, temp_n),
+        dtype=bool
+    )
+    if adj_mat is None:
+        adj_mat = temp
+    else:
+        adj_mat = scipy.sparse.block_diag([adj_mat, temp])
+    
+# Remove self edges from adj_mat
+non_diag_mask = adj_mat.nonzero()[0] != adj_mat.nonzero()[1]
+adj_mat = csc_matrix((adj_mat.data[non_diag_mask], (adj_mat.nonzero()[0][non_diag_mask], adj_mat.nonzero()[1][non_diag_mask])), shape=adj_mat.shape)
+
+np.set_printoptions(threshold=10000, linewidth=200)
+print(f"\n{adj_mat.toarray().astype(int)}\n")
+N = adj_mat.shape[0]
+print(f"Graph vertex set size: {N}")
     
 vpoly = VPolytope(all_path_pts)
 hpoly = HPolyhedron(vpoly)
-IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, [hpoly], name="rrt_convex_hull", task_space=(ambient_dim!=3), scene=TEST_SCENE)
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, [hpoly], colors = [Rgba(0.0,0.0,0.0,0.5)], name="rrt_convex_hull", task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
 options = IrisFromCliqueCoverOptions()
 options.sampling_domain = hpoly  # Set domain for clique covers point samples, but not for iris regions
@@ -203,21 +270,104 @@ options.num_points_per_coverage_check = 1000
 options.num_points_per_visibility_round = 1000
 options.coverage_termination_threshold = 0.7
 options.minimum_clique_size = ambient_dim + 1
-options.iteration_limit = 1
+options.iteration_limit = 10
 options.fast_iris_options.max_iterations = 1
-# options.fast_iris_options.require_sample_point_is_contained = True
+options.fast_iris_options.require_sample_point_is_contained = True
 options.fast_iris_options.mixing_steps = 50
 options.fast_iris_options.random_seed = 0
 options.fast_iris_options.verbose = True
 options.use_fast_iris = True
 
 # Run 1 iteration of Clique Covers to cover large areas
-regions = IrisInConfigurationSpaceFromCliqueCover(
+clique_covers_regions = IrisInConfigurationSpaceFromCliqueCover(
     checker=collision_checker, options=options, generator=RandomGenerator(0), sets=[]
 )  # List of HPolyhedrons
+clique_covers_regions =  {str(i): clique_covers_regions[i] for i in range(len(clique_covers_regions))}  # Convert to dict for uniformity
+
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, clique_covers_regions, name="clique_covers_regions", task_space=(ambient_dim!=3), scene=TEST_SCENE)
 
 # Run clique inflation on remaining uncovered RRT path edges
+fast_clique_inflation_options = FastCliqueInflationOptions()
 
-IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, regions, task_space=(ambient_dim!=3), scene=TEST_SCENE)
+fast_iris_options = FastIrisOptions()
+fast_iris_options.require_sample_point_is_contained = True
+fast_iris_options.configuration_space_margin = 1e-3
 
-time.sleep(10)
+rrt_inflation_regions = {}
+region_point_containment = {}
+iris_domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())  # IRIS allowed to inflate wherever it wants
+for i in range(N):
+    for j in range(i+1, N):
+        if adj_mat[i, j]:  # Find neighbors of point i
+            # Skip/remove edge if already covered by the clique covers regions
+            step = 2e-2
+            for pt in np.linspace(all_path_pts[:,i:i+1], all_path_pts[:,j:j+1], int(np.linalg.norm(all_path_pts[:,i:i+1] - all_path_pts[:,i:i+1]) / step)):
+                pt_in_sets = False
+                for r in clique_covers_regions.values():
+                    if r.PointInSet(pt):
+                        pt_in_sets = True
+                if not pt_in_sets:
+                    adj_mat = adj_mat.tolil()
+                    adj_mat[i, j] = 0
+                    adj_mat[j, i] = 0
+                    adj_mat = adj_mat.tocsc()
+                    print(f"skipping inflation for edge ({i}, {j}) due to being covered by clique covers regions.")
+                    continue
+                    
+
+            # Build region around (i,j)
+            print(f"Building region around ({i}, {j})")
+            if np.linalg.norm(all_path_pts[:,i:i+1] - all_path_pts[:,j:j+1]) < 1e-6:
+                print("Skipping edge inflation due to zero length.")
+                continue                
+            line_clique = np.hstack((all_path_pts[:,i:i+1], all_path_pts[:,j:j+1]))  # ambient_dim x 2
+
+            try:
+                initial_hpoly = FastCliqueInflation(cspace_obstacle_collision_checker, line_clique, iris_domain, fast_clique_inflation_options)
+                hpoly_inscribed_ellipsoid = initial_hpoly.MaximumVolumeInscribedEllipsoid()
+                
+                if not initial_hpoly.PointInSet(all_path_pts[:,i]) or not initial_hpoly.PointInSet(all_path_pts[:,j]):
+                    print("INFLATED EDGE DOES NOT CONTAIN CLIQUE POINTS")
+            except Exception as e: 
+                hpoly = initial_hpoly
+                print(f"FastCliqueInflation fail; skipping inflation of edge ({all_path_pts[:,i], all_path_pts[:,j]}). Error Message: {e}")
+
+
+            try:
+                hpoly = FastIris(cspace_obstacle_collision_checker, hpoly_inscribed_ellipsoid, iris_domain, fast_iris_options)
+                
+                if not hpoly.PointInSet(all_path_pts[:,i]) or not hpoly.PointInSet(all_path_pts[:,j]):
+                    print("INFLATED REGION DOES NOT CONTAIN CLIQUE INFLATION CLIQUE POINTS")
+            except Exception as e: 
+                hpoly = initial_hpoly
+                print(f"FastIRIS fail; defaulting to clique inflation region. Error Message: {e}")
+                
+            rrt_inflation_regions[f"{i},{j}"] = hpoly
+
+            # Check whether any other points are now covered by this region
+            # hpoly_scaled = hpoly.Scale(3.0)
+            # M = hpoly_scaled.A() @ points <= hpoly_scaled.b()[:, None]
+            M = hpoly.A() @ all_path_pts <= hpoly.b()[:, None]
+
+            C = np.all(M, axis=0)  # (N,) array of truths
+
+            # Remove edges between every point pair in C
+            adj_mat_lil = adj_mat.tolil()
+            adj_mat_lil[np.ix_(C, C)] = 0  # Remove all edges covered by region
+            # adj_mat_lil[C,:] = 0  # Remove all points covered by region
+            adj_mat = adj_mat_lil.tocsc()
+
+print(f"Number of regions generated by clique covers: {len(clique_covers_regions.values())}")
+print(f"Number of regions generated by RRT inflation: {len(rrt_inflation_regions.values())}")
+
+IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim == 3 else meshcat, rrt_inflation_regions, name="rrt_inflation_regions", task_space=(ambient_dim!=3), scene=TEST_SCENE)
+
+combined_regions = {**clique_covers_regions, **rrt_inflation_regions}
+
+coverage = IrisRegionGenerator.estimate_coverage(plant, cspace_obstacle_collision_checker, combined_regions)
+IrisRegionGenerator.visualize_connectivity(combined_regions, coverage, output_file='rrt_vcc_inflation_connectivity.svg', skip_svg=False)
+
+print(f"c-space Coverage: {coverage}")
+
+print(f"{cspace_meshcat.web_url() if ambient_dim == 3 else meshcat.web_url()}/download")
+time.sleep(10000)

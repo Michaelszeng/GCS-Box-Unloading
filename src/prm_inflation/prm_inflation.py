@@ -234,8 +234,6 @@ options.configuration_space_margin = 1e-3
 last_point_idx = 0  # Start with the first point
 cspace_coverage = 0
 COVERAGE_THRESH = 0.35
-# Used for IRIS utility functions
-iris_gen = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, f"data/iris_regions_prm_{TEST_SCENE}.yaml", DEBUG=True)
 
 print(f"Number of edges in PRM: {np.sum(prm)/2}")
 
@@ -288,6 +286,9 @@ print(f"{cspace_meshcat.web_url() if ambient_dim == 3 else meshcat.web_url()}/do
 time.sleep(10)
 
 
+
+# # Used for IRIS utility functions
+# iris_gen = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checker, f"data/iris_regions_prm_{TEST_SCENE}.yaml", DEBUG=True)
 # while cspace_coverage < COVERAGE_THRESH:
 #     # Find the first point that connects to last_point_idx
 #     found_edge = False
