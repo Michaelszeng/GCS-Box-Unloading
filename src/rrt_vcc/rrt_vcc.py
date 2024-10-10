@@ -34,8 +34,8 @@ from scipy.sparse import find
 import pickle
 import time
 
-TEST_SCENE = "3DOFFLIPPER"
-# TEST_SCENE = "5DOFUR3"
+# TEST_SCENE = "3DOFFLIPPER"
+TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
 # TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
@@ -162,6 +162,7 @@ def forward_kinematics(q):
     return p
 
 assert len(endpts['start_pts']) == len(endpts['end_pts'])
+print(f"Number of user-seeded start and end points: {len(endpts['start_pts'])}")
 
 all_path_pts = np.array(endpts['start_pts'][0]).reshape(ambient_dim,1)  # Initialize ambient_dim x N matrix to hold all points in RRTs
 for i in range(len(endpts['start_pts'])):
