@@ -147,9 +147,6 @@ for actuator_idx in plant.GetJointActuatorIndices():
     else:
         model_instances_indices_with_actuators[robot_model_instance_idx] += 1
 
-# Add Meshcat Slider Source System
-slider_source = builder.AddSystem(MeshcatSliderSource(meshcat))
-
 # Add controller and splitter (for when there are multiple robots)
 controller = builder.AddSystem(InverseDynamicsController(plant, [100]*num_robot_positions, [0]*num_robot_positions, [50]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
 control_splitter = builder.AddSystem(VectorSplitter(*model_instances_indices_with_actuators.values()))

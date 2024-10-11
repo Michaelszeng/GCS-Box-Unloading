@@ -245,24 +245,25 @@ class BiRRT:
 
         if self.meshcat:
             visualize = True
-   
-            self.meshcat.SetObject(
-                f"rrt_{self.options.idx}/points/_start",
-                Sphere(radius=0.01 if ambient_dim==3 else 0.005),
-                rgba=Rgba(0, 1, 0, 1),
-            )
-            self.meshcat.SetTransform(
-                f"rrt_{self.options.idx}/points/_start", RigidTransform(start if ambient_dim==3 else self.ForwardKinematics(start))
-            )
 
-            self.meshcat.SetObject(
-                f"rrt_{self.options.idx}/points/_goal",
-                Sphere(radius=0.01 if ambient_dim==3 else 0.005),
-                rgba=Rgba(0, 1, 0, 1),
-            )
-            self.meshcat.SetTransform(
-                f"rrt_{self.options.idx}/points/_goal", RigidTransform(goal if ambient_dim==3 else self.ForwardKinematics(goal))
-            )
+            if self.options.draw_rrt:
+                self.meshcat.SetObject(
+                    f"rrt_{self.options.idx}/points/_start",
+                    Sphere(radius=0.01 if ambient_dim==3 else 0.005),
+                    rgba=Rgba(0, 1, 0, 1),
+                )
+                self.meshcat.SetTransform(
+                    f"rrt_{self.options.idx}/points/_start", RigidTransform(start if ambient_dim==3 else self.ForwardKinematics(start))
+                )
+
+                self.meshcat.SetObject(
+                    f"rrt_{self.options.idx}/points/_goal",
+                    Sphere(radius=0.01 if ambient_dim==3 else 0.005),
+                    rgba=Rgba(0, 1, 0, 1),
+                )
+                self.meshcat.SetTransform(
+                    f"rrt_{self.options.idx}/points/_goal", RigidTransform(goal if ambient_dim==3 else self.ForwardKinematics(goal))
+                )
 
         success = False
         vertices = tqdm(total=self.options.max_vertices, position=1, desc="Vertices")

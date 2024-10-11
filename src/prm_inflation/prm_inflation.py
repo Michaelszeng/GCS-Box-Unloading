@@ -55,7 +55,7 @@ TEST_SCENE = "3DOFFLIPPER"
 
 # # 3DOF HYPERPARAMETERS
 N = 20
-MAX_NEIGHBORS = 2
+MAX_NEIGHBORS = 100
 
 
 # 5DOF HYPERPARAMETERS
@@ -106,8 +106,8 @@ collision_checker = SceneGraphCollisionChecker(**collision_checker_params)
 cspace_obstacle_collision_checker = ConfigurationSpaceObstacleCollisionChecker(collision_checker, [])
 
 if not os.path.exists(f"{TEST_SCENE}.yaml"):
-    # domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
-    domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
+    domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())
+    # domain = HPolyhedron.MakeBox([plant.GetPositionLowerLimits()[0], plant.GetPositionLowerLimits()[1], 1.5], plant.GetPositionUpperLimits())  # reduce size of domain to make it easer to tell what's going on
 
 # Sample to build PRM
 points = np.zeros((ambient_dim, N))  # ambient_dim x N

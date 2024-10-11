@@ -47,6 +47,8 @@ TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "15DOFALLEGRO"
 # TEST_SCENE = "BOXUNLOADING"
 
+pickle_file = f'testing_positions/{TEST_SCENE}_endpts.pkl'
+
 src_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 parent_directory = os.path.dirname(src_directory)
 data_directory = os.path.join(parent_directory)
@@ -321,22 +323,19 @@ while not meshcat.GetButtonClicks("Close"):
    
     if meshcat.GetButtonClicks(end_pt_button) != end_pt_button_clicks:
         end_pt_button_clicks = meshcat.GetButtonClicks(end_pt_button)
-        print("Placing End Point")
         q = plant.GetPositions(plant_context)
+        print(f"Placing End Point: {q}")
         end_pts.append(q)
         add_ghost_robot(q)  # visualize robot in this configuration
     if meshcat.GetButtonClicks(start_pt_button) != start_pt_button_clicks:
         start_pt_button_clicks = meshcat.GetButtonClicks(start_pt_button)
-        print("Placing Start Point")
         q = plant.GetPositions(plant_context)
+        print(f"Placing Start Point: {q}")
         start_pts.append(q)
         add_ghost_robot(q)  # visualize robot in this configuration
         
     simulator.AdvanceTo(simulator_context.get_time() + 0.001)
     time.sleep(0.1)
-
-
-pickle_file = f'{TEST_SCENE}_endpts.pkl'
 
 if os.path.exists(pickle_file):
     with open(pickle_file, 'rb') as file:
