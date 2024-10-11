@@ -207,7 +207,8 @@ def mark_corners(points, tolerance=1e-5):
     
     return result
 
-all_path_pts = np.empty((ambient_dim, 0))
+all_path_pts = np.empty((ambient_dim, 0))  # ambient_dim x N
+all_paths = []  # list of ambient_dim x n numpy arrays
 adj_mat = None
 for i in range(len(endpts['start_pts'])):
     start_q = endpts['start_pts'][i]
@@ -235,8 +236,9 @@ for i in range(len(endpts['start_pts'])):
     print(f"Found path: {path != []}")
     # print(path)
     
-    # Compile all path points
+    # Compile all path points and paths
     all_path_pts = np.hstack((all_path_pts, np.array(path).T))
+    all_paths.append(np.array(path).T)
     
     # Compile all paths into single graph adjacency matrix
     temp_n = len(path)
@@ -259,7 +261,8 @@ np.set_printoptions(threshold=10000, linewidth=200)
 print(f"\n{adj_mat.toarray().astype(int)}\n")
 N = adj_mat.shape[0]
 print(f"Graph vertex set size: {N}")
-    
+
+# Generate convex hull of RRT paths --> sampling domain for Clique Covers
 vpoly = VPolytope(all_path_pts)
 hpoly = HPolyhedron(vpoly)
 IrisRegionGenerator.visualize_iris_region(plant, plant_context, cspace_meshcat if ambient_dim==3 else meshcat, [hpoly], colors = [Rgba(0.0,0.0,0.0,0.5)], name="rrt_convex_hull", task_space=(ambient_dim!=3), scene=TEST_SCENE)
@@ -268,9 +271,9 @@ options = IrisFromCliqueCoverOptions()
 options.sampling_domain = hpoly  # Set domain for clique covers point samples, but not for iris regions
 options.num_points_per_coverage_check = 1000
 options.num_points_per_visibility_round = 1000
-options.coverage_termination_threshold = 0.7
+options.coverage_termination_threshold = 0.8
 options.minimum_clique_size = ambient_dim + 1
-options.iteration_limit = 10
+options.iteration_limit = 5
 options.fast_iris_options.max_iterations = 1
 options.fast_iris_options.require_sample_point_is_contained = True
 options.fast_iris_options.mixing_steps = 50
@@ -296,6 +299,28 @@ fast_iris_options.configuration_space_margin = 1e-3
 rrt_inflation_regions = {}
 region_point_containment = {}
 iris_domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(), plant.GetPositionUpperLimits())  # IRIS allowed to inflate wherever it wants
+
+# edges_to_cover = []  # List of ambient_dim x 2 edges
+# for path in all_paths:
+#     n = np.shape(path)[1]  # Number of points in this path
+#     for i in range(n-1):
+#         # Skip/remove edge if already covered by the clique covers regions
+#         step = 2e-2
+#         prev_pt = None  # Keep track of previous pt that we can cut the edge at if we find it is partially covered by the clique covers regions
+#         for pt in np.linspace(path[:,i], path[:,i+1], int(np.linalg.norm(path[:,i] - path[:,i+1]) / step)):
+#             pt_in_sets = False
+#             for r in clique_covers_regions.values():
+#                 if r.PointInSet(pt):
+#                     pt_in_sets = True
+#             if not pt_in_sets:
+#                 adj_mat = adj_mat.tolil()
+#                 adj_mat[i, j] = 0
+#                 adj_mat[j, i] = 0
+#                 adj_mat = adj_mat.tocsc()
+#                 print(f"skipping inflation for edge ({i}, {j}) due to being covered by clique covers regions.")
+                    
+                    
+
 for i in range(N):
     for j in range(i+1, N):
         if adj_mat[i, j]:  # Find neighbors of point i
