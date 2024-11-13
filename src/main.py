@@ -37,7 +37,7 @@ import datetime
 from utils import diagram_visualize_connections
 from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
 from iris import IrisRegionGenerator
-from gcs import MotionPlanner
+from planner import MotionPlanner
 from debug import Debugger
 
 

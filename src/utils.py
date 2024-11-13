@@ -10,7 +10,8 @@ from pydrake.all import (
     InverseKinematics,
     Solve,
     logical_or,
-    logical_and
+    logical_and,
+    Trajectory
 )
 
 from typing import BinaryIO, Union
@@ -159,3 +160,28 @@ def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, reg
         return ik_result.GetSolution(q_variables), False
     
     return q, True
+
+
+def VisualizePath(meshcat, plant, plant_context, traj, name):
+    """
+    Helper function that takes Drake Trajectory object and visualizes it in task
+    space as a line.
+    """
+    traj_start_time = traj.start_time()
+    traj_end_time = traj.end_time()
+
+    def get_traj_pos(vis_t):
+        return traj.value(vis_t)
+
+    # Build matrix of 3d positions by doing forward kinematics at time steps in the bspline
+    NUM_STEPS = 80
+    pos_3d_matrix = np.zeros((3,NUM_STEPS))
+    ctr = 0
+    for vis_t in np.linspace(traj_start_time, traj_end_time, NUM_STEPS):
+        pos = get_traj_pos(vis_t)
+        plant.SetPositions(plant_context, pos)
+        pos_3d = plant.CalcRelativeTransform(plant_context, plant.world_frame(), plant.GetFrameByName("arm_eef")).translation()
+        pos_3d_matrix[:,ctr] = pos_3d
+        ctr += 1
+
+    meshcat.SetLine(name, pos_3d_matrix)

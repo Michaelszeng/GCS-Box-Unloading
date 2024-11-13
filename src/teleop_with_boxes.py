@@ -14,6 +14,11 @@ from pydrake.all import (
     BasicVector,
     ConstantVectorSource,
     Solve,
+    CollisionFilterManager,
+    GeometrySet,
+    Role,
+    CollisionFilterDeclaration,
+    QuaternionFloatingJoint,
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -34,8 +39,6 @@ import logging
 import datetime
 
 from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, robot_pose, set_up_scene, get_W_X_eef
-
-NUM_BOXES = 0
 
 class MeshcatSliderSource(LeafSystem):
     def __init__(self, meshcat):
@@ -126,6 +129,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--fast', default='T', help="T/F; whether or not to use a pre-saved box configuration or randomize box positions from scratch.")
 parser.add_argument('--randomization', default=0, help="integer randomization seed.")
 parser.add_argument('--joint_control', default='F', help="T/F; whether to control joint positions (instead of xyz rpy)")
+parser.add_argument('--collision-filter', default='F', help="T/F; whether to filter out collisions between robot and boxes")
 args = parser.parse_args()
 
 seed = int(args.randomization)
@@ -192,6 +196,25 @@ for i in range(NUM_BOXES):
 scenario = add_directives(scenario, data=box_directives)
 
 
+def add_suction_joints(parser):
+    """
+    Add joints between each box and eef to be able lock these later to simulate
+    the gripper's suction. This called as part of the Hardware Station
+    initialization routine.
+    """
+    plant = parser.plant()
+    eef_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
+    eef_body_idx = plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
+    frame_parent = plant.get_body(eef_body_idx).body_frame()
+    for i in range(NUM_BOXES):
+        box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
+        box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
+        frame_child = plant.get_body(box_body_idx).body_frame()
+
+        joint = QuaternionFloatingJoint(f"{eef_body_idx}-{box_body_idx}", frame_parent, frame_child)
+        plant.AddJoint(joint)
+
+
 ### Hardware station setup
 station = builder.AddSystem(MakeHardwareStation(
     scenario=scenario,
@@ -199,7 +222,8 @@ station = builder.AddSystem(MakeHardwareStation(
 
     # This is to be able to load our own models from a local path
     # we can refer to this using the "package://" URI directive
-    parser_preload_callback=lambda parser: parser.package_map().Add(this_drake_module_name, os.getcwd())
+    parser_preload_callback=lambda parser: parser.package_map().Add(this_drake_module_name, os.getcwd()),
+    parser_prefinalize_callback=add_suction_joints,
 ))
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
@@ -207,6 +231,36 @@ plant = station.GetSubsystemByName("plant")
 # Plot Triad at end effector
 AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
 
+
+filter_manager = scene_graph.collision_filter_manager()
+inspector = scene_graph.model_inspector()
+robot_gids = []
+box_gids = []
+for gid in inspector.GetGeometryIds(
+    GeometrySet(inspector.GetAllGeometryIds()), Role.kProximity
+):
+    gid_name = inspector.GetName(inspector.GetFrameId(gid))
+    # print(f"{gid_name}, {gid}")
+    if "kuka" in gid_name or "robot_base" in gid_name:
+        robot_gids.append(gid)
+    if "Boxes" in gid_name:
+        box_gids.append(gid)
+
+def add_exclusion(set1, set2=None):
+    if set2 is None:
+        filter_manager.Apply(
+            CollisionFilterDeclaration().ExcludeWithin(GeometrySet(set1))
+        )
+    else:
+        filter_manager.Apply(
+            CollisionFilterDeclaration().ExcludeBetween(
+                GeometrySet(set1), GeometrySet(set2)
+            )
+        )
+
+for robot_gid in robot_gids:
+    for box_gid in box_gids:
+        add_exclusion(robot_gid, box_gid)
 
 controller_plant = MultibodyPlant(time_step=0.001)
 parser = Parser(plant)
@@ -271,8 +325,9 @@ set_up_scene(station, station_context, plant, plant_context, simulator, randomiz
 # Main simulation loop
 ctr = 0
 while not meshcat.GetButtonClicks("Close"):
-    simulator.AdvanceTo(simulator_context.get_time() + 0.01)
+    simulator.AdvanceTo(simulator_context.get_time() + 0.1)
     ctr += 1
-    if (ctr == 100):
+    if (ctr == 10):
         ctr = 0
         print(plant.GetPositions(plant_context)[7:13])
+        print(plant.CalcRelativeTransform(plant_context, plant.world_frame(), plant.GetFrameByName("arm_eef")))
