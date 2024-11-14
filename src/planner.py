@@ -100,17 +100,17 @@ class MotionPlanner(LeafSystem):
                 traj = load_data_for_trajectory(self.traj_num)
             else:
                 if self.plan_stage_ == State.RUNNING_TO_GRASP:
-                    q = ik(self.plant, self.plant.CreateDefaultContext(), self.grasp_poses[self.obj_num], translation_error=0, rotation_error=0.01, regions=None, pose_as_constraint=True)[0]
-                    print(f"q:{q}")
+                    q_ik = ik(self.plant, self.plant.CreateDefaultContext(), self.grasp_poses[self.obj_num], translation_error=0, rotation_error=0.01, regions=None, pose_as_constraint=True)[0]
+                    print(f"q_ik:{q_ik}")
                     q = grasp_q[self.obj_num]
                     print(f"q:{q}")
-                    traj = gcs_traj_opt(self.plant, robot_q, [Point(q)], self.source_regions, regions_to_add=None)
+                    traj = gcs_traj_opt(self.plant, robot_q, [Point(q_ik)], self.source_regions, regions_to_add=None)
                 elif self.plan_stage_ == State.RUNNING_TO_DEPOSIT:
-                    q = ik(self.plant, self.plant.CreateDefaultContext(), self.deposit_poses[self.obj_num], translation_error=0, rotation_error=0.01, regions=None, pose_as_constraint=True)[0]
-                    print(f"q:{q}")
+                    q_ik = ik(self.plant, self.plant.CreateDefaultContext(), self.deposit_poses[self.obj_num], translation_error=0, rotation_error=0.01, regions=None, pose_as_constraint=True)[0]
+                    print(f"q_ik:{q_ik}")
                     q = deposit_q[self.obj_num]
                     print(f"q:{q}")
-                    traj = gcs_traj_opt(self.plant, robot_q, [Point(q)], self.source_regions_place, regions_to_add=None)
+                    traj = gcs_traj_opt(self.plant, robot_q, [Point(q_ik)], self.source_regions_place, regions_to_add=None)
                 
             self.current_traj_start_time = context.get_time()
             self.traj_num += 1

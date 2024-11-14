@@ -37,7 +37,7 @@ from station import MakeHardwareStation, load_scenario
 from scenario import NUM_BOXES, get_fast_box_poses, scenario_yaml_with_boxes, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
 from utils import ik
 from iris import IrisRegionGenerator
-from poses import get_grasp_poses, get_deposit_poses
+from poses import get_grasp_poses, get_deposit_poses, grasp_q, deposit_q
 
 import numpy as np
 import importlib
@@ -45,8 +45,8 @@ from scipy.spatial.transform import Rotation
 from scipy.sparse import find
 import time
 
-# JUST_VISUALIZE_EXISTING_REGIONS = True
-JUST_VISUALIZE_EXISTING_REGIONS = False
+JUST_VISUALIZE_EXISTING_REGIONS = True
+# JUST_VISUALIZE_EXISTING_REGIONS = False
 
 box_names = ["Boxes/Box_4", "Boxes/Box_16", "Boxes/Box_17", "Boxes/Box_12"]
 
@@ -122,7 +122,7 @@ if not JUST_VISUALIZE_EXISTING_REGIONS:
         # RUN IRIS
         options = FastIrisOptions()
         options.random_seed = 0
-        options.verbose = True
+        options.verbose = False
         options.require_sample_point_is_contained = True
         domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(),
                                     plant.GetPositionUpperLimits())
@@ -176,6 +176,18 @@ else:
     simulator.AdvanceTo(0.001)
 
 regions_dict = LoadIrisRegionsYamlFile("IRIS_REGIONS.yaml")
+
+qs = grasp_q + deposit_q
+for i in range(5):
+    in_set = False
+    for s in regions_dict.values():
+        if s.PointInSet(qs[i]):
+            in_set = True
+    print(in_set)
+
+# for i in range(4):
+#     print(regions_dict[f"set{i}"].PointInSet(grasp_q[i]))
+# print(regions_dict[f"set{4}"].PointInSet(deposit_q[0]))
 
 # Visualize IRIS regions
 IrisRegionGenerator.visualize_connectivity(regions_dict, 0.0, output_file='IRIS_REGIONS.svg', skip_svg=False)
