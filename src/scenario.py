@@ -24,7 +24,7 @@ PREPICK_MARGIN = 0.2  # how far pre-pick pose is from the box face
 q_nominal = [0.0, -2.2, 2.2, 0.0, 1.57, 0.0]  # Neutral "pulled back" position
 q_place_nominal = [1.55738942, -2.2127606, 2.02098258, 0.02843482, 1.7572682, 1.52160177]  # nominal configuration for dropping box onto conveyor
 
-robot_pose = RigidTransform([0.0,0.0,0.58])
+robot_pose = RigidTransform([0.15,0.0,0.58])
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 

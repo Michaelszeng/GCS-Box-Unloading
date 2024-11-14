@@ -101,35 +101,14 @@ for i in range(NUM_BOXES):
 """
 scenario = add_directives(scenario, data=box_directives)
 
-
-def add_suction_joints(parser):
-    """
-    Add joints between each box and eef to be able lock these later to simulate
-    the gripper's suction. This called as part of the Hardware Station
-    initialization routine.
-    """
-    plant = parser.plant()
-    eef_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
-    eef_body_idx = plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
-    frame_parent = plant.get_body(eef_body_idx).body_frame()
-    for i in range(NUM_BOXES):
-        box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-        box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-        frame_child = plant.get_body(box_body_idx).body_frame()
-
-        joint = QuaternionFloatingJoint(f"{eef_body_idx}-{box_body_idx}", frame_parent, frame_child)
-        plant.AddJoint(joint)
-
-
 ### Hardware station setup
-station, _ = builder.AddSystem(MakeHardwareStation(
+station = builder.AddSystem(MakeHardwareStation(
     scenario=scenario,
     meshcat=meshcat,
 
     # This is to be able to load our own models from a local path
     # we can refer to this using the "package://" URI directive
     parser_preload_callback=lambda parser: parser.package_map().Add(this_drake_module_name, os.getcwd()),
-    parser_prefinalize_callback=add_suction_joints,
 ))
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
@@ -147,7 +126,7 @@ builder.Connect(station.GetOutputPort("kuka_state"), controller.GetInputPort("es
 builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputPort("kuka_actuation"))
 
 ### GCS Motion Planer
-motion_planner = builder.AddSystem(MotionPlanner(meshcat, scene_graph, plant, controller_plant, box_randomization_runtime if randomize_boxes else 0, "../data/iris_source_regions.yaml", "../data/iris_source_regions_place.yaml"))
+motion_planner = builder.AddSystem(MotionPlanner(meshcat, scene_graph, plant, controller_plant, box_randomization_runtime if randomize_boxes else 0, "IRIS_REGIONS.yaml", "IRIS_REGIONS.yaml"))
 builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("body_poses"))
 builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort("kuka_state"))
 builder.Connect(motion_planner.GetOutputPort("kuka_desired_state"), controller.GetInputPort("desired_state"))
@@ -174,9 +153,11 @@ simulator = Simulator(diagram)
 simulator_context = simulator.get_mutable_context()
 station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
+controller_plant_context = controller_plant.GetMyMutableContextFromRoot(simulator_context)
 controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
+scene_graph_context = scene_graph.GetMyContextFromRoot(simulator_context)
 
-motion_planner.set_context(plant_context)
+motion_planner.set_context(scene_graph_context, plant_context, controller_plant_context)
 
 
 ####################################
@@ -185,8 +166,6 @@ motion_planner.set_context(plant_context)
 simulator.set_publish_every_time_step(True)
 
 meshcat.StartRecording()
-
-set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
 simulator.AdvanceTo(sim_runtime)
 

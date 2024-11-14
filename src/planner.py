@@ -15,11 +15,12 @@ from pydrake.all import (
     AddDefaultVisualization,
     Trajectory,
     LoadIrisRegionsYamlFile,
+    Point
 )
 
 from manipulation.meshcat_utils import AddMeshcatTriad
 
-from utils import VisualizePath
+from utils import VisualizePath, ik
 from gcs import gcs_traj_opt
 from gcs_shortest_walks import *
 from poses import get_grasp_poses, get_deposit_poses
@@ -27,7 +28,6 @@ from poses import get_grasp_poses, get_deposit_poses
 import time
 import numpy as np
 from enum import Enum
-from graphviz import Source
 from pathlib import Path
 
 class State(Enum):
@@ -54,8 +54,8 @@ class MotionPlanner(LeafSystem):
         self.plant_with_objs = plant_with_objs
         self.plant = plant
         
-        self.plant_context = None
         self.plant_with_objs_context = None
+        self.plant_context = None
         self.scene_graph_context = None
 
         self.first_call = True
@@ -84,8 +84,8 @@ class MotionPlanner(LeafSystem):
 
     def set_context(self, scene_graph_context, plant_with_objs_context, controller_plant_context):
         self.scene_graph_context = scene_graph_context
-        self.plant_context = controller_plant_context
         self.plant_with_objs_context = plant_with_objs_context
+        self.plant_context = controller_plant_context
         
 
     def getNextTrajectory(self, context):
@@ -99,10 +99,15 @@ class MotionPlanner(LeafSystem):
             if self.USE_SHORTEST_WALKS:
                 traj = load_data_for_trajectory(self.traj_num)
             else:
-                if self.plan_stage_ == State.RUNNING_TO_GRASP:            
-                    traj = gcs_traj_opt(robot_q, self.grasp_poses[self.obj_num], self.source_regions, regions_to_add=None)
+                if self.plan_stage_ == State.RUNNING_TO_GRASP:
+                    q = ik(self.plant, self.plant.CreateDefaultContext(), self.grasp_poses[self.obj_num], translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True)[0]
+                    print(f"q:{q}")
+                    print(self.grasp_poses[self.obj_num])
+                    traj = gcs_traj_opt(self.plant, robot_q, [Point(q)], self.source_regions, regions_to_add=None)
                 elif self.plan_stage_ == State.RUNNING_TO_DEPOSIT:
-                    traj = gcs_traj_opt(robot_q, self.deposit_poses[self.obj_num], self.source_regions_place, regions_to_add=None)
+                    q = ik(self.plant, self.plant.CreateDefaultContext(), self.deposit_poses[self.obj_num], translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True)[0]
+                    print(f"q:{q}")
+                    traj = gcs_traj_opt(self.plant, robot_q, [Point(q)], self.source_regions_place, regions_to_add=None)
                 
             self.current_traj_start_time = context.get_time()
             self.traj_num += 1
@@ -171,6 +176,8 @@ class MotionPlanner(LeafSystem):
                             self.current_traj.value(context.get_time() - self.stack_time),
                             self.current_traj.EvalDerivative(context.get_time() - self.stack_time)
                         ))
+                print(f"Desired q: {self.current_traj.value(context.get_time() - self.stack_time).flatten()}")
+                print(f"Current q: {self.robot_state_input_port.Eval(context)[:6]}")
             else:
                 p,v,a,j = get_pos_vel_acc_jerk(self.current_traj, context.get_time() - self.current_traj_start_time)
                 new_state = np.concatenate((p, v))

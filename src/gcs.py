@@ -14,7 +14,7 @@ import numpy as np
 
 
 
-def gcs_traj_opt(self, q_start, target_regions, gcs_regions, regions_to_add=None, vel_lim=1.0, DETAILED_LOGS=False):
+def gcs_traj_opt(plant, q_start, target_regions, gcs_regions, regions_to_add=None, vel_lim=1.0, DETAILED_LOGS=False):
     """
     Define and run a GCS Trajectory Optimization program.
 
@@ -30,8 +30,8 @@ def gcs_traj_opt(self, q_start, target_regions, gcs_regions, regions_to_add=None
     gcs.AddPathLengthCost()
     gcs.AddPathContinuityConstraints(2)  # Acceleration continuity
     gcs.AddVelocityBounds(
-        self.plant.GetVelocityLowerLimits() * vel_lim, 
-        self.plant.GetVelocityUpperLimits() * vel_lim
+        plant.GetVelocityLowerLimits() * vel_lim, 
+        plant.GetVelocityUpperLimits() * vel_lim
     )
     
     gcs_regions = gcs.AddRegions(list(gcs_regions.values()), order=3)
@@ -39,29 +39,29 @@ def gcs_traj_opt(self, q_start, target_regions, gcs_regions, regions_to_add=None
     if regions_to_add:
         added_regions = gcs.AddRegions(regions_to_add, order=3, name="added-regions")
 
-    source = gcs.AddRegions([Point(q) for q in q_start], order=0, name="source")
+    source = gcs.AddRegions([Point(q_start)], order=0, name="source")
     target = gcs.AddRegions(target_regions, order=0)
 
     if regions_to_add:
-        all_regions = {**{f"{i}": obj for i, obj in enumerate(gcs_regions, 1)},
+        all_regions = {**{f"{i}": obj for i, obj in enumerate(gcs_regions.regions(), 1)},
                     **{f"added-region{i}": obj for i, obj in enumerate(added_regions.regions(), 1)},
                     **{f"source{i}": obj for i, obj in enumerate(source.regions(), 1)},
                     **{f"target{i}": obj for i, obj in enumerate(target.regions(), 1)}}
     else:
-        all_regions = {**{f"{i}": obj for i, obj in enumerate(gcs_regions, 1)},
+        all_regions = {**{f"{i}": obj for i, obj in enumerate(gcs_regions.regions(), 1)},
                     **{f"source{i}": obj for i, obj in enumerate(source.regions(), 1)},
                     **{f"target{i}": obj for i, obj in enumerate(target.regions(), 1)}}
-    IrisRegionGenerator.visualize_connectivity(all_regions)
+    IrisRegionGenerator.visualize_connectivity(all_regions, 0.0)
     print("Connectivity Graph for GCS fail saved to '../iris_connectivity.svg'.")
 
-    gcs.AddEdges(source, self.regions_).Edges()
-    gcs.AddEdges(self.regions_, target).Edges()
+    gcs.AddEdges(source, gcs_regions)
+    gcs.AddEdges(gcs_regions, target)
 
     if regions_to_add:
-        gcs.AddEdges(source, added_regions).Edges()
-        gcs.AddEdges(self.regions_, added_regions).Edges()
-        gcs.AddEdges(added_regions, self.regions_).Edges()
-        gcs.AddEdges(added_regions, target).Edges()
+        gcs.AddEdges(source, added_regions)
+        gcs.AddEdges(gcs_regions, added_regions)
+        gcs.AddEdges(added_regions, gcs_regions)
+        gcs.AddEdges(added_regions, target)
     
     options = GraphOfConvexSetsOptions()
     if (DETAILED_LOGS):
