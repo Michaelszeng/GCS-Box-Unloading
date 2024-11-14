@@ -12,7 +12,7 @@ def load_data_for_trajectory(traj_num: int):
     3rd trajectory moves arm without object from deposit of object 1 to grasp of 2
     etc
     """
-    file_name = "../shortest_walks_trajectories/traj_" + str(traj_num) + ".pkl"
+    file_name = "shortest_walks_trajectories/traj_" + str(traj_num) + ".pkl"
     with open(file_name, 'rb') as f:
         data = pickle.load(f)
     return data

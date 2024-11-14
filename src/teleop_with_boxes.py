@@ -232,6 +232,7 @@ plant = station.GetSubsystemByName("plant")
 AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
 
 
+# Add collision filters between robot and boxes
 filter_manager = scene_graph.collision_filter_manager()
 inspector = scene_graph.model_inspector()
 robot_gids = []
@@ -261,6 +262,7 @@ def add_exclusion(set1, set2=None):
 for robot_gid in robot_gids:
     for box_gid in box_gids:
         add_exclusion(robot_gid, box_gid)
+        
 
 controller_plant = MultibodyPlant(time_step=0.001)
 parser = Parser(plant)

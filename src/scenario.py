@@ -116,6 +116,18 @@ directives:
 """
 
 
+scenario_yaml_with_boxes = scenario_yaml
+for i in range(NUM_BOXES):
+    relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
+    absolute_path_to_box = os.path.abspath(relative_path_to_box)
+
+    scenario_yaml_with_boxes += f"""
+- add_model: 
+    name: Boxes/Box_{i}
+    file: file://{absolute_path_to_box}
+"""
+
+
 scenario_yaml_for_iris = scenario_yaml.replace(
 f"""
 model_drivers:

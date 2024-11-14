@@ -8,6 +8,14 @@ from pydrake.all import (
 
 import re
 
+"""
+Box order:
+4
+16
+17
+12
+"""
+
 # Grasp poses for 4 hand-picked boxes
 grasp_poses = """
 RigidTransform(

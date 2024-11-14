@@ -34,12 +34,12 @@ from scipy.sparse import find
 # TEST_SCENE = "3DOFFLIPPER"
 # TEST_SCENE = "5DOFUR3"
 # TEST_SCENE = "6DOFUR3"
-TEST_SCENE = "7DOFIIWA"
+# TEST_SCENE = "7DOFIIWA"
 # TEST_SCENE = "7DOFBINS"
 # TEST_SCENE = "7DOF4SHELVES"
 # TEST_SCENE = "14DOFIIWAS"
 # TEST_SCENE = "15DOFALLEGRO"
-# TEST_SCENE = "BOXUNLOADING"
+TEST_SCENE = "BOXUNLOADING"
 
 rng = RandomGenerator(1234)
 np.random.seed(1234)
@@ -74,6 +74,8 @@ plant_context = plant.CreateDefaultContext()
 num_robot_positions = plant.num_positions()
 
 collision_checker_params = {}
+print(robot_model_instances)
+print(diagram)
 collision_checker_params["robot_model_instances"] = robot_model_instances
 collision_checker_params["model"] = diagram
 collision_checker_params["edge_step_size"] = 0.125
