@@ -826,9 +826,9 @@ def MakeHardwareStation(
         box_frame = sim_plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
         sim_plant.WeldFrames(sim_plant.world_frame(), box_frame, fast_box_poses[i])
 
-    # Add box to the scene graph as a visual-only geometry
-    parser.AddModelsFromUrl(f"file://{os.path.abspath('visual_box.urdf')}")
-    sim_plant.WeldFrames(sim_plant.GetFrameByName("arm_eef"), sim_plant.GetFrameByName("visual_box"), RigidTransform([0.05,0,0.5]))
+    # # Add box to the scene graph as a visual-only geometry
+    # parser.AddModelsFromUrl(f"file://{os.path.abspath('visual_box.urdf')}")
+    # sim_plant.WeldFrames(sim_plant.GetFrameByName("arm_eef"), sim_plant.GetFrameByName("visual_box"), RigidTransform([0.05,0,0.5]))
 
 
     sim_plant.Finalize()
