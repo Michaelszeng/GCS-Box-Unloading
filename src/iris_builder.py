@@ -45,8 +45,8 @@ from scipy.spatial.transform import Rotation
 from scipy.sparse import find
 import time
 
-JUST_VISUALIZE_EXISTING_REGIONS = True
-# JUST_VISUALIZE_EXISTING_REGIONS = False
+# JUST_VISUALIZE_EXISTING_REGIONS = True
+JUST_VISUALIZE_EXISTING_REGIONS = False
 
 box_names = ["Boxes/Box_4", "Boxes/Box_16", "Boxes/Box_17", "Boxes/Box_12"]
 
@@ -96,8 +96,6 @@ if not JUST_VISUALIZE_EXISTING_REGIONS:
         AddDefaultVisualization(robot_diagram_builder.builder(), meshcat=meshcat)
         diagram = robot_diagram_builder.Build()
 
-
-
         simulator = Simulator(diagram)
 
         simulator_context = simulator.get_mutable_context()
@@ -106,10 +104,7 @@ if not JUST_VISUALIZE_EXISTING_REGIONS:
 
         num_robot_positions = plant.num_positions()
 
-        robot_model_instances = robot_model_instances[:2]
-        for x in robot_model_instances:
-            print(plant.GetModelInstanceName(x))
-        print(robot_model_instances)
+        robot_model_instances = robot_model_instances
         collision_checker_params = {}
         collision_checker_params["robot_model_instances"] = robot_model_instances
         collision_checker_params["model"] = diagram

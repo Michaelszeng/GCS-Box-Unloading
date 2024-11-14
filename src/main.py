@@ -15,6 +15,10 @@ from pydrake.all import (
     ConfigurationSpaceObstacleCollisionChecker,
     WeldJoint,
     QuaternionFloatingJoint,
+    ConstantVectorSource,
+    GeometrySet,
+    Role,
+    CollisionFilterDeclaration,
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -98,6 +102,37 @@ station = builder.AddSystem(MakeHardwareStation(
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
 
+# Add collision filters between robot and boxes
+filter_manager = scene_graph.collision_filter_manager()
+inspector = scene_graph.model_inspector()
+robot_gids = []
+box_gids = []
+for gid in inspector.GetGeometryIds(
+    GeometrySet(inspector.GetAllGeometryIds()), Role.kProximity
+):
+    gid_name = inspector.GetName(inspector.GetFrameId(gid))
+    # print(f"{gid_name}, {gid}")
+    if "kuka" in gid_name or "robot_base" in gid_name:
+        robot_gids.append(gid)
+    if "Boxes" in gid_name:
+        box_gids.append(gid)
+
+def add_exclusion(set1, set2=None):
+    if set2 is None:
+        filter_manager.Apply(
+            CollisionFilterDeclaration().ExcludeWithin(GeometrySet(set1))
+        )
+    else:
+        filter_manager.Apply(
+            CollisionFilterDeclaration().ExcludeBetween(
+                GeometrySet(set1), GeometrySet(set2)
+            )
+        )
+
+for robot_gid in robot_gids:
+    for box_gid in box_gids:
+        add_exclusion(robot_gid, box_gid)
+
 # Plot Triad at end effector
 AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
 
@@ -114,6 +149,12 @@ builder.Connect(controller.GetOutputPort("generalized_force"), station.GetInputP
 motion_planner = builder.AddSystem(MotionPlanner(meshcat, scene_graph, plant, controller_plant, box_randomization_runtime if randomize_boxes else 0, "IRIS_REGIONS.yaml", "IRIS_REGIONS.yaml"))
 builder.Connect(station.GetOutputPort("body_poses"), motion_planner.GetInputPort("body_poses"))
 builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort("kuka_state"))
+
+# temp = builder.AddSystem(ConstantVectorSource([ 0.31076813, -0.93517756,  1.876914,    1.18583468, 1.10499359, -0.00917231,0,0,0,0,0,0]))
+# builder.Connect(temp.get_output_port(), controller.GetInputPort("desired_state"))
+# temp2 = builder.AddSystem(ConstantVectorSource([0,0,0,0,0,0]))
+# builder.Connect(temp2.get_output_port(), controller.GetInputPort("desired_acceleration"))
+
 builder.Connect(motion_planner.GetOutputPort("kuka_desired_state"), controller.GetInputPort("desired_state"))
 builder.Connect(motion_planner.GetOutputPort("kuka_acceleration"), controller.GetInputPort("desired_acceleration"))
 

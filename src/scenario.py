@@ -53,14 +53,11 @@ directives:
 - add_model:
     name: robot_base
     file: file://{absolute_path_to_robot_base}
-- add_frame:
-    name: robot_base::robot_base_offset
-    X_PF:
-        base_frame: world
-        translation: [{robot_pose.translation()[0]}, {robot_pose.translation()[1]}, {robot_pose.translation()[2]}]
 - add_weld:
-    parent: robot_base::robot_base_offset
-    child: robot_base::base_link  
+    parent: world
+    child: robot_base::base_link
+    X_PC:
+        translation: [{robot_pose.translation()[0]}, {robot_pose.translation()[1]}, {robot_pose.translation()[2]}]
 
     
 - add_model:
@@ -172,6 +169,8 @@ directives:
 - add_weld:
     parent: world
     child: kuka::base_link
+    X_PC:
+        translation: [{robot_pose.translation()[0]}, {robot_pose.translation()[1]}, {robot_pose.translation()[2]}]
 """
 
 
