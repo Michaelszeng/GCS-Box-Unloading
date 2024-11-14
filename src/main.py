@@ -73,7 +73,7 @@ if randomize_boxes:
     box_randomization_runtime = box_fall_runtime + 17
     sim_runtime = box_randomization_runtime + 10
 else:
-    sim_runtime = 10
+    sim_runtime = 15
 
 np.random.seed(seed)
 
@@ -194,6 +194,8 @@ motion_planner.set_context(scene_graph_context, plant_context, controller_plant_
 simulator.set_publish_every_time_step(True)
 
 meshcat.StartRecording()
+
+# simulator.AdvanceTo(sim_runtime)
 
 try:
     simulator.AdvanceTo(sim_runtime)

@@ -59,11 +59,8 @@ class MotionPlanner(LeafSystem):
         self.scene_graph_context = None
 
         self.first_call = True
-        self.pause_length = 0.1
+        self.pause_length = 0.25
         self.start_planning_time = box_randomization_runtime
-
-        self.last_state = None
-        self.last_accel = None
 
         self.active_suction_joints = []
 
@@ -118,6 +115,8 @@ class MotionPlanner(LeafSystem):
             VisualizePath(self.meshcat, self.plant, self.plant.CreateDefaultContext(), traj, f"visuals/traj_{self.traj_num}")
 
             self.stack_time = context.get_time()
+            self.current_traj_duration = traj.end_time()
+            self.current_traj_final_pos = traj.value(self.current_traj_duration)
 
             return traj
         
@@ -155,7 +154,7 @@ class MotionPlanner(LeafSystem):
 
         # Exit condition during pauses is simply if pause time has elapsed
         elif self.plan_stage_ == State.PAUSING_TO_GRASP or self.plan_stage_ == State.PAUSING_TO_DEPOSIT:
-            if current_time - self.stack_time - self.current_traj[0] > 0:
+            if current_time - self.stack_time - self.current_traj_duration - self.current_traj[0] > 0:
                 return True
             
         return False
@@ -169,9 +168,6 @@ class MotionPlanner(LeafSystem):
             self.stack_time = context.get_time()
             self.current_traj = self.getNextTrajectory(context)
             self.first_call = False
-        
-        if self.last_state is None:
-            self.last_state = self.robot_state_input_port.Eval(context)
 
         if self.plan_stage_ == State.RUNNING_TO_GRASP or self.plan_stage_ == State.RUNNING_TO_DEPOSIT:
             if isinstance(self.current_traj, Trajectory):
@@ -185,10 +181,8 @@ class MotionPlanner(LeafSystem):
                 p,v,a,j = get_pos_vel_acc_jerk(self.current_traj, context.get_time() - self.current_traj_start_time)
                 new_state = np.concatenate((p, v))
         else:
-            # Get last state so robot doesn't move
-            new_state = self.last_state
+            new_state = np.pad(self.current_traj_final_pos.flatten(), (0, 6), 'constant')
 
-        self.last_state = new_state.copy()
         output.SetFromVector(new_state)
         # print(f"outputting desired state: {desired_state}")
 
@@ -279,11 +273,6 @@ class MotionPlanner(LeafSystem):
 
 
     def output_desired_acceleration(self, context, output):
-        self.last_state = self.robot_state_input_port.Eval(context)
-
-        if self.last_accel is None:
-            self.last_accel = np.zeros(6)
-        
         if self.plan_stage_ == State.RUNNING_TO_GRASP or self.plan_stage_ == State.RUNNING_TO_DEPOSIT:
             if isinstance(self.current_traj, Trajectory):
                 new_accel = self.current_traj.EvalDerivative(context.get_time() - self.start_planning_time, 2)
@@ -291,9 +280,7 @@ class MotionPlanner(LeafSystem):
                 p,v,a,j = get_pos_vel_acc_jerk(self.current_traj, context.get_time() - self.current_traj_start_time)
                 new_accel = a
         else:
-            new_accel = self.last_accel
-
-        self.last_accel = new_accel.copy()
+            new_accel = np.zeros(6)
 
         output.SetFromVector(new_accel)
 
