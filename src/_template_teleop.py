@@ -26,7 +26,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from station import MakeHardwareStation, load_scenario
-from scenario import scenario_yaml_for_iris
+from scenario import scenario_yaml_for_iris, scenario_yaml_with_boxes
 from utils import diagram_visualize_connections
 
 import numpy as np
@@ -156,7 +156,8 @@ meshcat = StartMeshcat()
 builder = DiagramBuilder()
 
 if TEST_SCENE == "BOXUNLOADING":
-    scenario = load_scenario(data=scenario_yaml_for_iris)
+    # scenario = load_scenario(data=scenario_yaml_for_iris)
+    scenario = load_scenario(data=scenario_yaml_with_boxes)
 else:
     scenario = load_scenario(filename=scene_yaml_file)
 
