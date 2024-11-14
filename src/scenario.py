@@ -105,6 +105,9 @@ directives:
 - add_model: 
     name: Truck_Trailer_Roof
     file: file://{absolute_path_to_truck_trailer_roof}
+- add_weld:
+    parent: world
+    child: Truck_Trailer_Roof::Truck_Trailer_Roof
 
 
 - add_model: 
@@ -844,12 +847,6 @@ def get_W_X_eef(plant, plant_context):
 def set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime, box_randomization_runtime):
     fast_box_poses = get_fast_box_poses()  # Get pre-computed box poses
 
-    # 'Remove' Top of truck trailer
-    trailer_roof_model_idx = plant.GetModelInstanceByName("Truck_Trailer_Roof")  # ModelInstanceIndex
-    trailer_roof_body_idx = plant.GetBodyIndices(trailer_roof_model_idx)[0]  # BodyIndex
-    if randomize_boxes:
-        plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,100]))
-
     # Set poses for all boxes
     # Because of added floating joints between boxes and eef, we must express free body pose relative to eef
     W_X_eef = get_W_X_eef(plant, plant_context)
@@ -886,12 +883,6 @@ def set_up_scene(station, station_context, plant, plant_context, simulator, rand
 
     if randomize_boxes:
         simulator.AdvanceTo(box_fall_runtime)
-
-    # Put Top of truck trailer back and lock it
-    plant.SetFreeBodyPose(plant_context, plant.get_body(trailer_roof_body_idx), RigidTransform([0,0,0]))
-    trailer_roof_joint_idx = plant.GetJointIndices(trailer_roof_model_idx)[0]  # JointIndex object
-    trailer_roof_joint = plant.get_joint(trailer_roof_joint_idx)  # Joint object
-    trailer_roof_joint.Lock(plant_context)
 
     if randomize_boxes:
         # Applied external forces on the box to shove them to the back of the truck trailer

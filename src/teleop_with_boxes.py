@@ -38,7 +38,7 @@ import yaml
 import logging
 import datetime
 
-from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, robot_pose, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, get_fast_box_poses, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, robot_pose, set_up_scene, get_W_X_eef
 
 class MeshcatSliderSource(LeafSystem):
     def __init__(self, meshcat):
@@ -196,25 +196,6 @@ for i in range(NUM_BOXES):
 scenario = add_directives(scenario, data=box_directives)
 
 
-def add_suction_joints(parser):
-    """
-    Add joints between each box and eef to be able lock these later to simulate
-    the gripper's suction. This called as part of the Hardware Station
-    initialization routine.
-    """
-    plant = parser.plant()
-    eef_model_idx = plant.GetModelInstanceByName("kuka")  # ModelInstanceIndex
-    eef_body_idx = plant.GetBodyIndices(eef_model_idx)[-1]  # BodyIndex
-    frame_parent = plant.get_body(eef_body_idx).body_frame()
-    for i in range(NUM_BOXES):
-        box_model_idx = plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-        box_body_idx = plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-        frame_child = plant.get_body(box_body_idx).body_frame()
-
-        joint = QuaternionFloatingJoint(f"{eef_body_idx}-{box_body_idx}", frame_parent, frame_child)
-        plant.AddJoint(joint)
-
-
 ### Hardware station setup
 station = builder.AddSystem(MakeHardwareStation(
     scenario=scenario,
@@ -223,7 +204,6 @@ station = builder.AddSystem(MakeHardwareStation(
     # This is to be able to load our own models from a local path
     # we can refer to this using the "package://" URI directive
     parser_preload_callback=lambda parser: parser.package_map().Add(this_drake_module_name, os.getcwd()),
-    parser_prefinalize_callback=add_suction_joints,
 ))
 scene_graph = station.GetSubsystemByName("scene_graph")
 plant = station.GetSubsystemByName("plant")
@@ -322,7 +302,7 @@ controller_context = controller.GetMyMutableContextFromRoot(simulator_context)
 # simulator.get_mutable_integrator().set_maximum_step_size(0.01)  # Increase max step size
 # simulator.get_mutable_integrator().set_target_accuracy(1e-3)  # Set target accuracy
 
-set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
+# set_up_scene(station, station_context, plant, plant_context, simulator, randomize_boxes, box_fall_runtime if randomize_boxes else 0, box_randomization_runtime if randomize_boxes else 0)
 
 # Main simulation loop
 ctr = 0

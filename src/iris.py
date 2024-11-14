@@ -234,7 +234,7 @@ class IrisRegionGenerator():
 
 
     @staticmethod
-    def visualize_iris_region(plant, plant_context, meshcat, regions, seed=42, density=0.01, colors=None, name="regions", task_space=True, scene="BOXUNLOADING"):
+    def visualize_iris_region(plant, plant_context, meshcat, regions, seed=42, density=0.05, colors=None, name="regions", task_space=True, scene="BOXUNLOADING"):
         """
         Plot dense point clouds to visualize the volume of each region. If 
         `task_space` is set to True, we use forward kinematics to return from
