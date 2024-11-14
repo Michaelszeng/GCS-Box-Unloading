@@ -67,7 +67,7 @@ class MotionPlanner(LeafSystem):
 
         self.active_suction_joints = []
 
-        self.obj_num = 1
+        self.obj_num = 0
         self.traj_num = 0
         self.current_traj = None
         self.current_traj_start_time = 0

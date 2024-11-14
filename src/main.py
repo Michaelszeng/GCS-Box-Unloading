@@ -19,6 +19,8 @@ from pydrake.all import (
     GeometrySet,
     Role,
     CollisionFilterDeclaration,
+    Box,
+    Rgba,
 )
 
 # from manipulation.station import MakeHardwareStation, load_scenario
@@ -193,7 +195,10 @@ simulator.set_publish_every_time_step(True)
 
 meshcat.StartRecording()
 
-simulator.AdvanceTo(sim_runtime)
+try:
+    simulator.AdvanceTo(sim_runtime)
+except:
+    pass
 
 meshcat.PublishRecording()
 date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

@@ -26,6 +26,8 @@ from pydrake.all import (
     GeometrySet,
     Role,
     CollisionFilterDeclaration,
+    IrisInConfigurationSpace,
+    IrisOptions,
 )
 
 from manipulation.meshcat_utils import AddMeshcatTriad
@@ -56,7 +58,8 @@ if not JUST_VISUALIZE_EXISTING_REGIONS:
     rng = RandomGenerator(1234)
     np.random.seed(1234)
 
-    seeds = get_grasp_poses() + [get_deposit_poses()[0]] + [RigidTransform(RotationMatrix.MakeXRotation(np.pi), [0.84, 0, 1.74]),
+    seeds = get_grasp_poses() + [get_deposit_poses()[0]] + [RigidTransform(RotationMatrix.MakeXRotation(np.pi),[0.3, -0.69, 1.6]),
+                                                            RigidTransform(RotationMatrix.MakeXRotation(np.pi), [0.84, 0, 1.74]),
                                                             RigidTransform(RotationMatrix.MakeXRotation(np.pi), [1.5, 0, 1.0])]
 
     regions_dict = {}
@@ -115,18 +118,27 @@ if not JUST_VISUALIZE_EXISTING_REGIONS:
         simulator.AdvanceTo(0.001)
 
         # RUN IRIS
-        options = FastIrisOptions()
-        options.random_seed = 0
-        options.verbose = False
-        options.require_sample_point_is_contained = True
-        domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(),
-                                    plant.GetPositionUpperLimits())
-        kEpsilonEllipsoid = 1e-5
         AddMeshcatTriad(meshcat, f"{i}", X_PT=seed)
         q = ik(plant, plant_context, seed, translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True)[0]
         print(f"seed: {q.flatten()}")
-        clique_ellipse = Hyperellipsoid.MakeHypersphere(kEpsilonEllipsoid, q)
-        region = FastIris(collision_checker, clique_ellipse, domain, options)
+        
+        # FastIRIS is bugging
+        # options = FastIrisOptions()
+        # options.random_seed = 0
+        # options.verbose = False
+        # options.require_sample_point_is_contained = True
+        # domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(),
+        #                             plant.GetPositionUpperLimits())
+        # kEpsilonEllipsoid = 1e-5
+        # clique_ellipse = Hyperellipsoid.MakeHypersphere(kEpsilonEllipsoid, q)
+        # region = FastIris(collision_checker, clique_ellipse, domain, options)
+
+        # IRIS NP
+        options = IrisOptions()
+        options.require_sample_point_is_contained = True
+        options.iteration_limit = 6
+        options.configuration_space_margin = 0.01
+        region = IrisInConfigurationSpace(plant, plant_context, options)
 
         regions_dict[f"set{i}"] = region
         

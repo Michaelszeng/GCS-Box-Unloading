@@ -62,6 +62,8 @@ from pydrake.all import (
     StateInterpolatorWithDiscreteDerivative,
     VisualizationConfig,
     ZeroForceDriver,
+    Rgba,
+    Box,
 )
 from pydrake.common.yaml import yaml_load_typed
 from drake import (
@@ -75,6 +77,7 @@ from manipulation.scenarios import (
     AddIiwa,
     AddPlanarIiwa,
     AddWsg,
+    AddShape,
 )
 from manipulation.utils import ConfigureParser
 
@@ -812,6 +815,8 @@ def MakeHardwareStation(
         builder=builder,
     )
 
+
+
     # TEMPORARY
     # Set poses for all boxes
     from scenario import NUM_BOXES, get_fast_box_poses
@@ -820,6 +825,11 @@ def MakeHardwareStation(
         box_model_idx = sim_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex        
         box_frame = sim_plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
         sim_plant.WeldFrames(sim_plant.world_frame(), box_frame, fast_box_poses[i])
+
+    # Add box to the scene graph as a visual-only geometry
+    parser.AddModelsFromUrl(f"file://{os.path.abspath('visual_box.urdf')}")
+    sim_plant.WeldFrames(sim_plant.GetFrameByName("arm_eef"), sim_plant.GetFrameByName("visual_box"), RigidTransform([0.05,0,0.5]))
+
 
     sim_plant.Finalize()
 
