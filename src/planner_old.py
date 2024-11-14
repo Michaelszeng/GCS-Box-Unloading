@@ -62,7 +62,7 @@ class MotionPlanner(LeafSystem):
         plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
         parser = Parser(plant)
         ConfigureParser(parser)
-        kuka = parser.AddModelsFromString(iris_yaml, ".dmd.yaml")[0]  # ModelInstance object
+        kuka = parser.AddModelsFromString(iris_yaml, ".dmd.yaml")[1]  # ModelInstance object
         
         plant.Finalize()
         diagram = builder.Build()

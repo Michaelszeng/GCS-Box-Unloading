@@ -33,7 +33,7 @@ import yaml
 import logging
 import datetime
 
-from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, robot_pose, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, iris_yaml, robot_pose, set_up_scene, get_W_X_eef
 
 NUM_BOXES = 0
 
@@ -211,7 +211,7 @@ AddMultibodyTriad(plant.GetFrameByName("arm_eef"), scene_graph)
 controller_plant = MultibodyPlant(time_step=0.001)
 parser = Parser(plant)
 ConfigureParser(parser)
-Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
+Parser(controller_plant).AddModelsFromString(iris_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
 num_robot_positions = controller_plant.num_positions()
 

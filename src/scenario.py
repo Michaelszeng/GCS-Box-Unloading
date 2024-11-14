@@ -53,16 +53,12 @@ directives:
 - add_model:
     name: robot_base
     file: file://{absolute_path_to_robot_base}
-- add_frame:
-    name: robot_base::robot_base_offset
-    X_PF:
-        base_frame: world
-        translation: [{robot_pose.translation()[0]}, {robot_pose.translation()[1]}, {robot_pose.translation()[2]}]
 - add_weld:
-    parent: robot_base::robot_base_offset
-    child: robot_base::base_link  
+    parent: world
+    child: robot_base::base_link
+    X_PC:
+        translation: [{robot_pose.translation()[0]}, {robot_pose.translation()[1]}, {robot_pose.translation()[2]}]
 
-    
 - add_model:
     name: kuka
     file: file://{absolute_path_to_robot_arm}
@@ -115,16 +111,7 @@ directives:
     child: Truck_Trailer_Back::Truck_Trailer_Back
 """
 
-
-scenario_yaml_for_iris = scenario_yaml.replace(
-f"""
-model_drivers:
-    kuka: !ForceDriver {{}}  # ForceDriver allows access to desired_state and desired_acceleration input ports for station (results in better traj following)
-""",
-""
-)
-
-scenario_yaml_for_iris = scenario_yaml_for_iris.replace(
+iris_yaml = scenario_yaml.replace(
 f"""
 - add_model: 
     name: Truck_Trailer_Roof
@@ -141,7 +128,7 @@ f"""
 )
 
 
-robot_yaml = f"""
+iris_yaml = f"""
 directives:
 - add_model:
     name: kuka
@@ -157,6 +144,8 @@ directives:
 - add_weld:
     parent: world
     child: kuka::base_link
+    X_PC:
+        translation: [{robot_pose.translation()[0]}, {robot_pose.translation()[1]}, {robot_pose.translation()[2]}]
 """
 
 
