@@ -35,7 +35,7 @@ import logging
 import datetime
 
 from utils import diagram_visualize_connections
-from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, scenario_yaml_for_iris, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, scenario_yaml_with_boxes, robot_yaml, scenario_yaml_for_iris, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
 from iris import IrisRegionGenerator
 from planner import MotionPlanner
 from debug import Debugger
@@ -84,22 +84,7 @@ meshcat.AddButton("Close")
 ### Diagram Setup ###
 #####################
 builder = DiagramBuilder()
-scenario = load_scenario(data=scenario_yaml)
-
-### Add Boxes
-box_directives = f"""
-directives:
-"""
-for i in range(NUM_BOXES):
-    relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
-    absolute_path_to_box = os.path.abspath(relative_path_to_box)
-
-    box_directives += f"""
-- add_model: 
-    name: Boxes/Box_{i}
-    file: file://{absolute_path_to_box}
-"""
-scenario = add_directives(scenario, data=box_directives)
+scenario = load_scenario(data=scenario_yaml_with_boxes)
 
 ### Hardware station setup
 station = builder.AddSystem(MakeHardwareStation(

@@ -28,6 +28,8 @@ from pydrake.all import (
     CollisionFilterDeclaration,
 )
 
+from manipulation.meshcat_utils import AddMeshcatTriad
+
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -48,17 +50,17 @@ JUST_VISUALIZE_EXISTING_REGIONS = False
 
 box_names = ["Boxes/Box_4", "Boxes/Box_16", "Boxes/Box_17", "Boxes/Box_12"]
 
+meshcat = StartMeshcat()
+
 if not JUST_VISUALIZE_EXISTING_REGIONS:
     rng = RandomGenerator(1234)
     np.random.seed(1234)
 
-    seeds = get_grasp_poses() + [get_deposit_poses()[0]] + [RigidTransform(RotationMatrix.MakeXRotation(np.pi), [0.69, 0, 1.74]),
+    seeds = get_grasp_poses() + [get_deposit_poses()[0]] + [RigidTransform(RotationMatrix.MakeXRotation(np.pi), [0.84, 0, 1.74]),
                                                             RigidTransform(RotationMatrix.MakeXRotation(np.pi), [1.5, 0, 1.0])]
 
     regions_dict = {}
     for i, seed in enumerate(seeds):
-
-        meshcat = StartMeshcat()
 
         robot_diagram_builder = RobotDiagramBuilder()
         parser = robot_diagram_builder.parser()
@@ -125,6 +127,7 @@ if not JUST_VISUALIZE_EXISTING_REGIONS:
         domain = HPolyhedron.MakeBox(plant.GetPositionLowerLimits(),
                                     plant.GetPositionUpperLimits())
         kEpsilonEllipsoid = 1e-5
+        AddMeshcatTriad(meshcat, f"{i}", X_PT=seed)
         q = ik(plant, plant_context, seed, translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True)[0]
         print(f"seed: {q.flatten()}")
         clique_ellipse = Hyperellipsoid.MakeHypersphere(kEpsilonEllipsoid, q)
@@ -136,8 +139,6 @@ if not JUST_VISUALIZE_EXISTING_REGIONS:
     SaveIrisRegionsYamlFile("IRIS_REGIONS.yaml", regions_dict)
 
 else:
-    meshcat = StartMeshcat()
-
     robot_diagram_builder = RobotDiagramBuilder()
     parser = robot_diagram_builder.parser()
     scene_graph = robot_diagram_builder.scene_graph()

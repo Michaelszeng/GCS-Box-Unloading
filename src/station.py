@@ -812,14 +812,12 @@ def MakeHardwareStation(
         builder=builder,
     )
 
-    # JUST FOR teleop_with_boxes.py
+    # TEMPORARY
     # Set poses for all boxes
     from scenario import NUM_BOXES, get_fast_box_poses
     fast_box_poses = get_fast_box_poses()  # Get pre-computed box poses
     for i in range(NUM_BOXES):
-        box_model_idx = sim_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex
-        box_body_idx = sim_plant.GetBodyIndices(box_model_idx)[0]  # BodyIndex
-        
+        box_model_idx = sim_plant.GetModelInstanceByName(f"Boxes/Box_{i}")  # ModelInstanceIndex        
         box_frame = sim_plant.GetFrameByName("Box_0_5_0_5_0_5", box_model_idx)
         sim_plant.WeldFrames(sim_plant.world_frame(), box_frame, fast_box_poses[i])
 

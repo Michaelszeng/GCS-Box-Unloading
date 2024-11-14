@@ -23,7 +23,7 @@ from manipulation.meshcat_utils import AddMeshcatTriad
 from utils import VisualizePath, ik
 from gcs import gcs_traj_opt
 from gcs_shortest_walks import *
-from poses import get_grasp_poses, get_deposit_poses
+from poses import grasp_q, deposit_q, get_deposit_poses, get_grasp_poses
 
 import time
 import numpy as np
@@ -74,7 +74,7 @@ class MotionPlanner(LeafSystem):
         
         self.source_regions = LoadIrisRegionsYamlFile(Path(regions_file))
         self.source_regions_place = LoadIrisRegionsYamlFile(Path(regions_place_file))
-
+        
         self.grasp_poses = get_grasp_poses()
         self.deposit_poses = get_deposit_poses()
 
@@ -100,12 +100,15 @@ class MotionPlanner(LeafSystem):
                 traj = load_data_for_trajectory(self.traj_num)
             else:
                 if self.plan_stage_ == State.RUNNING_TO_GRASP:
-                    q = ik(self.plant, self.plant.CreateDefaultContext(), self.grasp_poses[self.obj_num], translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True)[0]
+                    q = ik(self.plant, self.plant.CreateDefaultContext(), self.grasp_poses[self.obj_num], translation_error=0, rotation_error=0.01, regions=None, pose_as_constraint=True)[0]
                     print(f"q:{q}")
-                    print(self.grasp_poses[self.obj_num])
+                    q = grasp_q[self.obj_num]
+                    print(f"q:{q}")
                     traj = gcs_traj_opt(self.plant, robot_q, [Point(q)], self.source_regions, regions_to_add=None)
                 elif self.plan_stage_ == State.RUNNING_TO_DEPOSIT:
-                    q = ik(self.plant, self.plant.CreateDefaultContext(), self.deposit_poses[self.obj_num], translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True)[0]
+                    q = ik(self.plant, self.plant.CreateDefaultContext(), self.deposit_poses[self.obj_num], translation_error=0, rotation_error=0.01, regions=None, pose_as_constraint=True)[0]
+                    print(f"q:{q}")
+                    q = deposit_q[self.obj_num]
                     print(f"q:{q}")
                     traj = gcs_traj_opt(self.plant, robot_q, [Point(q)], self.source_regions_place, regions_to_add=None)
                 
