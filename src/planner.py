@@ -45,7 +45,7 @@ class MotionPlanner(LeafSystem):
         self.DeclareVectorOutputPort("kuka_desired_state", 12, self.output_desired_state)  # 6 pos, 6 vel
         self.DeclareVectorOutputPort("kuka_acceleration", 6, self.output_desired_acceleration)
 
-        self.USE_SHORTEST_WALKS = False
+        self.USE_SHORTEST_WALKS = True
 
         self.plan_stage_ = State.RUNNING_TO_GRASP
         
@@ -59,7 +59,7 @@ class MotionPlanner(LeafSystem):
         self.scene_graph_context = None
 
         self.first_call = True
-        self.pause_length = 0.25
+        self.pause_length = 0.1
         self.start_planning_time = box_randomization_runtime
 
         self.active_suction_joints = []
@@ -89,12 +89,11 @@ class MotionPlanner(LeafSystem):
         robot_q = self.robot_state_input_port.Eval(context)[:6]
         
         if self.plan_stage_ == State.RUNNING_TO_GRASP or self.plan_stage_ == State.RUNNING_TO_DEPOSIT:
-            deposit_pose = self.deposit_poses[self.obj_num]
-
-            AddMeshcatTriad(self.meshcat, "visuals/deposit_pose", X_PT=deposit_pose)
-
             if self.USE_SHORTEST_WALKS:
                 traj = load_data_for_trajectory(self.traj_num)
+                self.current_traj_duration = get_trajectory_length(traj)
+                p,v,a,j = get_pos_vel_acc_jerk(traj, self.current_traj_duration)
+                self.current_traj_final_pos = p
             else:
                 if self.plan_stage_ == State.RUNNING_TO_GRASP:
                     q_ik = ik(self.plant, self.plant.CreateDefaultContext(), self.grasp_poses[self.obj_num], translation_error=0, rotation_error=0.01, regions=None, pose_as_constraint=True)[0]
@@ -108,6 +107,9 @@ class MotionPlanner(LeafSystem):
                     q = deposit_q[self.obj_num]
                     print(f"q:{q}")
                     traj = gcs_traj_opt(self.plant, robot_q, [Point(q)], self.source_regions_place, regions_to_add=None)
+                    
+                self.current_traj_duration = traj.end_time()
+                self.current_traj_final_pos = traj.value(self.current_traj_duration)
                 
             self.current_traj_start_time = context.get_time()
             self.traj_num += 1
@@ -115,8 +117,6 @@ class MotionPlanner(LeafSystem):
             VisualizePath(self.meshcat, self.plant, self.plant.CreateDefaultContext(), traj, f"visuals/traj_{self.traj_num}")
 
             self.stack_time = context.get_time()
-            self.current_traj_duration = traj.end_time()
-            self.current_traj_final_pos = traj.value(self.current_traj_duration)
 
             return traj
         
@@ -124,7 +124,7 @@ class MotionPlanner(LeafSystem):
             return [self.pause_length]
 
 
-    def exit_condition_reached(self, context, exit_threshold_grasp=0.005, exit_threshold_deposit=0.02, time_window=1.0):
+    def exit_condition_reached(self, context, exit_threshold_grasp=0.01, exit_threshold_deposit=0.01, time_window=1.0):
         current_time = context.get_time()        
         current_position = self.robot_state_input_port.Eval(context)[:6]
 

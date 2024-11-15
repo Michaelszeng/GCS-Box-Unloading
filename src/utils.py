@@ -23,6 +23,7 @@ import sys
 import time
 
 from scenario import q_nominal
+from gcs_shortest_walks import *
 
 
 def diagram_visualize_connections(diagram: Diagram, file: Union[BinaryIO, str]) -> None:
@@ -164,14 +165,25 @@ def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, reg
 
 def VisualizePath(meshcat, plant, plant_context, traj, name):
     """
-    Helper function that takes Drake Trajectory object and visualizes it in task
-    space as a line.
-    """
-    traj_start_time = traj.start_time()
-    traj_end_time = traj.end_time()
+    Helper function that takes in trajopt basis and control points of Bspline
+    and draws spline in meshcat.
 
-    def get_traj_pos(vis_t):
-        return traj.value(vis_t)
+    traj can be either a Drake Trajectory object or a dictionary (in the format
+    Savva made).
+    """
+    if isinstance(traj, Trajectory):
+        traj_start_time = traj.start_time()
+        traj_end_time = traj.end_time()
+
+        def get_traj_pos(vis_t):
+            return traj.value(vis_t)
+   
+    else:
+        traj_start_time = 0
+        traj_end_time = get_trajectory_length(traj)
+
+        def get_traj_pos(vis_t):
+            return get_pos_vel_acc_jerk(traj, vis_t)[0]
 
     # Build matrix of 3d positions by doing forward kinematics at time steps in the bspline
     NUM_STEPS = 80
