@@ -37,7 +37,7 @@ import logging
 import datetime
 
 from utils import diagram_visualize_connections
-from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, iris_yaml, robot_pose, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, robot_pose, set_up_scene, get_W_X_eef
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
 from debug import Debugger
@@ -128,7 +128,7 @@ builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort
 controller_plant = MultibodyPlant(time_step=0.001)
 parser = Parser(plant)
 ConfigureParser(parser)
-Parser(controller_plant).AddModelsFromString(iris_yaml, ".dmd.yaml")[0]  # ModelInstance object
+Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
 num_robot_positions = controller_plant.num_positions()
 controller = builder.AddSystem(InverseDynamicsController(controller_plant, [150]*num_robot_positions, [50]*num_robot_positions, [50]*num_robot_positions, True))  # True = exposes "desired_acceleration" port

@@ -35,7 +35,7 @@ import logging
 import datetime
 
 from utils import diagram_visualize_connections
-from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, iris_yaml, iris_yaml, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, robot_yaml, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
 from iris import IrisRegionGenerator
 from gcs import MotionPlanner
 from debug import Debugger
@@ -144,7 +144,7 @@ builder.Connect(station.GetOutputPort("kuka_state"), motion_planner.GetInputPort
 
 ### Controller
 controller_plant = MultibodyPlant(time_step=0.001)
-Parser(controller_plant).AddModelsFromString(iris_yaml, ".dmd.yaml")[0]  # ModelInstance object
+Parser(controller_plant).AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
 controller_plant.Finalize()
 num_robot_positions = controller_plant.num_positions()
 controller = builder.AddSystem(InverseDynamicsController(controller_plant, [150]*num_robot_positions, [50]*num_robot_positions, [50]*num_robot_positions, True))  # True = exposes "desired_acceleration" port
@@ -202,7 +202,7 @@ set_up_scene(station, station_context, plant, plant_context, simulator, randomiz
 
 # Generate regions with no obstacles at all
 robot_diagram_builder = RobotDiagramBuilder()
-robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(iris_yaml, ".dmd.yaml")
+robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(robot_yaml, ".dmd.yaml")
 robot_diagram_builder_plant = robot_diagram_builder.plant()
 robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
@@ -241,12 +241,12 @@ region_generator = IrisRegionGenerator(meshcat, cspace_obstacle_collision_checke
 
 # Generate regions with box in eef
 robot_diagram_builder = RobotDiagramBuilder()
-iris_yaml_eef_box = iris_yaml + f"""
+robot_yaml_eef_box = robot_yaml + f"""
 - add_model: 
     name: Boxes/Box_eef
     file: file://{absolute_path_to_box}
 """
-robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(iris_yaml_eef_box, ".dmd.yaml")
+robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(robot_yaml_eef_box, ".dmd.yaml")
 robot_diagram_builder_scene_graph = robot_diagram_builder.scene_graph()
 robot_diagram_builder_plant = robot_diagram_builder.plant()
 

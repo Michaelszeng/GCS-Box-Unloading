@@ -34,7 +34,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from station import MakeHardwareStation, load_scenario
-from scenario import NUM_BOXES, get_fast_box_poses, scenario_yaml_with_boxes, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, iris_yaml, iris_yaml, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
+from scenario import NUM_BOXES, get_fast_box_poses, scenario_yaml_with_boxes, BOX_DIM, q_nominal, q_place_nominal, scenario_yaml, robot_yaml, robot_yaml, robot_pose, set_hydroelastic, set_up_scene, get_W_X_eef
 from utils import ik
 from iris import IrisRegionGenerator
 from poses import get_grasp_poses, get_deposit_poses, grasp_q, deposit_q

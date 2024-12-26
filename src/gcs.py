@@ -22,7 +22,7 @@ from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad
 from manipulation.utils import ConfigureParser
 
-from scenario import BOX_DIM, NUM_BOXES, PREPICK_MARGIN, iris_yaml, q_nominal
+from scenario import BOX_DIM, NUM_BOXES, PREPICK_MARGIN, robot_yaml, q_nominal
 from utils import ik
 from pick_planner import PickPlanner
 from iris import IrisRegionGenerator
@@ -62,7 +62,7 @@ class MotionPlanner(LeafSystem):
         plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
         parser = Parser(plant)
         ConfigureParser(parser)
-        kuka = parser.AddModelsFromString(iris_yaml, ".dmd.yaml")[0]  # ModelInstance object
+        kuka = parser.AddModelsFromString(robot_yaml, ".dmd.yaml")[0]  # ModelInstance object
         
         plant.Finalize()
         diagram = builder.Build()

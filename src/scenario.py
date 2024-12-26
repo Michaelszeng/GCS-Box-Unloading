@@ -111,24 +111,15 @@ directives:
     child: Truck_Trailer_Back::Truck_Trailer_Back
 """
 
-iris_yaml = scenario_yaml.replace(
-f"""
-- add_model: 
-    name: Truck_Trailer_Roof
-    file: file://{absolute_path_to_truck_trailer_roof}
-""",
-f"""
-- add_model: 
-    name: Truck_Trailer_Roof
-    file: file://{absolute_path_to_truck_trailer_roof}
+
+scenario_yaml_welded_trailer = scenario_yaml + f"""
 - add_weld:
     parent: world
     child: Truck_Trailer_Roof::Truck_Trailer_Roof
 """
-)
 
 
-iris_yaml = f"""
+robot_yaml = f"""
 directives:
 - add_model:
     name: kuka

@@ -28,7 +28,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from station import MakeHardwareStation, load_scenario
-from scenario import iris_yaml
+from scenario import robot_yaml
 from utils import diagram_visualize_connections
 
 import numpy as np
@@ -168,7 +168,7 @@ def add_ghost_robot(q):
     iris_environement_assets = os.path.join(data_directory, "data", "iris_benchmarks_scenes_urdf", "iris_environments", "assets")
     parser.package_map().Add("iris_environments", iris_environement_assets)
     if TEST_SCENE == "BOXUNLOADING":
-        parser.AddModelsFromString(iris_yaml, ".dmd.yaml")
+        parser.AddModelsFromString(robot_yaml, ".dmd.yaml")
     else:
         parser.AddModels(scene_yaml_file)
     plant.Finalize()
@@ -191,7 +191,7 @@ def add_ghost_robot(q):
 builder = DiagramBuilder()
 
 if TEST_SCENE == "BOXUNLOADING":
-    scenario = load_scenario(data=iris_yaml)
+    scenario = load_scenario(data=robot_yaml)
 else:
     scenario = load_scenario(filename=scene_yaml_file)
 

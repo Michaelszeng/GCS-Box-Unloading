@@ -26,7 +26,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from station import MakeHardwareStation, load_scenario
-from scenario import iris_yaml
+from scenario import scenario_yaml_welded_trailer
 from utils import diagram_visualize_connections
 
 import numpy as np
@@ -156,7 +156,7 @@ meshcat = StartMeshcat()
 builder = DiagramBuilder()
 
 if TEST_SCENE == "BOXUNLOADING":
-    scenario = load_scenario(data=iris_yaml)
+    scenario = load_scenario(data=scenario_yaml_welded_trailer)
 else:
     scenario = load_scenario(filename=scene_yaml_file)
 
@@ -256,7 +256,8 @@ station_context = station.GetMyMutableContextFromRoot(simulator_context)
 plant_context = plant.GetMyMutableContextFromRoot(simulator_context)
 
 slider_source_context = slider_source.GetMyMutableContextFromRoot(simulator_context)
-ik_system_context = ik_system.GetMyMutableContextFromRoot(simulator_context)
+if not joint_control:
+    ik_system_context = ik_system.GetMyMutableContextFromRoot(simulator_context)
 
 # Main simulation loop
 ctr = 0

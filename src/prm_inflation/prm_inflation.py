@@ -34,7 +34,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from station import MakeHardwareStation, load_scenario
-from scenario import iris_yaml
+from scenario import robot_yaml
 from iris import IrisRegionGenerator
 from utils import ik
 
@@ -78,7 +78,7 @@ robot_diagram_builder = RobotDiagramBuilder()
 parser = robot_diagram_builder.parser()
 parser.package_map().Add("iris_environments", os.path.dirname(os.path.abspath(__file__)) + "/../../data/iris_benchmarks_scenes_urdf/iris_environments/assets")
 if TEST_SCENE == "BOXUNLOADING":
-    robot_model_instances = parser.AddModelsFromString(iris_yaml, ".dmd.yaml")
+    robot_model_instances = parser.AddModelsFromString(robot_yaml, ".dmd.yaml")
 else:
     robot_model_instances = parser.AddModels(scene_yaml_file)
 plant = robot_diagram_builder.plant()

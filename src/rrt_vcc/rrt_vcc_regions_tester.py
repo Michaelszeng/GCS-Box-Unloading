@@ -32,7 +32,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from station import MakeHardwareStation, load_scenario
-from scenario import iris_yaml
+from scenario import robot_yaml
 from utils import diagram_visualize_connections
 
 import numpy as np
@@ -199,7 +199,7 @@ print(f"Total num pts: {len(all_pts)}")
 # builder = DiagramBuilder()
 
 # if TEST_SCENE == "BOXUNLOADING":
-#     scenario = load_scenario(data=iris_yaml)
+#     scenario = load_scenario(data=robot_yaml)
 # else:
 #     scenario = load_scenario(filename=scene_yaml_file)
 

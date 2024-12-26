@@ -77,11 +77,3 @@ False
 False
 False
 False
-==== LCM Warning ===
-LCM detected that large packets are being received, but the kernel UDP
-receive buffer is very small.  The possibility of dropping packets due to
-insufficient buffer space is very high.
-
-For more information, visit:
-   http://lcm-proj.github.io/lcm/multicast_setup.html
-

@@ -42,7 +42,7 @@ from pydrake.all import (
 )
 from manipulation.meshcat_utils import AddMeshcatTriad
 
-from scenario import iris_yaml, q_nominal
+from scenario import robot_yaml, q_nominal
 
 import logging
 import os
@@ -131,13 +131,13 @@ diagram_builder = robot_diagram_builder.builder()
 relative_path_to_box = '../data/Box_0_5_0_5_0_5.sdf'
 absolute_path_to_box = os.path.abspath(relative_path_to_box)
 
-iris_yaml += f"""
+robot_yaml += f"""
 - add_model: 
     name: Box
     file: file://{absolute_path_to_box}
 """
 
-collision_checker_params["robot_model_instances"] = robot_diagram_builder.parser().AddModelsFromString(iris_yaml, ".dmd.yaml")
+collision_checker_params["robot_model_instances"] = robot_diagram_builder.parser().AddModelsFromString(robot_yaml, ".dmd.yaml")
 plant = robot_diagram_builder.plant()
 
 # Set Pose of box and weld

@@ -6,12 +6,12 @@ from pydrake.all import (
 import numpy as np
 import time
 
-from scenario import iris_yaml
+from scenario import robot_yaml
 
 
 # Generate regions with no obstacles at all
 robot_diagram_builder = RobotDiagramBuilder()
-robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(iris_yaml, ".dmd.yaml")
+robot_model_instances = robot_diagram_builder.parser().AddModelsFromString(robot_yaml, ".dmd.yaml")
 robot_diagram_builder_plant = robot_diagram_builder.plant()
 robot_diagram_builder_diagram = robot_diagram_builder.Build()
 
