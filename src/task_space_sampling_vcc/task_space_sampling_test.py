@@ -89,13 +89,13 @@ for i in range(np.shape(points)[1]):
     last_polytope_sample = hpoly.UniformSample(rng, last_polytope_sample)
     quaternion_sample = Rotation.random().as_quat()  # [x, y, z, w] order
     quaternion_sample = Quaternion(quaternion_sample[3], quaternion_sample[0], quaternion_sample[1], quaternion_sample[2])
-    q, ik_success = ik(plant, plant_context, RigidTransform(quaternion_sample, last_polytope_sample), translation_error=0, rotation_error=0.05)
+    q, ik_success = ik(plant, RigidTransform(quaternion_sample, last_polytope_sample), translation_error=0, rotation_error=0.05)
 
     while not ik_success or not config_obstacle_collision_checker.CheckConfigCollisionFree(q):
         last_polytope_sample = hpoly.UniformSample(rng, last_polytope_sample)
         quaternion_sample = Rotation.random().as_quat()  # [x, y, z, w] order
         quaternion_sample = Quaternion(quaternion_sample[3], quaternion_sample[0], quaternion_sample[1], quaternion_sample[2])
-        q, ik_success = ik(plant, plant_context, RigidTransform(quaternion_sample, last_polytope_sample), translation_error=0, rotation_error=0.05)
+        q, ik_success = ik(plant, RigidTransform(quaternion_sample, last_polytope_sample), translation_error=0, rotation_error=0.05)
 
     points_3d[:,i] = last_polytope_sample
     points[:,i] = q

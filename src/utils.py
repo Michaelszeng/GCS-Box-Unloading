@@ -80,7 +80,7 @@ class SuppressOutput:
         os.close(self.devnull)
 
 
-def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True):
+def ik(plant, pose, translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True):
     """
     Use Inverse Kinematics to solve for a configuration that satisfies a
     task-space pose. 
@@ -105,7 +105,7 @@ def ik(plant, plant_context, pose, translation_error=0, rotation_error=0.05, reg
     ik_start = time.time()
     solve_success = False
     for region in list(regions.values()):
-        ik = InverseKinematics(plant, plant_context)
+        ik = InverseKinematics(plant, plant.CreateDefaultContext())
         q_variables = ik.q()  # Get variables for MathematicalProgram
         ik_prog = ik.get_mutable_prog()
 

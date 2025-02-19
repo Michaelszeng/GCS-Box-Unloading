@@ -276,7 +276,7 @@ class MotionPlanner(LeafSystem):
                 self.original_plant.GetJointByName(f"{eef_body_idx}-{self.target_box}").Lock(self.original_plant_context)
 
                 # Compute post-pick pose, a few cm above the pick pose
-                self.q_post_pick, _ = ik(self.plant, self.plant_context, RigidTransform(self.X_pick.rotation(), self.X_pick.translation() + [0, 0, 0.075]), regions=self.source_regions_place, pose_as_constraint=False)
+                self.q_post_pick, _ = ik(self.plant, RigidTransform(self.X_pick.rotation(), self.X_pick.translation() + [0, 0, 0.075]), regions=self.source_regions_place, pose_as_constraint=False)
 
                 # Update state to post-picking and compute post-picking trajectory
                 self.state = 3

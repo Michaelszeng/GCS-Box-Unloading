@@ -123,7 +123,7 @@ if not JUST_VISUALIZE_EXISTING_REGIONS:
                                     plant.GetPositionUpperLimits())
         kEpsilonEllipsoid = 1e-5
         AddMeshcatTriad(meshcat, f"{i}", X_PT=seed)
-        q = ik(plant, plant_context, seed, translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True)[0]
+        q = ik(plant, seed, translation_error=0, rotation_error=0.05, regions=None, pose_as_constraint=True)[0]
         print(f"seed: {q.flatten()}")
         clique_ellipse = Hyperellipsoid.MakeHypersphere(kEpsilonEllipsoid, q)
         region = FastIris(collision_checker, clique_ellipse, domain, options)
