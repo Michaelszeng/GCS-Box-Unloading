@@ -3,10 +3,6 @@ Template file that allows teleoperation of robots in all 9 scenes; this
 simplified version teleports the joints instead of using a controller.
 """
 
-"""
-Buggy Teleop helper program. See comment at top of motion_planning/main.py
-"""
-
 from pydrake.all import (
     DiagramBuilder,
     StartMeshcat,
